@@ -16,3 +16,63 @@ externalPort = 80
 [[ports]]
 localPort = 25182
 externalPort = 3000
+
+[workflows]
+
+[[workflows.workflow]]
+name = "Baddies-stock-bot-2/artifacts/baddies-store: web"
+author = "agent"
+mode = "sequential"
+
+[workflows.workflow.metadata]
+outputType = "webview"
+artifactId = "artifacts/baddies-store"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "pnpm --filter @workspace/baddies-store run dev"
+cwd = "./Baddies-stock-bot-2/artifacts/baddies-store"
+waitForPort = 25181
+router = "path"
+
+[workflows.workflow.tasks.env]
+PORT = "25181"
+BASE_PATH = "/"
+
+[[workflows.workflow]]
+name = "Baddies-stock-bot-2/artifacts/mockup-sandbox: Component Preview Server"
+author = "agent"
+mode = "sequential"
+
+[workflows.workflow.metadata]
+outputType = "webview"
+artifactId = "XegfDyZt7HqfW2Bb8Ghoy"
+isCanvasWorkflow = true
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "pnpm --filter @workspace/mockup-sandbox run dev"
+cwd = "./Baddies-stock-bot-2/artifacts/mockup-sandbox"
+waitForPort = 8081
+
+[workflows.workflow.tasks.env]
+PORT = "8081"
+BASE_PATH = "/__mockup"
+
+[[workflows.workflow]]
+name = "Baddies-stock-bot-2/artifacts/api-server: API Server"
+author = "agent"
+mode = "sequential"
+
+[workflows.workflow.metadata]
+outputType = "webview"
+artifactId = "3B4_FFSkEVBkAeYMFRJ2e"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "pnpm --filter @workspace/api-server run dev"
+cwd = "./Baddies-stock-bot-2/artifacts/api-server"
+waitForPort = 8080
+
+[workflows.workflow.tasks.env]
+PORT = "8080"
