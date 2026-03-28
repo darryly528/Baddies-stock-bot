@@ -1,0 +1,15 @@
+packages:
+  "framer-motion": "For stunning page transitions, micro-interactions, and staggered list animations"
+  "lucide-react": "For beautiful consistent iconography across the catalog"
+  "clsx": "For conditional tailwind class merging"
+  "tailwind-merge": "For reliable tailwind utility conflict resolution"
+
+images:
+  - path: "artifacts/baddies-store/public/images/hero-bg.png"
+    description: "Dark, neon cyberpunk gaming background with purple and magenta glowing lights, abstract geometric shapes, subtle atmospheric fog, high quality dark aesthetic"
+    aspect_ratio: "16:9"
+
+notes:
+  - VITE_API_URL is used for the backend endpoint, pointing to the Express server.
+  - The API does not require authentication.
+  - Using framer-motion for high-end feel.

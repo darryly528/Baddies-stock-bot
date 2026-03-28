@@ -1,0 +1,168 @@
+openapi: 3.1.0
+info:
+  # Do not change the title, if the title changes, the import paths will be broken
+  title: Api
+  version: 0.1.0
+  description: API specification
+servers:
+  - url: /api
+    description: Base API path
+tags:
+  - name: health
+    description: Health operations
+  - name: catalog
+    description: Item catalog operations
+paths:
+  /healthz:
+    get:
+      operationId: healthCheck
+      tags: [health]
+      summary: Health check
+      description: Returns server health status
+      responses:
+        "200":
+          description: Healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+  /catalog/items:
+    get:
+      operationId: getCatalogItems
+      tags: [catalog]
+      summary: Get catalog items
+      description: Returns paginated items from the catalog, optionally filtered by category or search term
+      parameters:
+        - name: search
+          in: query
+          schema:
+            type: string
+          description: Search term to filter item names
+        - name: itemType
+          in: query
+          schema:
+            type: string
+            enum: [Weapon, Skin, FightingStyle]
+          description: Filter by item type
+        - name: category
+          in: query
+          schema:
+            type: string
+          description: Filter by item category (e.g. Stomp, RPG, Loveboard)
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+          description: Page number (1-based)
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 40
+            maximum: 100
+          description: Items per page
+      responses:
+        "200":
+          description: Catalog items
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CatalogItemsResponse"
+  /catalog/categories:
+    get:
+      operationId: getCatalogCategories
+      tags: [catalog]
+      summary: Get all item categories
+      description: Returns all unique itemType and category combinations
+      responses:
+        "200":
+          description: Categories list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CatalogCategoriesResponse"
+components:
+  schemas:
+    HealthStatus:
+      type: object
+      properties:
+        status:
+          type: string
+      required:
+        - status
+    CatalogItem:
+      type: object
+      properties:
+        itemId:
+          type: integer
+        name:
+          type: string
+        rarity:
+          type: string
+        imageUrl:
+          type: string
+          nullable: true
+        value:
+          type: integer
+          nullable: true
+        rap:
+          type: integer
+          nullable: true
+        category:
+          type: string
+          nullable: true
+        tradeable:
+          type: boolean
+        itemType:
+          type: string
+        acronym:
+          type: string
+          nullable: true
+        demand:
+          type: string
+          nullable: true
+        trend:
+          type: string
+          nullable: true
+      required:
+        - itemId
+        - name
+        - rarity
+        - itemType
+        - tradeable
+    CatalogItemsResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/CatalogItem"
+        total:
+          type: integer
+        page:
+          type: integer
+        limit:
+          type: integer
+        totalPages:
+          type: integer
+      required:
+        - items
+        - total
+        - page
+        - limit
+        - totalPages
+    CatalogCategoriesResponse:
+      type: object
+      properties:
+        itemTypes:
+          type: array
+          items:
+            type: string
+        categories:
+          type: array
+          items:
+            type: string
+      required:
+        - itemTypes
+        - categories

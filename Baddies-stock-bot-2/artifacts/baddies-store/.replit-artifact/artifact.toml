@@ -1,0 +1,31 @@
+kind = "web"
+previewPath = "/"
+title = "Baddies Store"
+version = "1.0.0"
+id = "artifacts/baddies-store"
+router = "path"
+
+[[integratedSkills]]
+name = "react-vite"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 25181
+
+[services.development]
+run = "pnpm --filter @workspace/baddies-store run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/baddies-store", "run", "build" ]
+publicDir = "artifacts/baddies-store/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "25181"
+BASE_PATH = "/"
