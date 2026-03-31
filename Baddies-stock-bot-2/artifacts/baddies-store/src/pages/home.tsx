@@ -10,7 +10,7 @@ import { cn } from "@/lib/utils";
 const ITEM_TYPES = [
   { label: "All", value: "All", emoji: "✨" },
   { label: "Weapons", value: "Weapon", emoji: "⚔️" },
-  { label: "Fighting Styles", value: "FightingStyle", emoji: "🥋" },
+  { label: "Fighting Styles", value: "Fighting Style", emoji: "🥋" },
   { label: "Skins", value: "Skin", emoji: "🎨" },
 ];
 
@@ -114,7 +114,7 @@ export default function Home() {
 
           <div className="flex w-full lg:w-auto gap-3 items-center flex-1 lg:flex-none justify-end">
             {/* Category Dropdown */}
-            {itemType !== "FightingStyle" && (
+            {itemType !== "Fighting Style" && (
               <select
                 value={category}
                 onChange={(e) => setCategory(e.target.value)}
