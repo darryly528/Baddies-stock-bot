@@ -1,0 +1,22 @@
+services:
+  - type: web
+    name: baddies-store
+    runtime: node
+    rootDir: .
+    buildCommand: |
+      cd artifacts/baddies-store && npm install && npm run build
+      cd ../../artifacts/api-server && npm install && npm run build
+    startCommand: node artifacts/api-server/dist/index.cjs
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: STATIC_DIR
+        value: artifacts/baddies-store/dist
+      - key: LISTINGS_PATH
+        value: /opt/render/project/src/listings.json
+      - key: DISCORD_BOT_TOKEN
+        sync: false
+      - key: TICKET_CATEGORY_ID
+        sync: false
+      - key: TICKET_MOD_ROLE_ID
+        sync: false

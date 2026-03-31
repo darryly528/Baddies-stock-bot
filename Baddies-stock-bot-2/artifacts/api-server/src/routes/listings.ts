@@ -5,7 +5,7 @@ import { randomUUID } from "crypto";
 
 const router: IRouter = Router();
 
-const LISTINGS_PATH = path.resolve(process.cwd(), "../../listings.json");
+const LISTINGS_PATH = process.env["LISTINGS_PATH"] ?? path.resolve(process.cwd(), "../../listings.json");
 
 export type ListingItem = {
   name: string;
