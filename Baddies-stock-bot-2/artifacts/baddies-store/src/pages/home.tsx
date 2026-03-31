@@ -80,7 +80,7 @@ export default function Home() {
             Browse our complete catalog of Weapons, Fighting Styles, and exclusive Skins. Find exactly what you need to dominate.
           </p>
 
-          <a href="#" target="_blank" rel="noopener noreferrer">
+          <a href="https://discord.gg/gSBxZ75c2x" target="_blank" rel="noopener noreferrer">
             <Button variant="discord" size="lg" className="group">
               <MessageSquare className="w-5 h-5 mr-2 group-hover:animate-bounce" />
               Join the Discord to Buy
