@@ -4,7 +4,7 @@ import { ItemCard } from "@/components/item-card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { motion } from "framer-motion";
-import { Search, Loader2, MessageSquare, FilterX, Sparkles } from "lucide-react";
+import { Search, Loader2, MessageSquare, FilterX, Sparkles, Box } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const ITEM_TYPES = [
