@@ -4,8 +4,9 @@ services:
     runtime: node
     rootDir: .
     buildCommand: |
-      cd artifacts/baddies-store && npm install && npm run build
-      cd ../../artifacts/api-server && npm install && npm run build
+      npm install -g pnpm
+      cd artifacts/baddies-store && pnpm install --frozen-lockfile && pnpm run build
+      cd ../../artifacts/api-server && pnpm install --frozen-lockfile && pnpm run build
     startCommand: node artifacts/api-server/dist/index.cjs
     envVars:
       - key: NODE_ENV
