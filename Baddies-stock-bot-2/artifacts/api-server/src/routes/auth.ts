@@ -212,13 +212,20 @@ router.post("/auth/post-listing/:listingId", async (req: Request, res: Response)
 
   const paymentMethods: string[] = (listing as { paymentMethods?: string[] }).paymentMethods ?? [];
 
+  const PAYMENT_EMOJIS: Record<string, string> = {
+    "PayPal": "💳",
+    "Apple Pay": "🍎",
+    "Cash App": "💸",
+    "Venmo": "💙",
+  };
+
   const embed = new EmbedBuilder()
     .setTitle("📦 New Listing")
     .setColor(0xff0080)
     .addFields(
       { name: "Seller", value: listing.seller, inline: true },
       ...(paymentMethods.length > 0
-        ? [{ name: "Payment", value: paymentMethods.join(", "), inline: true }]
+        ? [{ name: "Payment", value: paymentMethods.map((m) => `${PAYMENT_EMOJIS[m] ?? ""} ${m}`.trim()).join("  ·  "), inline: true }]
         : []),
       { name: `Items (${activeItems.length})`, value: itemLines || "—", inline: false }
     )

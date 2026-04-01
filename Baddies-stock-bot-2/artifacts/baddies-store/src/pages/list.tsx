@@ -24,7 +24,13 @@ import {
 } from "lucide-react";
 import { cn, formatNumber } from "@/lib/utils";
 
-const PAYMENT_OPTIONS = ["Robux", "Limiteds", "PayPal", "Cash App", "Venmo", "Other"];
+const PAYMENT_LABELS = ["PayPal", "Apple Pay", "Cash App", "Venmo"] as const;
+const PAYMENT_EMOJI: Record<string, string> = {
+  "PayPal":    "💳",
+  "Apple Pay": "🍎",
+  "Cash App":  "💸",
+  "Venmo":     "💙",
+};
 
 interface SelectedItem {
   name: string;
@@ -104,9 +110,9 @@ export default function ListPage() {
     setSelected((prev) => prev.map((s) => s.name === name ? { ...s, quantity: n } : s));
   }
 
-  function togglePayment(method: string) {
+  function togglePayment(label: string) {
     setPaymentMethods((prev) =>
-      prev.includes(method) ? prev.filter((m) => m !== method) : [...prev, method]
+      prev.includes(label) ? prev.filter((m) => m !== label) : [...prev, label]
     );
   }
 
@@ -284,21 +290,25 @@ export default function ListPage() {
                 <div>
                   <p className="text-sm font-medium text-muted-foreground mb-3">Payment methods you accept</p>
                   <div className="flex flex-wrap gap-2">
-                    {PAYMENT_OPTIONS.map((method) => (
-                      <button
-                        key={method}
-                        onClick={() => togglePayment(method)}
-                        className={cn(
-                          "px-3 py-1.5 rounded-lg text-sm font-medium border transition-all",
-                          paymentMethods.includes(method)
-                            ? "bg-primary/20 border-primary/50 text-primary"
-                            : "bg-white/5 border-white/10 text-muted-foreground hover:text-white hover:border-white/20"
-                        )}
-                      >
-                        {paymentMethods.includes(method) && <span className="mr-1">✓</span>}
-                        {method}
-                      </button>
-                    ))}
+                    {PAYMENT_LABELS.map((label) => {
+                      const active = paymentMethods.includes(label);
+                      return (
+                        <button
+                          key={label}
+                          onClick={() => togglePayment(label)}
+                          className={cn(
+                            "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium border transition-all",
+                            active
+                              ? "bg-primary/20 border-primary/50 text-primary"
+                              : "bg-white/5 border-white/10 text-muted-foreground hover:text-white hover:border-white/20"
+                          )}
+                        >
+                          <span>{PAYMENT_EMOJI[label]}</span>
+                          {label}
+                          {active && <span className="text-xs ml-0.5">✓</span>}
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
 
@@ -555,7 +565,8 @@ export default function ListPage() {
                                 {listing.paymentMethods?.length > 0 && (
                                   <div className="flex gap-1 flex-wrap">
                                     {listing.paymentMethods.map((m) => (
-                                      <span key={m} className="text-[10px] px-1.5 py-0.5 rounded bg-primary/15 text-primary border border-primary/20 font-medium">
+                                      <span key={m} className="text-[10px] px-1.5 py-0.5 rounded bg-primary/15 text-primary border border-primary/20 font-medium flex items-center gap-0.5">
+                                        {PAYMENT_EMOJI[m] ? <span>{PAYMENT_EMOJI[m]}</span> : null}
                                         {m}
                                       </span>
                                     ))}
