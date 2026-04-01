@@ -207,10 +207,14 @@ router.post("/auth/post-listing/:listingId", async (req: Request, res: Response)
 
   const activeItems = listing.items.filter((i) => !i.soldOut);
   const itemLines = activeItems
-    .map((i) => `• **${i.name}** × ${i.quantity}`)
+    .map((i) => {
+      const priceStr = (i as { price?: string }).price ? ` — **$${(i as { price?: string }).price}**` : "";
+      return `• **${i.name}** × ${i.quantity}${priceStr}`;
+    })
     .join("\n");
 
   const paymentMethods: string[] = (listing as { paymentMethods?: string[] }).paymentMethods ?? [];
+  const customMessage: string | undefined = (listing as { customMessage?: string }).customMessage;
 
   const PAYMENT_EMOJIS: Record<string, string> = {
     "PayPal": "💳",
@@ -227,7 +231,8 @@ router.post("/auth/post-listing/:listingId", async (req: Request, res: Response)
       ...(paymentMethods.length > 0
         ? [{ name: "Payment", value: paymentMethods.map((m) => `${PAYMENT_EMOJIS[m] ?? ""} ${m}`.trim()).join("  ·  "), inline: true }]
         : []),
-      { name: `Items (${activeItems.length})`, value: itemLines || "—", inline: false }
+      { name: `Items (${activeItems.length})`, value: itemLines || "—", inline: false },
+      ...(customMessage ? [{ name: "Message", value: customMessage, inline: false }] : [])
     )
     .setTimestamp(new Date(listing.createdAt))
     .setFooter({ text: `Listing ID: ${listing.id}` });

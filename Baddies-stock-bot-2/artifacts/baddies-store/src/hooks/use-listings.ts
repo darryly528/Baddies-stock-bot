@@ -7,6 +7,7 @@ export interface ListingItem {
   itemType: string;
   imageUrl: string | null;
   quantity: number | string;
+  price?: string;
   soldOut: boolean;
 }
 
@@ -17,6 +18,7 @@ export interface Listing {
   discordAvatar: string | null;
   paymentMethods: string[];
   items: ListingItem[];
+  customMessage?: string;
   createdAt: string;
 }
 
@@ -36,8 +38,9 @@ export function useCreateListing() {
   return useMutation({
     mutationFn: async (data: {
       seller: string;
-      items: { name: string; itemType: string; imageUrl: string | null; quantity: number | string }[];
+      items: { name: string; itemType: string; imageUrl: string | null; quantity: number | string; price?: string }[];
       paymentMethods: string[];
+      customMessage?: string;
     }) => {
       const res = await fetch(`${apiBase}/api/listings`, {
         method: "POST",

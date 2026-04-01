@@ -37,6 +37,7 @@ interface SelectedItem {
   itemType: string;
   imageUrl: string | null;
   quantity: number;
+  price: string;
 }
 
 interface Guild {
@@ -53,6 +54,7 @@ export default function ListPage() {
   const [itemType, setItemType] = useState("All");
   const [selected, setSelected] = useState<SelectedItem[]>([]);
   const [paymentMethods, setPaymentMethods] = useState<string[]>([]);
+  const [customMessage, setCustomMessage] = useState("");
   const [soldDialogItem, setSoldDialogItem] = useState<{ listingId: string; item: ListingItem } | null>(null);
   const [soldQtyInput, setSoldQtyInput] = useState("");
   const [postedListingId, setPostedListingId] = useState<string | null>(null);
@@ -94,7 +96,7 @@ export default function ListPage() {
     setSelected((prev) => {
       const exists = prev.find((s) => s.name === item.name);
       if (exists) return prev.filter((s) => s.name !== item.name);
-      return [...prev, { name: item.name, itemType: item.itemType, imageUrl: item.imageUrl, quantity: 1 }];
+      return [...prev, { name: item.name, itemType: item.itemType, imageUrl: item.imageUrl, quantity: 1, price: "" }];
     });
   }
 
@@ -110,6 +112,10 @@ export default function ListPage() {
     setSelected((prev) => prev.map((s) => s.name === name ? { ...s, quantity: n } : s));
   }
 
+  function setPrice(name: string, val: string) {
+    setSelected((prev) => prev.map((s) => s.name === name ? { ...s, price: val } : s));
+  }
+
   function togglePayment(label: string) {
     setPaymentMethods((prev) =>
       prev.includes(label) ? prev.filter((m) => m !== label) : [...prev, label]
@@ -120,12 +126,14 @@ export default function ListPage() {
     if (!user || selected.length === 0) return;
     const result = await createListing.mutateAsync({
       seller: user.username,
-      items: selected.map((s) => ({ name: s.name, itemType: s.itemType, imageUrl: s.imageUrl, quantity: s.quantity })),
+      items: selected.map((s) => ({ name: s.name, itemType: s.itemType, imageUrl: s.imageUrl, quantity: s.quantity, price: s.price || undefined })),
       paymentMethods,
+      customMessage: customMessage.trim() || undefined,
     });
     setPostedListingId(result.id);
     setSelected([]);
     setPaymentMethods([]);
+    setCustomMessage("");
   }
 
   async function loadGuilds() {
@@ -335,18 +343,18 @@ export default function ListPage() {
                 {selected.length > 0 && (
                   <div>
                     <p className="text-sm font-medium text-muted-foreground mb-3">
-                      Selected ({selected.length}) — set quantities below
+                      Selected ({selected.length}) — set quantities and prices below
                     </p>
-                    <div className="flex flex-wrap gap-2">
+                    <div className="flex flex-col gap-2">
                       {selected.map((s) => (
                         <div
                           key={s.name}
-                          className="flex items-center gap-2 glass-panel rounded-xl px-3 py-2 border border-primary/30"
+                          className="flex flex-wrap items-center gap-2 glass-panel rounded-xl px-3 py-2 border border-primary/30"
                         >
                           {s.imageUrl && (
-                            <img src={s.imageUrl} alt={s.name} className="w-6 h-6 object-contain" />
+                            <img src={s.imageUrl} alt={s.name} className="w-6 h-6 object-contain flex-shrink-0" />
                           )}
-                          <span className="text-sm font-medium text-white">{s.name}</span>
+                          <span className="text-sm font-medium text-white flex-1 min-w-0 truncate">{s.name}</span>
                           <div className="flex items-center gap-1">
                             <button
                               onClick={() => updateQty(s.name, -1)}
@@ -368,6 +376,16 @@ export default function ListPage() {
                               <Plus className="w-3 h-3" />
                             </button>
                           </div>
+                          <div className="flex items-center gap-1">
+                            <span className="text-muted-foreground text-xs">$</span>
+                            <input
+                              type="text"
+                              value={s.price}
+                              onChange={(e) => setPrice(s.name, e.target.value)}
+                              placeholder="Price"
+                              className="w-20 bg-black/30 border border-white/10 rounded-md px-2 py-1 text-sm text-white outline-none focus:border-primary/50 placeholder:text-muted-foreground/50"
+                            />
+                          </div>
                           <button
                             onClick={() => toggleItem(s)}
                             className="text-muted-foreground hover:text-red-400 transition-colors"
@@ -376,6 +394,17 @@ export default function ListPage() {
                           </button>
                         </div>
                       ))}
+                    </div>
+
+                    <div className="mt-4">
+                      <p className="text-sm font-medium text-muted-foreground mb-2">Custom message (optional)</p>
+                      <textarea
+                        value={customMessage}
+                        onChange={(e) => setCustomMessage(e.target.value)}
+                        placeholder="Add a note to your listing, e.g. DM me on Discord, prices negotiable..."
+                        rows={3}
+                        className="w-full bg-black/30 border border-white/10 rounded-xl px-3 py-2 text-sm text-white outline-none focus:border-primary/50 placeholder:text-muted-foreground/50 resize-none"
+                      />
                     </div>
 
                     <Button
@@ -584,6 +613,12 @@ export default function ListPage() {
                           </button>
                         </div>
 
+                        {listing.customMessage && (
+                          <div className="mb-3 px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-sm text-white/80 italic">
+                            "{listing.customMessage}"
+                          </div>
+                        )}
+
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                           {listing.items.map((item) => (
                             <div
@@ -605,6 +640,9 @@ export default function ListPage() {
                                 <p className="text-xs text-muted-foreground mt-0.5">
                                   {item.soldOut ? "Sold Out" : `Qty: ${item.quantity}`}
                                 </p>
+                                {item.price && !item.soldOut && (
+                                  <p className="text-xs text-green-400 font-semibold mt-0.5">${item.price}</p>
+                                )}
                               </div>
                               {!item.soldOut && (
                                 <button

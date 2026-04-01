@@ -12,6 +12,7 @@ export type ListingItem = {
   itemType: string;
   imageUrl: string | null;
   quantity: number | string;
+  price?: string;
   soldOut: boolean;
 };
 
@@ -22,6 +23,7 @@ export type Listing = {
   discordAvatar: string | null;
   paymentMethods: string[];
   items: ListingItem[];
+  customMessage?: string;
   createdAt: string;
 };
 
@@ -43,10 +45,11 @@ router.get("/listings", (_req, res) => {
 });
 
 router.post("/listings", (req, res) => {
-  const { seller, items, paymentMethods } = req.body as {
+  const { seller, items, paymentMethods, customMessage } = req.body as {
     seller: string;
-    items: { name: string; itemType: string; imageUrl: string | null; quantity: number | string }[];
+    items: { name: string; itemType: string; imageUrl: string | null; quantity: number | string; price?: string }[];
     paymentMethods?: string[];
+    customMessage?: string;
   };
 
   if (!seller || !Array.isArray(items) || items.length === 0) {
@@ -67,8 +70,10 @@ router.post("/listings", (req, res) => {
       itemType: i.itemType,
       imageUrl: i.imageUrl ?? null,
       quantity: i.quantity,
+      price: i.price?.trim() || undefined,
       soldOut: false,
     })),
+    customMessage: customMessage?.trim() || undefined,
     createdAt: new Date().toISOString(),
   };
 
