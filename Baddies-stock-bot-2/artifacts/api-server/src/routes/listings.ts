@@ -18,11 +18,14 @@ export type ListingItem = {
 export type Listing = {
   id: string;
   seller: string;
+  discordUserId: string | null;
+  discordAvatar: string | null;
+  paymentMethods: string[];
   items: ListingItem[];
   createdAt: string;
 };
 
-function loadListings(): Listing[] {
+export function loadListings(): Listing[] {
   try {
     return JSON.parse(fs.readFileSync(LISTINGS_PATH, "utf8"));
   } catch {
@@ -40,9 +43,10 @@ router.get("/listings", (_req, res) => {
 });
 
 router.post("/listings", (req, res) => {
-  const { seller, items } = req.body as {
+  const { seller, items, paymentMethods } = req.body as {
     seller: string;
     items: { name: string; itemType: string; imageUrl: string | null; quantity: number | string }[];
+    paymentMethods?: string[];
   };
 
   if (!seller || !Array.isArray(items) || items.length === 0) {
@@ -50,9 +54,14 @@ router.post("/listings", (req, res) => {
     return;
   }
 
+  const sessionUser = req.session?.discordUser ?? null;
+
   const listing: Listing = {
     id: randomUUID(),
     seller: seller.trim(),
+    discordUserId: sessionUser?.id ?? null,
+    discordAvatar: sessionUser?.avatar ?? null,
+    paymentMethods: Array.isArray(paymentMethods) ? paymentMethods : [],
     items: items.map((i) => ({
       name: i.name,
       itemType: i.itemType,

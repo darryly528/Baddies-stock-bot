@@ -339,6 +339,10 @@ function buildCartEmbed(cart: Cart, username: string): EmbedBuilder {
   return embed;
 }
 
+// ── Bot client export ─────────────────────────────────────────────────────────
+let _botClient: Client | null = null;
+export function getBotClient(): Client | null { return _botClient; }
+
 // ── Bot ───────────────────────────────────────────────────────────────────────
 export async function startBot() {
   const token = process.env["DISCORD_BOT_TOKEN"];
@@ -377,6 +381,7 @@ export async function startBot() {
   });
 
   client.once(Events.ClientReady, async (readyClient) => {
+    _botClient = client;
     console.log(`Discord bot ready! Logged in as ${readyClient.user.tag}`);
     const commands = [
       new SlashCommandBuilder()

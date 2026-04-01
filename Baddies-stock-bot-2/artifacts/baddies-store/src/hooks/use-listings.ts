@@ -13,6 +13,9 @@ export interface ListingItem {
 export interface Listing {
   id: string;
   seller: string;
+  discordUserId: string | null;
+  discordAvatar: string | null;
+  paymentMethods: string[];
   items: ListingItem[];
   createdAt: string;
 }
@@ -21,7 +24,7 @@ export function useListings() {
   return useQuery({
     queryKey: ["listings"],
     queryFn: async () => {
-      const res = await fetch(`${apiBase}/api/listings`);
+      const res = await fetch(`${apiBase}/api/listings`, { credentials: "include" });
       if (!res.ok) throw new Error("Failed to fetch listings");
       return res.json() as Promise<Listing[]>;
     },
@@ -34,10 +37,12 @@ export function useCreateListing() {
     mutationFn: async (data: {
       seller: string;
       items: { name: string; itemType: string; imageUrl: string | null; quantity: number | string }[];
+      paymentMethods: string[];
     }) => {
       const res = await fetch(`${apiBase}/api/listings`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify(data),
       });
       if (!res.ok) throw new Error("Failed to create listing");
@@ -64,6 +69,7 @@ export function useMarkSold() {
         {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
+          credentials: "include",
           body: JSON.stringify({ soldQty }),
         }
       );
@@ -80,10 +86,29 @@ export function useDeleteListing() {
     mutationFn: async (listingId: string) => {
       const res = await fetch(`${apiBase}/api/listings/${listingId}`, {
         method: "DELETE",
+        credentials: "include",
       });
       if (!res.ok) throw new Error("Failed to delete listing");
       return res.json();
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["listings"] }),
+  });
+}
+
+export function usePostListingToDiscord() {
+  return useMutation({
+    mutationFn: async ({ listingId, guildId }: { listingId: string; guildId: string }) => {
+      const res = await fetch(`${apiBase}/api/auth/post-listing/${listingId}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ guildId }),
+      });
+      if (!res.ok) {
+        const err = (await res.json().catch(() => ({}))) as { error?: string };
+        throw new Error(err.error ?? "Failed to post to Discord");
+      }
+      return res.json() as Promise<{ ok: boolean; channel: string }>;
+    },
   });
 }
