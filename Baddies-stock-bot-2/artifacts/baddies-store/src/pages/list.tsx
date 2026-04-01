@@ -84,7 +84,7 @@ export default function ListPage() {
   const ITEM_TYPES = [
     { label: "All", value: "All" },
     { label: "Weapons", value: "Weapon" },
-    { label: "Fighting Styles", value: "FightingStyle" },
+    { label: "Fighting Styles", value: "Fighting Style" },
     { label: "Skins", value: "Skin" },
   ];
 
