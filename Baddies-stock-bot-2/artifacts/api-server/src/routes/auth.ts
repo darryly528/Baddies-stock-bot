@@ -86,6 +86,13 @@ router.get("/auth/discord/callback", async (req: Request, res: Response) => {
   }
 });
 
+router.get("/config", (_req: Request, res: Response) => {
+  res.json({
+    discordInviteUrl: DISCORD_INVITE_URL || null,
+    oauthEnabled: !!(DISCORD_CLIENT_ID && DISCORD_CLIENT_SECRET),
+  });
+});
+
 router.get("/auth/me", (req: Request, res: Response) => {
   if (!req.session.discordUser) {
     res.status(401).json({ error: "Not authenticated" });

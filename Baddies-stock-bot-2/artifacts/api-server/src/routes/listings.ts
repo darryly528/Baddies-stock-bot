@@ -88,11 +88,17 @@ router.patch("/listings/:id/items/:itemName/sold", (req, res) => {
   const { id, itemName } = req.params as { id: string; itemName: string };
   const { soldQty } = req.body as { soldQty?: number };
 
+  const sessionUserId = req.session?.discordUser?.id ?? null;
   const listings = loadListings();
   const listing = listings.find((l) => l.id === id);
 
   if (!listing) {
     res.status(404).json({ error: "Listing not found" });
+    return;
+  }
+
+  if (listing.discordUserId && listing.discordUserId !== sessionUserId) {
+    res.status(403).json({ error: "You can only update your own listings" });
     return;
   }
 
@@ -119,11 +125,18 @@ router.patch("/listings/:id/items/:itemName/sold", (req, res) => {
 
 router.delete("/listings/:id", (req, res) => {
   const { id } = req.params as { id: string };
+  const sessionUserId = req.session?.discordUser?.id ?? null;
   const listings = loadListings();
   const idx = listings.findIndex((l) => l.id === id);
 
   if (idx === -1) {
     res.status(404).json({ error: "Listing not found" });
+    return;
+  }
+
+  const listing = listings[idx];
+  if (listing.discordUserId && listing.discordUserId !== sessionUserId) {
+    res.status(403).json({ error: "You can only delete your own listings" });
     return;
   }
 
