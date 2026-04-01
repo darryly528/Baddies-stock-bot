@@ -27,7 +27,8 @@ export const catalog: CatalogItem[] = [];
 function loadFromDisk(): void {
   try {
     const raw = fs.readFileSync(CATALOG_PATH, "utf8");
-    const items: CatalogItem[] = JSON.parse(raw);
+    const parsed: CatalogItem[] = JSON.parse(raw);
+    const items = deduplicateById(parsed);
     catalog.splice(0, catalog.length, ...items);
     console.log(`[catalog] Loaded ${catalog.length} items from disk.`);
   } catch {
@@ -63,13 +64,27 @@ async function fetchAllPages(): Promise<CatalogItem[]> {
   return allItems;
 }
 
+function deduplicateById(items: CatalogItem[]): CatalogItem[] {
+  const seen = new Map<number, CatalogItem>();
+  for (const item of items) {
+    if (!seen.has(item.itemId)) {
+      seen.set(item.itemId, item);
+    }
+  }
+  return Array.from(seen.values());
+}
+
 async function runUpdate(): Promise<void> {
   console.log("[catalog] Starting update from bloxtsar.com...");
   try {
-    const items = await fetchAllPages();
-    if (items.length === 0) {
+    const raw = await fetchAllPages();
+    if (raw.length === 0) {
       console.warn("[catalog] Update returned 0 items — keeping existing catalog.");
       return;
+    }
+    const items = deduplicateById(raw);
+    if (raw.length !== items.length) {
+      console.log(`[catalog] Deduplicated ${raw.length - items.length} duplicate item(s).`);
     }
     catalog.splice(0, catalog.length, ...items);
     fs.writeFileSync(CATALOG_PATH, JSON.stringify(items, null, 2));
