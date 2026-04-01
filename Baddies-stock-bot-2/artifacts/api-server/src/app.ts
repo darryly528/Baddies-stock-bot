@@ -7,6 +7,7 @@ import router from "./routes";
 
 const app: Express = express();
 
+app.set("trust proxy", 1);
 app.use(cors({ origin: true, credentials: true }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -19,7 +20,7 @@ app.use(
     cookie: {
       httpOnly: true,
       sameSite: "lax",
-      secure: false,
+      secure: "auto",
       maxAge: 7 * 24 * 60 * 60 * 1000,
     },
   })

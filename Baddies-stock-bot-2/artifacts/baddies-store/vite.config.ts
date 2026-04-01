@@ -52,6 +52,7 @@ export default defineConfig({
       "/api": {
         target: apiTarget,
         changeOrigin: true,
+        cookieDomainRewrite: { "*": "" },
       },
     },
   },
