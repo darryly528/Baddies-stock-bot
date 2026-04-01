@@ -46,6 +46,32 @@ function loadDotenv(dotenvPath = ".env") {
 loadDotenv();
 
 const TICKET_CATEGORY_ID = process.env["TICKET_CATEGORY_ID"] ?? "1477024231735951533";
+
+// ── Guild settings (persisted to disk) ────────────────────────────────────────
+type GuildSettings = { ticketCategoryId?: string; listingChannelId?: string };
+const SETTINGS_PATH = path.resolve(process.cwd(), "guild-settings.json");
+
+function loadAllSettings(): Record<string, GuildSettings> {
+  try {
+    return JSON.parse(fs.readFileSync(SETTINGS_PATH, "utf8")) as Record<string, GuildSettings>;
+  } catch {
+    return {};
+  }
+}
+
+function saveAllSettings(data: Record<string, GuildSettings>) {
+  fs.writeFileSync(SETTINGS_PATH, JSON.stringify(data, null, 2));
+}
+
+function getGuildSettings(guildId: string): GuildSettings {
+  return loadAllSettings()[guildId] ?? {};
+}
+
+function setGuildSetting(guildId: string, key: keyof GuildSettings, value: string) {
+  const all = loadAllSettings();
+  all[guildId] = { ...(all[guildId] ?? {}), [key]: value };
+  saveAllSettings(all);
+}
 const TICKET_MOD_ROLE_ID = process.env["TICKET_MOD_ROLE_ID"] ?? "";
 
 if (!TICKET_MOD_ROLE_ID) {
@@ -390,6 +416,32 @@ export async function startBot() {
       new SlashCommandBuilder()
         .setName("sold")
         .setDescription("Pick one of your recent listings to mark as sold"),
+      new SlashCommandBuilder()
+        .setName("setchannel")
+        .setDescription("Configure bot channels for this server (Admins only)")
+        .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
+        .addSubcommand((sub) =>
+          sub
+            .setName("ticket")
+            .setDescription("Set the category where ticket channels are created")
+            .addChannelOption((opt) =>
+              opt
+                .setName("channel")
+                .setDescription("The category channel for tickets")
+                .setRequired(true),
+            ),
+        )
+        .addSubcommand((sub) =>
+          sub
+            .setName("listing")
+            .setDescription("Set the channel where stock listings are posted publicly")
+            .addChannelOption((opt) =>
+              opt
+                .setName("channel")
+                .setDescription("The text channel for listings")
+                .setRequired(true),
+            ),
+        ),
     ].map((c) => c.toJSON());
 
     const rest = new REST().setToken(token);
@@ -536,6 +588,39 @@ export async function startBot() {
           ),
         ],
       });
+      return;
+    }
+
+    // ── /setchannel ───────────────────────────────────────────────────────
+    if (
+      interaction.isChatInputCommand() &&
+      interaction.commandName === "setchannel"
+    ) {
+      const guildId = interaction.guildId;
+      if (!guildId) {
+        await interaction.reply({
+          content: "This command can only be used inside a server.",
+          ephemeral: true,
+        });
+        return;
+      }
+
+      const sub = interaction.options.getSubcommand();
+      const channel = interaction.options.getChannel("channel", true);
+
+      if (sub === "ticket") {
+        setGuildSetting(guildId, "ticketCategoryId", channel.id);
+        await interaction.reply({
+          content: `✅ Ticket category set to <#${channel.id}>. New tickets will be created inside that category.`,
+          ephemeral: true,
+        });
+      } else if (sub === "listing") {
+        setGuildSetting(guildId, "listingChannelId", channel.id);
+        await interaction.reply({
+          content: `✅ Listing channel set to <#${channel.id}>. Stock listings will now be posted there.`,
+          ephemeral: true,
+        });
+      }
       return;
     }
 
@@ -925,18 +1010,49 @@ export async function startBot() {
       carts.delete(key);
 
       await modal.update({ embeds: [resetEmbed], components: [] });
-      await modal.followUp({
-        embeds: [resultEmbed],
-        components: [
-          new ActionRowBuilder<ButtonBuilder>().addComponents(
-            new ButtonBuilder()
-              .setCustomId("create_ticket")
-              .setLabel("Create Ticket")
-              .setStyle(ButtonStyle.Primary),
-          ),
-        ],
-        allowedMentions: { users: [] },
-      });
+
+      const listingComponents = [
+        new ActionRowBuilder<ButtonBuilder>().addComponents(
+          new ButtonBuilder()
+            .setCustomId("create_ticket")
+            .setLabel("Create Ticket")
+            .setStyle(ButtonStyle.Primary),
+        ),
+      ];
+
+      const guildSettings = modal.guildId ? getGuildSettings(modal.guildId) : {};
+      const listingChannelId = guildSettings.listingChannelId;
+
+      if (listingChannelId) {
+        try {
+          const targetChannel = await client.channels.fetch(listingChannelId);
+          if (targetChannel && targetChannel.isTextBased()) {
+            await targetChannel.send({
+              embeds: [resultEmbed],
+              components: listingComponents,
+              allowedMentions: { users: [] },
+            });
+          } else {
+            await modal.followUp({
+              embeds: [resultEmbed],
+              components: listingComponents,
+              allowedMentions: { users: [] },
+            });
+          }
+        } catch {
+          await modal.followUp({
+            embeds: [resultEmbed],
+            components: listingComponents,
+            allowedMentions: { users: [] },
+          });
+        }
+      } else {
+        await modal.followUp({
+          embeds: [resultEmbed],
+          components: listingComponents,
+          allowedMentions: { users: [] },
+        });
+      }
       return;
     }
 
@@ -988,10 +1104,14 @@ export async function startBot() {
           .replace(/ +/g, "-")
           .slice(0, 90);
 
+        const guildTicketSettings = getGuildSettings(guild.id);
+        const resolvedTicketCategoryId =
+          guildTicketSettings.ticketCategoryId ?? TICKET_CATEGORY_ID;
+
         const ticketChannel = await guild.channels.create({
           name: normalized || `ticket-${sellerName}`,
           type: ChannelType.GuildText,
-          parent: TICKET_CATEGORY_ID,
+          parent: resolvedTicketCategoryId || undefined,
           topic: `Ticket requested by ${btn.user.tag} for ${sellerName}'s items`,
           reason: `Ticket created by ${btn.user.tag}`,
           permissionOverwrites: [
