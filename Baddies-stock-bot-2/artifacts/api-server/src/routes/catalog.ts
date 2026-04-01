@@ -1,31 +1,7 @@
 import { Router, type IRouter } from "express";
-import fs from "fs";
-import path from "path";
+import { catalog } from "../catalogUpdater";
 
 const router: IRouter = Router();
-
-type CatalogItem = {
-  itemId: number;
-  name: string;
-  rarity: string;
-  imageUrl: string | null;
-  value: number | null;
-  rap: number | null;
-  category: string | null;
-  tradeable: boolean;
-  itemType: string;
-  acronym: string | null;
-  demand: string | null;
-  trend: string | null;
-};
-
-let catalog: CatalogItem[] = [];
-try {
-  const catalogPath = path.resolve(process.cwd(), "../../catalog.json");
-  catalog = JSON.parse(fs.readFileSync(catalogPath, "utf8"));
-} catch {
-  console.warn("catalog.ts: Could not load catalog.json");
-}
 
 router.get("/catalog/items", (req, res) => {
   const search = ((req.query["search"] as string) ?? "").toLowerCase().trim();

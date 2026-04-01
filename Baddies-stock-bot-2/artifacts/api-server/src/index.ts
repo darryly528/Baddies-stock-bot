@@ -1,5 +1,6 @@
 import app from "./app";
 import { startBot } from "./bot";
+import { startCatalogUpdater } from "./catalogUpdater";
 
 const rawPort = process.env["PORT"] ?? "3001";
 const port = Number(rawPort);
@@ -7,6 +8,8 @@ const port = Number(rawPort);
 if (Number.isNaN(port) || port <= 0) {
   throw new Error(`Invalid PORT value: "${rawPort}"`);
 }
+
+startCatalogUpdater();
 
 app.listen(port, () => {
   console.log(`Server listening on port ${port}`);
