@@ -1,2 +1,27 @@
 .replit
-.replit
+
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+
+# Environment variables / secrets
+.env
+.env.*
+*.env
+
+# Sensitive runtime config
+Baddies-stock-bot-2/artifacts/api-server/guild-settings.json
+Baddies-stock-bot-2/listings.json
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Zip files
+*.zip
