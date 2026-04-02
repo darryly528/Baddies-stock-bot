@@ -323,30 +323,9 @@ export async function startBot() {
 
   client.on(Events.InteractionCreate, async (interaction: Interaction) => {
    try {
-    // ── Mod-only gate ──────────────────────────────────────────────────────
     if (!interaction.guild) {
       if ("reply" in interaction) {
         await (interaction as { reply: Function }).reply({ content: "This bot can only be used inside the server.", ephemeral: true });
-      }
-      return;
-    }
-
-    const memberRoles = interaction.member?.roles;
-    const hasModRole = Array.isArray(memberRoles)
-      ? memberRoles.includes(MOD_ROLE_ID)
-      : (memberRoles as import("discord.js").GuildMemberRoleManager)?.cache.has(MOD_ROLE_ID) ?? false;
-
-    // Allow non-mods only for buyer-facing interactions
-    const buyerInteractions = ["create_ticket"];
-    const isBuyerInteraction =
-      (interaction.isButton() && buyerInteractions.includes(interaction.customId)) ||
-      (interaction.isStringSelectMenu() && interaction.customId.startsWith("ti:")) ||
-      (interaction.isStringSelectMenu() && interaction.customId.startsWith("tqd:")) ||
-      (interaction.isButton() && interaction.customId === "tq_submit");
-
-    if (!hasModRole && !isBuyerInteraction) {
-      if ("reply" in interaction) {
-        await (interaction as { reply: Function }).reply({ content: "❌ You need the **@mod** role to use this bot.", ephemeral: true });
       }
       return;
     }

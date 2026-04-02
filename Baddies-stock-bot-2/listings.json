@@ -1,10 +1,13 @@
 [
   {
-    "id": "0bbabbe8-6c68-4d81-8a86-386e83902520",
+    "id": "d5afa422-0821-4a18-a433-7e8ddff62ed2",
     "seller": "disgust_tf",
     "discordUserId": "916248084697190440",
     "discordAvatar": "f14e3b4947ec4704ece95a921e7e79a4",
-    "paymentMethods": [],
+    "paymentMethods": [
+      "Apple Pay",
+      "Cash App"
+    ],
     "items": [
       {
         "name": "Crowbar",
@@ -15,6 +18,6 @@
         "soldOut": false
       }
     ],
-    "createdAt": "2026-04-02T08:48:48.634Z"
+    "createdAt": "2026-04-02T09:10:04.996Z"
   }
 ]
