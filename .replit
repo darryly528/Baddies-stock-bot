@@ -22,6 +22,10 @@ localPort = 8080
 externalPort = 8080
 
 [[ports]]
+localPort = 25181
+externalPort = 3003
+
+[[ports]]
 localPort = 25182
 externalPort = 3000
 
@@ -73,3 +77,8 @@ outputType = "webview"
 
 [userenv.shared]
 DISCORD_CLIENT_ID = "1481478188369576016"
+
+[deployment]
+run = ["sh", "-c", "pnpm install PORT=3000 DISCORD_BOT_TOKEN=MTQ4MTQ3ODE4ODM2OTU3NjAxNg.GinU6I.zJf7RVUVtoI66_DQ-0F7dK7oqrei90Ye95YMAQ pnpm --filter @workspace/api-server run dev"]
+deploymentTarget = "cloudrun"
+build = ["sh", "-c", "pnpm install && pnpm build"]
