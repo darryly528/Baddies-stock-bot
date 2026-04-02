@@ -1,1 +1,20 @@
-[]
+[
+  {
+    "id": "0bbabbe8-6c68-4d81-8a86-386e83902520",
+    "seller": "disgust_tf",
+    "discordUserId": "916248084697190440",
+    "discordAvatar": "f14e3b4947ec4704ece95a921e7e79a4",
+    "paymentMethods": [],
+    "items": [
+      {
+        "name": "Crowbar",
+        "itemType": "Weapon",
+        "imageUrl": "https://cdn.meowia.com/baddies/crowbar.png",
+        "quantity": 1,
+        "price": "3",
+        "soldOut": false
+      }
+    ],
+    "createdAt": "2026-04-02T08:48:48.634Z"
+  }
+]

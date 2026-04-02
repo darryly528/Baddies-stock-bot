@@ -1,12 +1,9 @@
 import fs from "fs";
 import path from "path";
 
-import { WEAPONS, FIGHTING_STYLES, type Item } from "./itemEmojis";
 import {
-  ChannelType,
   Client,
   GatewayIntentBits,
-  PermissionFlagsBits,
   REST,
   Routes,
   SlashCommandBuilder,
@@ -21,6 +18,8 @@ import {
   EmbedBuilder,
   Events,
   Colors,
+  ChannelType,
+  PermissionFlagsBits,
   type Interaction,
   type StringSelectMenuInteraction,
   type ButtonInteraction,
@@ -46,44 +45,94 @@ function loadDotenv(dotenvPath = ".env") {
 
 loadDotenv();
 
-const TICKET_CATEGORY_ID = process.env["TICKET_CATEGORY_ID"] ?? "1477024231735951533";
-const TICKET_MOD_ROLE_ID = process.env["TICKET_MOD_ROLE_ID"] ?? "";
-const MOD_ROLE_ID = process.env["MOD_ROLE_ID"] ?? "1441178708311281845";
-const LISTING_ROLE_PING = process.env["LISTING_ROLE_ID"] ?? "1441178708676448267";
+type Item = { name: string; emoji: string };
 
-if (!TICKET_MOD_ROLE_ID) {
-  console.warn(
-    "Warning: TICKET_MOD_ROLE_ID is not set. Tickets will still be created but moderators may not have access.",
-  );
-}
+const WEAPONS: Item[] = [
+  // Replace the emoji strings below with your server's custom emoji (e.g. "<:myWeapon:123456789012345678>")
+  { name: "Glitter Bomb", emoji: "<:glitter_bomb:1481520426273472564>" },
+  { name: "Ghostly Gloves", emoji: "<:ghostly_gloves:1481520423194722444>" },
+  { name: "Scythe", emoji: "<:scythe:1481520488823001119>" },
+  { name: "Spiked Knuckles", emoji: "<:spiked_knuckles:1481520500130713753>" },
+  { name: "Ice Crown Queen", emoji: "<:ice_crown_queen:1481520443566325770>" },
+  { name: "Trident", emoji: "<:trident:1481520508683161752>" },
+  { name: "Ice Katana", emoji: "<:ice_katana:1481520447358107719>" },
+  { name: "Cupid's Bow", emoji: "<:cupids_bow:1481520414898389113>" },
+  { name: "Love Me Hate Me Taser", emoji: "<:love_me_hate_me_taser:1481520456342437979>" },
+  { name: "Santa's Naughty or Nice Launcher", emoji: "<:santa_launcher:1481520486214275092>" },
+  { name: "Slasher Claws", emoji: "<:slasher_claws:1481520492383961228>" },
+  { name: "Grenade Launcher", emoji: "<:grenade_launcher:1481520434645041152>" },
+  { name: "Glitter Blue Spray", emoji: "<:glitter_blue_spray:1481520424385777715>" },
+  { name: "Spiked Nightmare Purse", emoji: "<:spiked_nightmare_purse:1481520501795983472>" },
+  { name: "Spiked Kitty Stanli", emoji: "<:spiked_kitty_stanli:1481520498897588365>" },
+  { name: "Grim Reaper Cloak", emoji: "<:grim_reaper_cloak:1481520436213841991>" },
+  { name: "Dog Purse", emoji: "<:dog_purse:1481520417591263232>" },
+  { name: "Gravity Gun", emoji: "<:gravity_gun:1481520432891953222>" },
+  { name: "Trashbin Disguise", emoji: "<:trashbin_disguise:1481520507235991622>" },
+  { name: "Loveboard", emoji: "<:loveboard:1481520457336229939>" },
+  { name: "Dance Bomb", emoji: "<:dance_bomb:1481520416156811295>" },
+  { name: "Riot Shield", emoji: "<:riot_shield:1481520478781706423>" },
+  { name: "Cannon", emoji: "<:cannon:1481520404320485426>" },
+  { name: "Reindeer Purse", emoji: "<:reindeer_purse:1481520477288530103>" },
+  { name: "Inferno Blade", emoji: "<:inferno_blade:1481520449216053288>" },
+  { name: "Champion Gloves", emoji: "<:champion_gloves:1481520411949793371>" },
+  { name: "Grapple Hook", emoji: "<:grapple_hook:1481520431197585602>" },
+  { name: "Sakura Blade", emoji: "<:sakura_blade:1481520484892803202>" },
+  { name: "Freeze Gun", emoji: "<:freeze_gun:1481520421865263164>" },
+  { name: "Brass Knuckles", emoji: "<:brass_knuckles:1481520401673752677>" },
+  { name: "Fan of Requiem", emoji: "<:fan_of_requiem:1481520418656485487>" },
+  { name: "Chainsaw", emoji: "<:chainsaw:1481520407671607398>" },
+  { name: "Blast Bow", emoji: "<:blast_bow:1481520399052443658>" },
+  { name: "Witch Scepter", emoji: "<:witch_scepter:1481520512327749672>" },
+  { name: "Kitty Purse", emoji: "<:kitty_purse:1481520454433771531>" },
+  { name: "Nunchucks", emoji: "<:nunchucks:1481520466299584683>" },
+  { name: "Turkey Skewers", emoji: "<:turkey_skewers:1481520510650290206>" },
+  { name: "Chakram", emoji: "<:chakram:1481520410620203068>" },
+  { name: "Sledgehammer", emoji: "<:sledgehammer:1481520493919207465>" },
+  { name: "Spiked Purse", emoji: "<:spiked_purse:1481520503259922482>" },
+  { name: "Harpoon", emoji: "<:harpoon:1481520438734622761>" },
+  { name: "Golden Snowball Launcher", emoji: "<:golden_snowball_launcher:1481520429628784680>" },
+  { name: "Axe", emoji: "<:axe:1481520397529911347>" },
+  { name: "Roller Skates", emoji: "<:roller_skates:1481520480212095016>" },
+  { name: "Shiny Purse", emoji: "<:shiny_purse:1481520490618159104>" },
+  { name: "Chain Mace", emoji: "<:chain_mace:1481520406144749589>" },
+  { name: "Snowball Launcher", emoji: "<:snowball_launcher:1481520496544710770>" },
+  { name: "Crowbar", emoji: "<:crowbar:1481520413430517851>" },
+  { name: "Regular Bow", emoji: "<:regular_bow:1481520475950813245>" },
+  { name: "Rusty Bow", emoji: "<:rusty_bow:1481520483454423040>" },
+  { name: "Slingshot", emoji: "<:slingshot:1481520495198339202>" },
+  { name: "Spearhead Stick", emoji: "<:spearhead_stick:1481520497622777976>" },
+  { name: "Stick", emoji: "<:stick:1481520504358699159>" },
+  { name: "Parasol", emoji: "<:parasol:1481520467960532992>" },
+  { name: "Medic Spray", emoji: "<:medic_spray:1481520463208386660>" },
+];
 
-// ── Guild settings (persisted to disk) ────────────────────────────────────────
-type GuildSettings = { ticketCategoryId?: string; listingChannelId?: string };
-const SETTINGS_PATH = path.resolve(process.cwd(), "guild-settings.json");
+const FIGHTING_STYLES: Item[] = [
+  { name: "Heartbreaker Style", emoji: "<:heartbreaker_style:1481520440315875409>" },
+  { name: "Angel Style", emoji: "<:angel_style:1481520396233736294>" },
+  { name: "Princess Power Style", emoji: "<:princess_power_style:1481520469093122159>" },
+  { name: "Feral Frenzy Style", emoji: "<:feral_frenzy_style:1481520420199989248>" },
+  { name: "Glitter Style", emoji: "<:glitter_style:1481520427787354253>" },
+  { name: "Storm Dancer Style", emoji: "<:storm_dancer_style:1481520505654612099>" },
+  { name: "Hug of Doom Style", emoji: "<:hug_of_doom_style:1481520441704321024>" },
+  { name: "Princess Punchout Style", emoji: "<:princess_punchout_style:1481520472339517614>" },
+  { name: "Mean Girl Mayhem Style", emoji: "<:mean_girl_mayhem_style:1481520459798413373>" },
+  { name: "Kickboxing", emoji: "<:kickboxing:1481520452370436147>" },
+  { name: "Bubble Pop Style", emoji: "<:bubble_pop_style:1481520402923786344>" },
+  { name: "Boxing", emoji: "<:boxing:1481520400193159293>" },
+  { name: "Karate Style", emoji: "<:karate_style:1481520450424279130>" },
+  { name: "Rough 'n' Rude Style", emoji: "<:rough_n_rude_style:1481520481688354937>" },
+  { name: "MMA Fighting", emoji: "<:mma_fighting:1481520464646901830>" },
+  { name: "Puppet Panic Style", emoji: "<:puppet_panic_style:1481520474373754940>" },
+];
 
-function loadAllSettings(): Record<string, GuildSettings> {
-  try {
-    return JSON.parse(fs.readFileSync(SETTINGS_PATH, "utf8")) as Record<string, GuildSettings>;
-  } catch {
-    return {};
-  }
-}
+const PAGE_SIZE = 24;
 
-function saveAllSettings(data: Record<string, GuildSettings>) {
-  fs.writeFileSync(SETTINGS_PATH, JSON.stringify(data, null, 2));
-}
+// Emojis used for UI elements (change these to match your server/brand emoji)
+const EMOJI_WEAPON = "⚔️" as const;
+const EMOJI_STYLE = "🥋" as const;
 
-function getGuildSettings(guildId: string): GuildSettings {
-  return loadAllSettings()[guildId] ?? {};
-}
+const TICKET_CATEGORY_ID = "1477024231735951533";
 
-function setGuildSetting(guildId: string, key: keyof GuildSettings, value: string) {
-  const all = loadAllSettings();
-  all[guildId] = { ...(all[guildId] ?? {}), [key]: value };
-  saveAllSettings(all);
-}
-
-// ── Payment methods ───────────────────────────────────────────────────────────
 const PAYMENT_METHODS = [
   { label: "Venmo",    value: "venmo",    emoji: { id: "1481817470431006883", name: "munchkin_dgaf" } },
   { label: "PayPal",   value: "paypal",   emoji: { id: "1481817468912799814", name: "munchkin_dgaf" } },
@@ -91,21 +140,16 @@ const PAYMENT_METHODS = [
   { label: "CashApp",  value: "cashapp",  emoji: { id: "1481817227975069718", name: "Screenshot_20260312_at_5" } },
 ] as const;
 
-const PAGE_SIZE = 24;
-
-const EMOJI_WEAPON = "⚔️" as const;
-const EMOJI_STYLE = "🥋" as const;
-
-// ── Session state ─────────────────────────────────────────────────────────────
+// ── Cart ──────────────────────────────────────────────────────────────────────
 type CartItem = { type: "w" | "s"; name: string; emoji: string };
 type Cart = { cats: string[]; wPage: number; items: CartItem[]; createdAt: number };
 const carts = new Map<string, Cart>();
 
-type PendingListing = { lines: string[]; color: number; userId: string; username: string; avatarURL: string; cartKey: string; createdAt: number };
-const pendingListings = new Map<string, PendingListing>();
-
 type PendingTicket = { sellerId: string; sellerName: string; origChannelId: string; origMsgId: string; selectedItems: string[]; quantities: number[]; createdAt: number; acceptedPayments?: string };
 const pendingTickets = new Map<string, PendingTicket>();
+
+type PendingListing = { lines: string[]; color: number; userId: string; username: string; avatarURL: string; cartKey: string; createdAt: number };
+const pendingListings = new Map<string, PendingListing>();
 
 // Maps "channelId:msgId" → accepted payment line (e.g. "💳 **Accepts:** …")
 const listingPayments = new Map<string, string>();
@@ -123,12 +167,10 @@ function cartKey(userId: string, channelId: string) {
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
-function buildItemRows(
-  cart: Cart,
-): ActionRowBuilder<StringSelectMenuBuilder | ButtonBuilder>[] {
+function buildItemRows(cart: Cart): ActionRowBuilder<StringSelectMenuBuilder | ButtonBuilder>[] {
   const rows: ActionRowBuilder<StringSelectMenuBuilder | ButtonBuilder>[] = [];
   const hasWeapons = cart.cats.includes("weapons");
-  const hasStyles = cart.cats.includes("styles");
+  const hasStyles  = cart.cats.includes("styles");
 
   if (hasWeapons) {
     const totalWPages = Math.ceil(WEAPONS.length / PAGE_SIZE);
@@ -211,7 +253,7 @@ function buildItemRows(
 
 function buildCartEmbed(cart: Cart, username: string): EmbedBuilder {
   const hasWeapons = cart.cats.includes("weapons");
-  const hasStyles = cart.cats.includes("styles");
+  const hasStyles  = cart.cats.includes("styles");
 
   const title =
     hasWeapons && hasStyles
@@ -237,39 +279,11 @@ function buildCartEmbed(cart: Cart, username: string): EmbedBuilder {
   return embed;
 }
 
-// ── Bot client export ─────────────────────────────────────────────────────────
-let _botClient: Client | null = null;
-export function getBotClient(): Client | null { return _botClient; }
-
 // ── Bot ───────────────────────────────────────────────────────────────────────
 export async function startBot() {
   const token = process.env["DISCORD_BOT_TOKEN"];
-
-  const parts = token?.split(".") ?? [];
-  console.log(
-    "DISCORD_BOT_TOKEN loaded:",
-    token
-      ? `${token.length} chars, parts=${parts.length} [${parts.map((p) => p.length).join(",")}]`
-      : "<none>",
-  );
-
   if (!token) {
     console.error("DISCORD_BOT_TOKEN is not set — bot will not start.");
-    return;
-  }
-
-  if (parts.length !== 3) {
-    console.error(
-      "DISCORD_BOT_TOKEN does not look like a valid Discord token (expected 3 dot-separated parts). Reset the token in the Developer Portal and paste it into .env.",
-    );
-    return;
-  }
-
-  const tokenFormat = /^[-_A-Za-z0-9]+\.[-_A-Za-z0-9]+\.[-_A-Za-z0-9]+$/;
-  if (!tokenFormat.test(token)) {
-    console.error(
-      "DISCORD_BOT_TOKEN appears to contain invalid characters. Make sure you copied the token exactly and didn't include quotes or spaces.",
-    );
     return;
   }
 
@@ -278,7 +292,6 @@ export async function startBot() {
   });
 
   client.once(Events.ClientReady, async (readyClient) => {
-    _botClient = client;
     console.log(`Discord bot ready! Logged in as ${readyClient.user.tag}`);
     const commands = [
       new SlashCommandBuilder()
@@ -290,26 +303,6 @@ export async function startBot() {
       new SlashCommandBuilder()
         .setName("close")
         .setDescription("Close and delete this ticket channel"),
-      new SlashCommandBuilder()
-        .setName("setchannel")
-        .setDescription("Configure bot channels for this server (Admins only)")
-        .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
-        .addSubcommand((sub) =>
-          sub
-            .setName("ticket")
-            .setDescription("Set the category where ticket channels are created")
-            .addChannelOption((opt) =>
-              opt.setName("channel").setDescription("The category channel for tickets").setRequired(true),
-            ),
-        )
-        .addSubcommand((sub) =>
-          sub
-            .setName("listing")
-            .setDescription("Set the channel where stock listings are posted publicly")
-            .addChannelOption((opt) =>
-              opt.setName("channel").setDescription("The text channel for listings").setRequired(true),
-            ),
-        ),
     ].map((c) => c.toJSON());
 
     const rest = new REST().setToken(token);
@@ -321,6 +314,8 @@ export async function startBot() {
     }
   });
 
+  const MOD_ROLE_ID = "1441178708311281845";
+
   client.on(Events.InteractionCreate, async (interaction: Interaction) => {
    try {
     // ── Mod-only gate ──────────────────────────────────────────────────────
@@ -330,21 +325,11 @@ export async function startBot() {
       }
       return;
     }
-
     const memberRoles = interaction.member?.roles;
     const hasModRole = Array.isArray(memberRoles)
       ? memberRoles.includes(MOD_ROLE_ID)
       : (memberRoles as import("discord.js").GuildMemberRoleManager)?.cache.has(MOD_ROLE_ID) ?? false;
-
-    // Allow non-mods only for buyer-facing interactions
-    const buyerInteractions = ["create_ticket"];
-    const isBuyerInteraction =
-      (interaction.isButton() && buyerInteractions.includes(interaction.customId)) ||
-      (interaction.isStringSelectMenu() && interaction.customId.startsWith("ti:")) ||
-      (interaction.isStringSelectMenu() && interaction.customId.startsWith("tqd:")) ||
-      (interaction.isButton() && interaction.customId === "tq_submit");
-
-    if (!hasModRole && !isBuyerInteraction) {
+    if (!hasModRole) {
       if ("reply" in interaction) {
         await (interaction as { reply: Function }).reply({ content: "❌ You need the **@mod** role to use this bot.", ephemeral: true });
       }
@@ -391,6 +376,7 @@ export async function startBot() {
       await interaction.deferReply({ ephemeral: true });
       const fetched = await channel.messages.fetch({ limit: 50 });
 
+      // value format: `msgId:lineIdx:stock` (new) or `msgId:old:stock` (old field-based)
       const options: StringSelectMenuOptionBuilder[] = [];
 
       for (const msg of fetched.values()) {
@@ -399,13 +385,14 @@ export async function startBot() {
         if (!embed || embed.title !== "📦 Stock Listed") continue;
         if (!embed.description?.includes(`@${user.username}`)) continue;
 
+        // New description-based format
         if (embed.description) {
           const lines = embed.description.split("\n");
           lines.forEach((line, idx) => {
             const match = line.match(/^[⚔️🥋].+?\*\*(.+?)\*\*\s*—\s*(.+)$/u);
             if (!match) return;
             const [, name, stock] = match;
-            if (stock!.startsWith("~~")) return;
+            if (stock!.startsWith("~~")) return; // already sold out
             if (options.length < 25) {
               options.push(
                 new StringSelectMenuOptionBuilder()
@@ -417,6 +404,7 @@ export async function startBot() {
           });
         }
 
+        // Old field-based format
         if (embed.fields.length >= 2 && !embed.fields[0]!.value.startsWith("~~")) {
           const itemName = embed.fields[0]!.value;
           const stock = embed.fields[1]!.value;
@@ -463,10 +451,7 @@ export async function startBot() {
     // ── /close — delete ticket channel ────────────────────────────────────
     if (interaction.isChatInputCommand() && interaction.commandName === "close") {
       const ch = interaction.channel;
-      const guildSettings = interaction.guildId ? getGuildSettings(interaction.guildId) : {};
-      const resolvedCategoryId = guildSettings.ticketCategoryId ?? TICKET_CATEGORY_ID;
-
-      if (!ch || !("parentId" in ch) || (ch as { parentId: string | null }).parentId !== resolvedCategoryId) {
+      if (!ch || !("parentId" in ch) || (ch as { parentId: string | null }).parentId !== TICKET_CATEGORY_ID) {
         await interaction.reply({ content: "This command can only be used inside a ticket channel.", ephemeral: true });
         return;
       }
@@ -475,48 +460,23 @@ export async function startBot() {
       return;
     }
 
-    // ── /setchannel ───────────────────────────────────────────────────────
-    if (interaction.isChatInputCommand() && interaction.commandName === "setchannel") {
-      const guildId = interaction.guildId;
-      if (!guildId) {
-        await interaction.reply({ content: "This command can only be used inside a server.", ephemeral: true });
-        return;
-      }
-
-      const sub = interaction.options.getSubcommand();
-      const channel = interaction.options.getChannel("channel", true);
-
-      if (sub === "ticket") {
-        setGuildSetting(guildId, "ticketCategoryId", channel.id);
-        await interaction.reply({
-          content: `✅ Ticket category set to <#${channel.id}>. New tickets will be created inside that category.`,
-          ephemeral: true,
-        });
-      } else if (sub === "listing") {
-        setGuildSetting(guildId, "listingChannelId", channel.id);
-        await interaction.reply({
-          content: `✅ Listing channel set to <#${channel.id}>. Stock listings will now be posted there.`,
-          ephemeral: true,
-        });
-      }
-      return;
-    }
-
     // ── sold_item_pick — show quantity dropdown + Sold Out button ─────────
     if (interaction.isStringSelectMenu() && interaction.customId === "sold_item_pick") {
       const sel = interaction as StringSelectMenuInteraction;
       const raw = sel.values[0]!;
+      // raw = `msgId:lineIdxOrOld:stock`
       const firstColon = raw.indexOf(":");
       const rest = raw.slice(firstColon + 1);
       const secondColon = rest.indexOf(":");
       const msgId = raw.slice(0, firstColon);
-      const lineRef = rest.slice(0, secondColon);
+      const lineRef = rest.slice(0, secondColon);       // "old" or number
       const stockStr = rest.slice(secondColon + 1).trim();
       const stock = parseInt(stockStr);
       const hasNumericStock = !isNaN(stock) && stock > 0;
 
       const components: ActionRowBuilder<StringSelectMenuBuilder | ButtonBuilder>[] = [];
 
+      // Quantity dropdown: 1 sold → stock-1 remaining, … up to (stock-1) sold → 1 remaining
       if (hasNumericStock && stock > 1) {
         const qtyOptions: StringSelectMenuOptionBuilder[] = [];
         for (let sold = 1; sold < stock && qtyOptions.length < 25; sold++) {
@@ -538,7 +498,10 @@ export async function startBot() {
         );
       }
 
-      const soldOutLabel = hasNumericStock ? `🔴 Sold Out (all ${stock} gone)` : "🔴 Sold Out";
+      // Sold Out button — always shown
+      const soldOutLabel = hasNumericStock
+        ? `🔴 Sold Out (all ${stock} gone)`
+        : "🔴 Sold Out";
       components.push(
         new ActionRowBuilder<ButtonBuilder>().addComponents(
           new ButtonBuilder()
@@ -549,7 +512,8 @@ export async function startBot() {
       );
 
       const itemLabel =
-        sel.component.options.find((o) => o.value === raw)?.label ?? "this item";
+        sel.component.options.find((o) => o.value === raw)?.label ??
+        "this item";
 
       await sel.update({
         embeds: [
@@ -580,6 +544,7 @@ export async function startBot() {
       const origEmbed = original.embeds[0]!;
 
       if (lineRef === "old") {
+        // Old field-based format: update stock field
         const currentStock = parseInt(origEmbed.fields[1]?.value ?? "0");
         const newStock = Math.max(0, currentStock - soldQty);
         const updatedEmbed = EmbedBuilder.from(origEmbed).spliceFields(1, 1, {
@@ -589,6 +554,7 @@ export async function startBot() {
         });
         await original.edit({ embeds: [updatedEmbed] });
       } else {
+        // New description format: update stock number on the line
         const lineIdx = parseInt(lineRef);
         const lines = origEmbed.description!.split("\n");
         lines[lineIdx] = lines[lineIdx]!.replace(
@@ -607,7 +573,7 @@ export async function startBot() {
         embeds: [
           new EmbedBuilder()
             .setTitle("✅ Stock Updated")
-            .setDescription(`Marked **${soldQty}** as sold. The listing has been updated.\n\nRun \`/sold\` again to update more.`)
+            .setDescription(`Marked **${soldQty}** as sold. The listing has been updated with the new stock count.\n\nRun \`/sold\` again to update more.`)
             .setColor(Colors.Green)
             .setTimestamp(),
         ],
@@ -630,6 +596,7 @@ export async function startBot() {
       let itemName = "item";
 
       if (lineRef === "old") {
+        // Old field-based format
         itemName = origEmbed.fields[0]?.value ?? "item";
         const soldEmbed = EmbedBuilder.from(origEmbed)
           .setTitle("🔴 Sold Out")
@@ -638,14 +605,16 @@ export async function startBot() {
           .spliceFields(1, 1, { name: "📦 Stock", value: "~~0~~", inline: true });
         await original.edit({ embeds: [soldEmbed] });
       } else {
+        // New description format: strike through the specific line
         const lineIdx = parseInt(lineRef);
         const lines = origEmbed.description!.split("\n");
-        const match = lines[lineIdx]!.match(/^([⚔️🥋].+?)\*\*(.+?)\*\*\s*—\s*(.+)$/u);
+        const match = lines[lineIdx]!.match(/^([⚔️🥋].+?)\*\*(.+?)\*\*\s*—\s*\d+(.*)?$/u);
         if (match) {
           const [, prefix, name, priceSuffix] = match;
           itemName = name!;
-          lines[lineIdx] = `${prefix}~~**${name}**~~ — ~~0~~${priceSuffix && !priceSuffix.startsWith("~~") ? "" : ""}`;
+          lines[lineIdx] = `${prefix}~~**${name}**~~ — ~~0~~${priceSuffix ?? ""}`;
         }
+        // If ALL item lines are now struck, update the title too
         const allLines = lines.filter((l) => l.match(/^[⚔️🥋]/u));
         const allSold = allLines.every((l) => l.includes("~~"));
         const updatedEmbed = EmbedBuilder.from(origEmbed)
@@ -671,7 +640,7 @@ export async function startBot() {
     // ── Category selected ─────────────────────────────────────────────────
     if (interaction.isStringSelectMenu() && interaction.customId === "list_category") {
       const sel = interaction as StringSelectMenuInteraction;
-      const cats = sel.values;
+      const cats = sel.values; // ["weapons"] | ["styles"] | ["weapons","styles"]
       const key = cartKey(sel.user.id, sel.channelId);
       carts.set(key, { cats, wPage: 0, items: [], createdAt: Date.now() });
       const cart = carts.get(key)!;
@@ -696,6 +665,7 @@ export async function startBot() {
         return;
       }
 
+      // Add selected items to cart (deduplicate by name)
       for (const val of sel.values) {
         const [type, idxStr] = val.split(":") as ["w" | "s", string];
         const idx = parseInt(idxStr);
@@ -730,7 +700,7 @@ export async function startBot() {
       return;
     }
 
-    // ── Done button → show quantities + prices modal ───────────────────────
+    // ── Done button → show quantities modal ────────────────────────────────
     if (interaction.isButton() && interaction.customId === "list_done") {
       const btn = interaction as ButtonInteraction;
       const key = cartKey(btn.user.id, btn.channelId);
@@ -787,7 +757,7 @@ export async function startBot() {
       return;
     }
 
-    // ── Quantities modal submitted → ask for payment methods ───────────────
+    // ── Quantities modal submitted → ask seller for accepted payment methods ─
     if (interaction.isModalSubmit() && interaction.customId === "list_quantities") {
       const modal = interaction as ModalSubmitInteraction;
       const key = cartKey(modal.user.id, modal.channelId!);
@@ -822,9 +792,11 @@ export async function startBot() {
       });
 
       const hasWeapons = cart.items.some((i) => i.type === "w");
-      const hasStyles = cart.items.some((i) => i.type === "s");
-      const color = hasWeapons && hasStyles ? Colors.Gold : hasWeapons ? Colors.Red : Colors.Purple;
+      const hasStyles  = cart.items.some((i) => i.type === "s");
+      const color =
+        hasWeapons && hasStyles ? Colors.Gold : hasWeapons ? Colors.Red : Colors.Purple;
 
+      // Store pre-built listing data and wait for payment method selection
       pendingListings.set(user.id, {
         lines,
         color,
@@ -896,15 +868,6 @@ export async function startBot() {
         .setFooter({ text: `Listed by ${pl.username} • ${pl.userId}`, iconURL: pl.avatarURL })
         .setTimestamp();
 
-      const listingComponents = [
-        new ActionRowBuilder<ButtonBuilder>().addComponents(
-          new ButtonBuilder()
-            .setCustomId("create_ticket")
-            .setLabel("Create Ticket")
-            .setStyle(ButtonStyle.Primary),
-        ),
-      ];
-
       await sel.update({
         embeds: [
           new EmbedBuilder()
@@ -915,32 +878,18 @@ export async function startBot() {
         ],
         components: [],
       });
-
-      const guildSettings = sel.guildId ? getGuildSettings(sel.guildId) : {};
-      const listingChannelId = guildSettings.listingChannelId;
-
-      if (listingChannelId) {
-        try {
-          const targetChannel = await client.channels.fetch(listingChannelId);
-          if (targetChannel && targetChannel.isTextBased()) {
-            await targetChannel.send({
-              content: `<@&${LISTING_ROLE_PING}>`,
-              embeds: [resultEmbed],
-              components: listingComponents,
-              allowedMentions: { roles: [LISTING_ROLE_PING] },
-            });
-            return;
-          }
-        } catch {
-          // fall through to followUp
-        }
-      }
-
       await sel.followUp({
-        content: `<@&${LISTING_ROLE_PING}>`,
+        content: "<@&1441178708676448267>",
         embeds: [resultEmbed],
-        components: listingComponents,
-        allowedMentions: { roles: [LISTING_ROLE_PING] },
+        components: [
+          new ActionRowBuilder<ButtonBuilder>().addComponents(
+            new ButtonBuilder()
+              .setCustomId("create_ticket")
+              .setLabel("Create Ticket")
+              .setStyle(ButtonStyle.Primary),
+          ),
+        ],
+        allowedMentions: { roles: ["1441178708676448267"] },
       });
       return;
     }
@@ -959,7 +908,7 @@ export async function startBot() {
       const sellerName = sellerMatch?.[1] ?? "seller";
       const itemLines = descLines.slice(2).filter(Boolean);
       const itemNames = itemLines
-        .filter((line) => !line.includes("~~") && !line.startsWith("💳"))
+        .filter((line) => !line.includes("~~"))
         .map((line) => line.match(/\*\*(.+?)\*\*/)?.[1])
         .filter((n): n is string => !!n);
 
@@ -967,6 +916,7 @@ export async function startBot() {
       const sellerIdMatch = footerText.match(/•\s*(\d+)$/);
       const sellerId = sellerIdMatch?.[1] ?? "0";
 
+      // Store accepted payment methods keyed by message so ti: can look it up
       const acceptedPayments = descLines.find((l) => l.startsWith("💳")) ?? "";
       if (acceptedPayments) listingPayments.set(`${btn.channelId}:${btn.message.id}`, acceptedPayments);
 
@@ -975,6 +925,7 @@ export async function startBot() {
         return;
       }
 
+      // Encode sellerId + origChannelId + origMsgId + sellerName in customId
       const selectId = `ti:${sellerId}:${btn.channelId}:${btn.message.id}:${sellerName}`.slice(0, 100);
 
       await btn.reply({
@@ -1004,14 +955,18 @@ export async function startBot() {
       return;
     }
 
-    // ── ti: — item(s) chosen → ask quantities via dropdowns ───────────────
+    // ── ti: — item(s) chosen → ask quantities via modal ───────────────────
     if (interaction.isStringSelectMenu() && interaction.customId.startsWith("ti:")) {
       const sel = interaction as StringSelectMenuInteraction;
+
+      // customId format: ti:{sellerId}:{origChannelId}:{origMsgId}:{sellerName}
       const [, sellerId, origChannelId, origMsgId, ...nameParts] = sel.customId.split(":");
       const sellerName = nameParts.join(":");
       const selectedItems = sel.values;
+
       const capped = selectedItems.slice(0, 4);
 
+      // Fetch the original listing message to read current stock levels
       const stockMap = new Map<string, number>();
       try {
         const origChannel = await sel.guild?.channels.fetch(origChannelId ?? "");
@@ -1024,9 +979,10 @@ export async function startBot() {
           }
         }
       } catch {
-        // fall back to no cap
+        // If we can't fetch the message, fall back to no cap
       }
 
+      // Store pending ticket with default qty of 1 for each item
       const pmKey = `${origChannelId}:${origMsgId}`;
       pendingTickets.set(sel.user.id, {
         sellerId: sellerId ?? "0",
@@ -1039,6 +995,8 @@ export async function startBot() {
         acceptedPayments: listingPayments.get(pmKey) ?? "",
       });
 
+      // One quantity dropdown per item, capped to that item's current stock
+      // Filter out any items that have gone to 0 stock since selection
       const availableCapped = capped.filter((name) => (stockMap.get(name) ?? 1) > 0);
       if (availableCapped.length === 0) {
         await sel.update({
@@ -1054,7 +1012,6 @@ export async function startBot() {
         pendingTickets.delete(sel.user.id);
         return;
       }
-
       const qtyRows: ActionRowBuilder<StringSelectMenuBuilder | ButtonBuilder>[] = availableCapped.map(
         (name, idx) => {
           const maxQty = Math.min(Math.max(stockMap.get(name) ?? 20, 1), 25);
@@ -1111,7 +1068,7 @@ export async function startBot() {
       return;
     }
 
-    // ── tq_submit — create ticket channel ─────────────────────────────────
+    // ── tq_submit — create ticket channel with chosen quantities ───────────
     if (interaction.isButton() && interaction.customId === "tq_submit") {
       const btn = interaction as ButtonInteraction;
       const pending = pendingTickets.get(btn.user.id);
@@ -1122,7 +1079,7 @@ export async function startBot() {
       }
       pendingTickets.delete(btn.user.id);
 
-      const { sellerId, sellerName, selectedItems, quantities, acceptedPayments } = pending;
+      const { sellerId, sellerName, origChannelId, origMsgId, selectedItems, quantities, acceptedPayments } = pending;
 
       const channelName = selectedItems
         .slice(0, 3)
@@ -1132,17 +1089,13 @@ export async function startBot() {
         .replace(/-+/g, "-")
         .slice(0, 100);
 
-      const guildTicketSettings = getGuildSettings(guild.id);
-      const resolvedTicketCategoryId = guildTicketSettings.ticketCategoryId ?? TICKET_CATEGORY_ID;
-
-      const permissionOverwrites: import("discord.js").OverwriteResolvable[] = [
+      const permissionOverwrites: { id: string; allow?: bigint[]; deny?: bigint[] }[] = [
         { id: guild.roles.everyone.id, deny: [PermissionFlagsBits.ViewChannel] },
         {
           id: btn.user.id,
           allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory],
         },
       ];
-
       if (sellerId && sellerId !== "0") {
         permissionOverwrites.push({
           id: sellerId,
@@ -1150,50 +1103,149 @@ export async function startBot() {
         });
       }
 
-      if (TICKET_MOD_ROLE_ID) {
-        permissionOverwrites.push({
-          id: TICKET_MOD_ROLE_ID,
-          allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory],
-        });
-      }
-
       try {
         const ticketChannel = await guild.channels.create({
-          name: channelName || `ticket-${sellerName}`,
+          name: channelName,
           type: ChannelType.GuildText,
-          parent: resolvedTicketCategoryId || undefined,
-          topic: `Ticket for ${btn.user.tag} buying from ${sellerName}`,
-          reason: `Ticket created by ${btn.user.tag}`,
+          parent: TICKET_CATEGORY_ID,
           permissionOverwrites,
+          reason: `Ticket created by ${btn.user.tag}`,
         });
 
-        const itemSummary = selectedItems
-          .map((name, i) => `• **${name}** × ${quantities[i] ?? 1}`)
+        const itemLines = selectedItems
+          .map((name, i) => `• ${name} × ${quantities[i] ?? 1}`)
           .join("\n");
 
-        const ticketMsg = [
-          `${btn.user} wants to buy from **${sellerName}**:`,
-          itemSummary,
-          acceptedPayments ? `\n${acceptedPayments}` : "",
-        ].filter(Boolean).join("\n");
+        const paymentSuffix = acceptedPayments ? `\n${acceptedPayments}` : "";
 
-        await ticketChannel.send({ content: ticketMsg });
+        const soldBtn = new ButtonBuilder()
+          .setCustomId(`ts:${sellerId}:${origChannelId}:${origMsgId}`)
+          .setLabel("✅ Sold")
+          .setStyle(ButtonStyle.Success);
+        const cancelBtn = new ButtonBuilder()
+          .setCustomId(`tc_cancel:${sellerId}:${btn.user.id}`)
+          .setLabel("❌ Cancel")
+          .setStyle(ButtonStyle.Danger);
 
-        await btn.reply({
-          content: `✅ Ticket created: ${ticketChannel}`,
-          ephemeral: true,
+        await ticketChannel.send({
+          content: `${btn.user} wants to buy from ${sellerId && sellerId !== "0" ? `<@${sellerId}>` : `**${sellerName}**`}:\n${itemLines}${paymentSuffix}`,
+          components: [new ActionRowBuilder<ButtonBuilder>().addComponents(soldBtn, cancelBtn)],
+        });
+
+        await btn.update({
+          embeds: [
+            new EmbedBuilder()
+              .setTitle("✅ Ticket Created")
+              .setDescription(`Your ticket is ready: ${ticketChannel}${paymentSuffix}`)
+              .setColor(Colors.Green)
+              .setTimestamp(),
+          ],
+          components: [],
         });
       } catch (err) {
-        await btn.reply({
-          content: `Failed to create ticket: ${String(err)}`,
-          ephemeral: true,
-        });
+        await btn.reply({ content: `Failed to create ticket: ${String(err)}`, ephemeral: true });
       }
       return;
     }
 
+    // ── ts: — seller marks as sold, updates original listing, closes ticket ──
+    if (interaction.isButton() && interaction.customId.startsWith("ts:")) {
+      const btn = interaction as ButtonInteraction;
+      const [, sellerId, origChannelId, origMsgId] = btn.customId.split(":");
+
+      if (btn.user.id !== sellerId) {
+        await btn.reply({ content: "Only the seller can mark this as sold.", ephemeral: true });
+        return;
+      }
+
+      // Parse items + quantities from the ticket opening message ("• ItemName × N")
+      const soldItems = btn.message.content
+        .split("\n")
+        .filter((l) => l.startsWith("• "))
+        .map((l) => {
+          const m = l.match(/^• (.+?) × (\d+)$/);
+          return m ? { name: m[1]!, qty: parseInt(m[2]!) } : { name: l.slice(2).trim(), qty: 1 };
+        });
+
+      // Update the original listing — decrement stock, strikethrough only if it hits 0
+      try {
+        const origChannel = await btn.client.channels.fetch(origChannelId!);
+        if (origChannel && origChannel.isTextBased()) {
+          const origMsg = await origChannel.messages.fetch(origMsgId!);
+          const origEmbed = origMsg.embeds[0];
+          if (origEmbed?.description) {
+            const lines = origEmbed.description.split("\n");
+            for (const { name, qty } of soldItems) {
+              const idx = lines.findIndex((l) => {
+                const m = l.match(/\*\*(.+?)\*\*/);
+                return m?.[1] === name && !l.includes("~~");
+              });
+              if (idx !== -1) {
+                const stockMatch = lines[idx]!.match(/—\s*(\d+)(.*)?$/);
+                const currentStock = stockMatch ? parseInt(stockMatch[1]!) : 0;
+                const priceSuffix = stockMatch?.[2] ?? "";
+                const newStock = Math.max(0, currentStock - qty);
+                if (newStock <= 0) {
+                  const m = lines[idx]!.match(/^(.+?)\*\*(.+?)\*\*\s*—\s*\d+(.*)?$/u);
+                  if (m) lines[idx] = `${m[1]}~~**${m[2]}**~~ — ~~0~~${m[3] ?? ""}`;
+                } else {
+                  lines[idx] = lines[idx]!.replace(/—\s*\d+(.*)$/, `— ${newStock}${priceSuffix}`);
+                }
+              }
+            }
+            const allItemLines = lines.filter((l) => /^[⚔️🥋]/u.test(l));
+            const allSold = allItemLines.every((l) => l.includes("~~"));
+            const updatedEmbed = EmbedBuilder.from(origEmbed)
+              .setDescription(lines.join("\n"))
+              .setColor(Colors.DarkRed);
+            if (allSold) updatedEmbed.setTitle("🔴 Sold Out");
+            await origMsg.edit({ embeds: [updatedEmbed] });
+          }
+        }
+      } catch (err) {
+        console.error("Failed to update original listing:", err);
+      }
+
+      await btn.reply({ content: "✅ Marked as sold! Closing ticket…" });
+      await (btn.channel as { delete(reason?: string): Promise<unknown> }).delete(
+        `Ticket sold — closed by ${btn.user.tag}`,
+      );
+      return;
+    }
+
+    // ── tc_cancel — cancel ticket (buyer or seller) ────────────────────────
+    if (interaction.isButton() && interaction.customId.startsWith("tc_cancel:")) {
+      const btn = interaction as ButtonInteraction;
+      const parts = btn.customId.split(":");
+      const sellerId = parts[1]!;
+      const buyerId  = parts[2]!;
+      if (btn.user.id !== sellerId && btn.user.id !== buyerId) {
+        await btn.reply({ content: "Only the buyer or seller can cancel this ticket.", ephemeral: true });
+        return;
+      }
+      await btn.reply({ content: "Cancelling ticket…" });
+      await (btn.channel as { delete(reason?: string): Promise<unknown> }).delete(
+        `Ticket cancelled by ${btn.user.tag}`,
+      );
+      return;
+    }
+
+    // ── "Type item name" fallback (kept for quick single-item adds) ─────────
+    if (interaction.isStringSelectMenu() && interaction.customId === "list_category_single") {
+      // legacy path — no-op, handled by main category handler above
+      return;
+    }
    } catch (err) {
-     console.error("[bot] Unhandled interaction error:", err);
+     console.error("Unhandled interaction error:", err);
+     try {
+       const msg = { content: "❌ Something went wrong. Please try again.", ephemeral: true };
+       if ("replied" in interaction && (interaction as { replied: boolean }).replied) return;
+       if ("deferred" in interaction && (interaction as { deferred: boolean }).deferred) {
+         await (interaction as { followUp: Function }).followUp(msg);
+       } else if ("reply" in interaction) {
+         await (interaction as { reply: Function }).reply(msg);
+       }
+     } catch { /* ignore secondary error */ }
    }
   });
 
