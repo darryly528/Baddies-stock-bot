@@ -2,7 +2,8 @@ import { Switch, Route, Router as WouterRouter, Link, useLocation } from "wouter
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import Home from "./pages/home";
 import ListPage from "./pages/list";
-import { PackagePlus, ShoppingBag, LogOut } from "lucide-react";
+import ListingsPage from "./pages/listings";
+import { PackagePlus, ShoppingBag, LogOut, LayoutList } from "lucide-react";
 import { cn } from "./lib/utils";
 import { AuthProvider, useAuth } from "./contexts/auth-context";
 
@@ -40,6 +41,18 @@ function NavBar() {
         >
           <ShoppingBag className="w-4 h-4" />
           Catalog
+        </Link>
+        <Link
+          href="/listings"
+          className={cn(
+            "flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all",
+            location === "/listings"
+              ? "bg-white/10 text-white"
+              : "text-muted-foreground hover:text-white hover:bg-white/5"
+          )}
+        >
+          <LayoutList className="w-4 h-4" />
+          Listings
         </Link>
         <Link
           href="/list"
@@ -111,6 +124,7 @@ function AppRouter() {
       <div className="pt-14">
         <Switch>
           <Route path="/" component={Home} />
+          <Route path="/listings" component={ListingsPage} />
           <Route path="/list" component={ListPage} />
           <Route component={NotFound} />
         </Switch>

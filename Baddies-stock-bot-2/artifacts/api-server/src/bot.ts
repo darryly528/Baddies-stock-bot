@@ -130,6 +130,7 @@ const EMOJI_WEAPON = "⚔️" as const;
 const EMOJI_STYLE = "🥋" as const;
 
 const TICKET_CATEGORY_ID = process.env["TICKET_CATEGORY_ID"] ?? "1477024231735951533";
+const LISTING_CHANNEL_ID = "1486949502349873313";
 
 const PAYMENT_METHODS = [
   { label: "Venmo",    value: "venmo",    emoji: { id: "1481817470431006883", name: "munchkin_dgaf" } },
@@ -910,19 +911,26 @@ export async function startBot() {
           ],
           components: [],
         });
-        await sel.followUp({
-          content: `<@&${LISTING_ROLE_PING}>`,
-          embeds: [resultEmbed],
-          components: [
-            new ActionRowBuilder<ButtonBuilder>().addComponents(
-              new ButtonBuilder()
-                .setCustomId("create_ticket")
-                .setLabel("Create Ticket")
-                .setStyle(ButtonStyle.Primary),
-            ),
-          ],
-          allowedMentions: { roles: [LISTING_ROLE_PING] },
-        });
+        try {
+          const listingChannel = await sel.client.channels.fetch(LISTING_CHANNEL_ID);
+          if (listingChannel && listingChannel.isTextBased()) {
+            await listingChannel.send({
+              content: `<@&${LISTING_ROLE_PING}>`,
+              embeds: [resultEmbed],
+              components: [
+                new ActionRowBuilder<ButtonBuilder>().addComponents(
+                  new ButtonBuilder()
+                    .setCustomId("create_ticket")
+                    .setLabel("Create Ticket")
+                    .setStyle(ButtonStyle.Primary),
+                ),
+              ],
+              allowedMentions: { roles: [LISTING_ROLE_PING] },
+            });
+          }
+        } catch (err) {
+          console.error("[bot] Failed to post listing to channel:", err);
+        }
         return;
       }
 
@@ -1111,6 +1119,7 @@ export async function startBot() {
           return;
         }
         pendingTickets.delete(btn.user.id);
+        await btn.deferUpdate();
 
         const { sellerId, sellerName, origChannelId, origMsgId, selectedItems, quantities, acceptedPayments } =
           pending;
@@ -1176,7 +1185,7 @@ export async function startBot() {
             components: [new ActionRowBuilder<ButtonBuilder>().addComponents(soldBtn, cancelBtn)],
           });
 
-          await btn.update({
+          await btn.editReply({
             embeds: [
               new EmbedBuilder()
                 .setTitle("✅ Ticket Created")
@@ -1187,7 +1196,7 @@ export async function startBot() {
             components: [],
           });
         } catch (err) {
-          await btn.reply({
+          await btn.followUp({
             content: `Failed to create ticket: ${String(err)}`,
             ephemeral: true,
           });
