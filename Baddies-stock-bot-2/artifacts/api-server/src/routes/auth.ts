@@ -2,6 +2,7 @@ import { Router, type Request, type Response, type NextFunction } from "express"
 import { ChannelType, EmbedBuilder, PermissionFlagsBits } from "discord.js";
 import { getBotClient } from "../bot";
 import { loadListings } from "./listings";
+import { getItemEmoji } from "../itemEmojis";
 
 const router = Router();
 
@@ -231,9 +232,11 @@ router.post("/auth/post-listing/:listingId", async (req: Request, res: Response)
 
   const itemLines = activeItems
     .map((i) => {
-      const emoji = TYPE_EMOJI[(i as { itemType?: string }).itemType ?? ""] ?? "•";
+      const customEmoji = getItemEmoji(i.name);
+      const typeEmoji = TYPE_EMOJI[(i as { itemType?: string }).itemType ?? ""] ?? "•";
+      const emojiStr = customEmoji ? `${typeEmoji} ${customEmoji}` : typeEmoji;
       const priceStr = (i as { price?: string }).price ? ` — **$${(i as { price?: string }).price}**` : "";
-      return `${emoji} **${i.name}** × ${i.quantity}${priceStr}`;
+      return `${emojiStr} **${i.name}** × ${i.quantity}${priceStr}`;
     })
     .join("\n");
 
