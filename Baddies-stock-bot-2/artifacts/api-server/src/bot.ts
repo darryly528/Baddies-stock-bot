@@ -990,10 +990,13 @@ export async function startBot() {
             : Colors.Purple;
 
       const resultEmbed = new EmbedBuilder()
-        .setTitle("📦 Stock Listed")
-        .setDescription(`@${user.username}'s Stock\n\n${lines.join("\n")}`)
+        .setAuthor({
+          name: `${user.username}'s Stock`,
+          iconURL: user.displayAvatarURL({ size: 256 }),
+        })
+        .setDescription(lines.join("\n"))
         .setColor(color)
-        .setThumbnail(user.displayAvatarURL({ size: 64 }))
+        .setThumbnail(user.displayAvatarURL({ size: 256 }))
         .setFooter({
           text: `Listed by ${user.username}`,
           iconURL: user.displayAvatarURL(),

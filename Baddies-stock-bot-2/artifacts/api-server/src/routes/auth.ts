@@ -213,15 +213,14 @@ router.post("/auth/post-listing/:listingId", async (req: Request, res: Response)
   }
 
   const activeItems = listing.items.filter((i) => !i.soldOut);
-  const itemLines = activeItems
-    .map((i) => {
-      const priceStr = (i as { price?: string }).price ? ` — **$${(i as { price?: string }).price}**` : "";
-      return `• **${i.name}** × ${i.quantity}${priceStr}`;
-    })
-    .join("\n");
 
-  const paymentMethods: string[] = (listing as { paymentMethods?: string[] }).paymentMethods ?? [];
-  const customMessage: string | undefined = (listing as { customMessage?: string }).customMessage;
+  const TYPE_EMOJI: Record<string, string> = {
+    "Weapon": "⚔️",
+    "Fighting Style": "🥋",
+    "Skin": "👗",
+    "Finisher": "💀",
+    "Emotes": "💃",
+  };
 
   const PAYMENT_EMOJIS: Record<string, string> = {
     "PayPal": "<:PayPal:1481817468912799814>",
@@ -230,19 +229,40 @@ router.post("/auth/post-listing/:listingId", async (req: Request, res: Response)
     "Venmo": "<:Venmo:1481817470431006883>",
   };
 
+  const itemLines = activeItems
+    .map((i) => {
+      const emoji = TYPE_EMOJI[(i as { itemType?: string }).itemType ?? ""] ?? "•";
+      const priceStr = (i as { price?: string }).price ? ` — **$${(i as { price?: string }).price}**` : "";
+      return `${emoji} **${i.name}** × ${i.quantity}${priceStr}`;
+    })
+    .join("\n");
+
+  const paymentMethods: string[] = (listing as { paymentMethods?: string[] }).paymentMethods ?? [];
+  const customMessage: string | undefined = (listing as { customMessage?: string }).customMessage;
+
+  const avatarUrl =
+    (listing as { discordUserId?: string; discordAvatar?: string }).discordUserId &&
+    (listing as { discordUserId?: string; discordAvatar?: string }).discordAvatar
+      ? `https://cdn.discordapp.com/avatars/${(listing as { discordUserId: string }).discordUserId}/${(listing as { discordAvatar: string }).discordAvatar}.png?size=256`
+      : null;
+
+  const paymentLine = paymentMethods.length > 0
+    ? `\n\n**Payment:** ${paymentMethods.map((m) => `${PAYMENT_EMOJIS[m] ?? ""} ${m}`.trim()).join("  ·  ")}`
+    : "";
+
+  const messageLine = customMessage ? `\n\n> ${customMessage}` : "";
+
   const embed = new EmbedBuilder()
-    .setTitle("📦 New Listing")
+    .setAuthor({
+      name: `${listing.seller}'s Stock`,
+      ...(avatarUrl ? { iconURL: avatarUrl } : {}),
+    })
+    .setDescription(`${itemLines}${paymentLine}${messageLine}`)
     .setColor(0xff0080)
-    .addFields(
-      { name: "Seller", value: listing.seller, inline: true },
-      ...(paymentMethods.length > 0
-        ? [{ name: "Payment", value: paymentMethods.map((m) => `${PAYMENT_EMOJIS[m] ?? ""} ${m}`.trim()).join("  ·  "), inline: true }]
-        : []),
-      { name: `Items (${activeItems.length})`, value: itemLines || "—", inline: false },
-      ...(customMessage ? [{ name: "Message", value: customMessage, inline: false }] : [])
-    )
     .setTimestamp(new Date(listing.createdAt))
     .setFooter({ text: `Listing ID: ${listing.id}` });
+
+  if (avatarUrl) embed.setThumbnail(avatarUrl);
 
   await textChannel.send({ embeds: [embed] });
   res.json({ ok: true, channel: textChannel.id });
