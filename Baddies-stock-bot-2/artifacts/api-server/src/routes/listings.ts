@@ -2,6 +2,7 @@ import { Router, type IRouter } from "express";
 import fs from "fs";
 import path from "path";
 import { randomUUID } from "crypto";
+import { getBotClient } from "../bot";
 
 const router: IRouter = Router();
 
@@ -143,6 +144,49 @@ router.delete("/listings/:id", (req, res) => {
   listings.splice(idx, 1);
   saveListings(listings);
   res.json({ ok: true });
+});
+
+router.post("/listings/:id/notify-seller", async (req, res) => {
+  const { id } = req.params as { id: string };
+  const listings = loadListings();
+  const listing = listings.find((l) => l.id === id);
+
+  if (!listing) {
+    res.status(404).json({ error: "Listing not found" });
+    return;
+  }
+
+  if (!listing.discordUserId) {
+    res.json({ ok: false, reason: "Seller has no linked Discord account" });
+    return;
+  }
+
+  const bot = getBotClient();
+  if (!bot) {
+    res.json({ ok: false, reason: "Bot is not online" });
+    return;
+  }
+
+  const buyer = req.session?.discordUser;
+  const buyerName = buyer ? `**@${buyer.username}**` : "Someone";
+  const itemList = listing.items
+    .filter((i) => !i.soldOut)
+    .slice(0, 8)
+    .map((i) => `• ${i.name}`)
+    .join("\n");
+
+  try {
+    const sellerUser = await bot.users.fetch(listing.discordUserId);
+    await sellerUser.send(
+      `📢 **Someone wants to buy from your listing!**\n\n` +
+      `${buyerName} is interested in your items on **Baddies Store**:\n${itemList}\n\n` +
+      `Head to the store or your Discord server to complete the trade.`
+    );
+    res.json({ ok: true });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    res.json({ ok: false, reason: msg });
+  }
 });
 
 export default router;
