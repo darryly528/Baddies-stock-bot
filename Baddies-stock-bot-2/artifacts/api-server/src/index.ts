@@ -1,3 +1,4 @@
+import "dotenv/config";
 import app from "./app";
 import { startBot } from "./bot";
 import { startCatalogUpdater } from "./catalogUpdater";

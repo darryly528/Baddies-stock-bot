@@ -10,6 +10,8 @@ dist/
 .env
 .env.*
 *.env
+**/.env
+**/.env.*
 
 # Sensitive runtime config
 Baddies-stock-bot-2/artifacts/api-server/guild-settings.json
