@@ -27,10 +27,10 @@ import { cn, formatNumber } from "@/lib/utils";
 
 const PAYMENT_LABELS = ["PayPal", "Apple Pay", "Cash App", "Venmo"] as const;
 const PAYMENT_EMOJI: Record<string, string> = {
-  "PayPal":    "💳",
-  "Apple Pay": "🍎",
-  "Cash App":  "💸",
-  "Venmo":     "💙",
+  "PayPal":    "https://cdn.discordapp.com/emojis/1481817468912799814.png",
+  "Apple Pay": "https://cdn.discordapp.com/emojis/1481817467813888212.png",
+  "Cash App":  "https://cdn.discordapp.com/emojis/1481817227975069718.png",
+  "Venmo":     "https://cdn.discordapp.com/emojis/1481817470431006883.png",
 };
 
 interface SelectedItem {
@@ -329,7 +329,9 @@ export default function ListPage() {
                               : "bg-white/5 border-white/10 text-muted-foreground hover:text-white hover:border-white/20"
                           )}
                         >
-                          <span>{PAYMENT_EMOJI[label]}</span>
+                          {PAYMENT_EMOJI[label] && (
+                            <img src={PAYMENT_EMOJI[label]} alt={label} className="w-4 h-4 object-contain" />
+                          )}
                           {label}
                           {active && <span className="text-xs ml-0.5">✓</span>}
                         </button>
@@ -615,7 +617,9 @@ export default function ListPage() {
                                   <div className="flex gap-1 flex-wrap">
                                     {listing.paymentMethods.map((m) => (
                                       <span key={m} className="text-[10px] px-1.5 py-0.5 rounded bg-primary/15 text-primary border border-primary/20 font-medium flex items-center gap-0.5">
-                                        {PAYMENT_EMOJI[m] ? <span>{PAYMENT_EMOJI[m]}</span> : null}
+                                        {PAYMENT_EMOJI[m] && (
+                                          <img src={PAYMENT_EMOJI[m]} alt={m} className="w-3 h-3 object-contain" />
+                                        )}
                                         {m}
                                       </span>
                                     ))}

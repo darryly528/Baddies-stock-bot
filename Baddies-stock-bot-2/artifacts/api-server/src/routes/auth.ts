@@ -224,10 +224,10 @@ router.post("/auth/post-listing/:listingId", async (req: Request, res: Response)
   const customMessage: string | undefined = (listing as { customMessage?: string }).customMessage;
 
   const PAYMENT_EMOJIS: Record<string, string> = {
-    "PayPal": "💳",
-    "Apple Pay": "🍎",
-    "Cash App": "💸",
-    "Venmo": "💙",
+    "PayPal": "<:PayPal:1481817468912799814>",
+    "Apple Pay": "<:ApplePay:1481817467813888212>",
+    "Cash App": "<:CashApp:1481817227975069718>",
+    "Venmo": "<:Venmo:1481817470431006883>",
   };
 
   const embed = new EmbedBuilder()
