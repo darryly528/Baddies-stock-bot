@@ -1,7 +1,23 @@
+import { useState, useRef, useEffect } from "react";
 import { useListings } from "@/hooks/use-listings";
 import { useConfig } from "@/hooks/use-config";
-import { motion } from "framer-motion";
-import { Loader2, LayoutList, ShoppingBag } from "lucide-react";
+import { useAuth } from "@/contexts/auth-context";
+import {
+  useConversation,
+  useStartConversation,
+  useSendMessage,
+} from "@/hooks/use-messages";
+import { motion, AnimatePresence } from "framer-motion";
+import {
+  Loader2,
+  LayoutList,
+  ShoppingBag,
+  MessageCircle,
+  Send,
+  X,
+  AlertTriangle,
+  LogIn,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const PAYMENT_EMOJI: Record<string, string> = {
@@ -11,13 +27,228 @@ const PAYMENT_EMOJI: Record<string, string> = {
   "Venmo":     "https://cdn.discordapp.com/emojis/1481817470431006883.png",
 };
 
+interface ChatPanelProps {
+  listingId: string;
+  listingTitle: string;
+  sellerId: string;
+  sellerName: string;
+  sellerAvatar: string | null;
+  myId: string;
+  onClose: () => void;
+}
+
+function ChatPanel({ listingId, listingTitle, sellerId, sellerName, sellerAvatar, myId, onClose }: ChatPanelProps) {
+  const [conversationId, setConversationId] = useState<string | null>(null);
+  const [draft, setDraft] = useState("");
+  const [firstDraft, setFirstDraft] = useState("");
+  const [started, setStarted] = useState(false);
+  const [startError, setStartError] = useState<string | null>(null);
+  const bottomRef = useRef<HTMLDivElement>(null);
+
+  const startConv = useStartConversation();
+  const sendMsg = useSendMessage(conversationId);
+  const { data: conv, isLoading: convLoading } = useConversation(conversationId);
+
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [conv?.messages.length]);
+
+  async function handleStart() {
+    if (!firstDraft.trim()) return;
+    setStartError(null);
+    try {
+      const result = await startConv.mutateAsync({
+        listingId,
+        listingTitle,
+        sellerId,
+        sellerName,
+        sellerAvatar,
+        firstMessage: firstDraft.trim(),
+      });
+      setConversationId(result.conversationId);
+      setStarted(true);
+      setFirstDraft("");
+    } catch (err) {
+      setStartError(err instanceof Error ? err.message : "Failed to start conversation");
+    }
+  }
+
+  async function handleSend() {
+    if (!draft.trim() || !conversationId) return;
+    const text = draft.trim();
+    setDraft("");
+    try {
+      await sendMsg.mutateAsync(text);
+    } catch (err) {
+      setDraft(text);
+    }
+  }
+
+  const sellerAvatarUrl = sellerId && sellerAvatar
+    ? `https://cdn.discordapp.com/avatars/${sellerId}/${sellerAvatar}.png?size=64`
+    : null;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, scale: 0.96, y: 12 }}
+      animate={{ opacity: 1, scale: 1, y: 0 }}
+      exit={{ opacity: 0, scale: 0.96, y: 12 }}
+      className="fixed bottom-6 right-6 z-50 w-full max-w-sm flex flex-col glass-panel rounded-2xl border border-white/15 shadow-2xl overflow-hidden"
+      style={{ maxHeight: "520px" }}
+    >
+      <div className="flex items-center gap-3 px-4 py-3 border-b border-white/10 bg-white/5 flex-shrink-0">
+        {sellerAvatarUrl ? (
+          <img src={sellerAvatarUrl} alt={sellerName} className="w-8 h-8 rounded-full ring-2 ring-primary/30" />
+        ) : (
+          <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-sm font-bold text-primary">
+            {sellerName[0]?.toUpperCase()}
+          </div>
+        )}
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-semibold text-white truncate">{sellerName}</p>
+          <p className="text-xs text-muted-foreground truncate">{listingTitle}</p>
+        </div>
+        <button onClick={onClose} className="text-muted-foreground hover:text-white transition-colors p-1">
+          <X className="w-4 h-4" />
+        </button>
+      </div>
+
+      <div className="flex-1 overflow-y-auto p-4 space-y-3 min-h-0">
+        {!started && !conversationId ? (
+          <div className="text-center py-6 space-y-2">
+            <MessageCircle className="w-10 h-10 text-primary/40 mx-auto" />
+            <p className="text-sm text-muted-foreground">
+              Start a conversation with <span className="text-white font-semibold">{sellerName}</span>
+            </p>
+          </div>
+        ) : convLoading ? (
+          <div className="flex justify-center py-6">
+            <Loader2 className="w-6 h-6 animate-spin text-primary" />
+          </div>
+        ) : (
+          conv?.messages.map((msg) => {
+            const isMe = msg.senderId === myId;
+            const avatarUrl = msg.senderId && msg.senderAvatar
+              ? `https://cdn.discordapp.com/avatars/${msg.senderId}/${msg.senderAvatar}.png?size=64`
+              : null;
+            return (
+              <div key={msg.id} className={cn("flex gap-2 items-end", isMe ? "flex-row-reverse" : "flex-row")}>
+                {!isMe && (
+                  avatarUrl ? (
+                    <img src={avatarUrl} alt={msg.senderName} className="w-6 h-6 rounded-full flex-shrink-0 mb-1" />
+                  ) : (
+                    <div className="w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center text-[10px] font-bold text-primary flex-shrink-0 mb-1">
+                      {msg.senderName[0]?.toUpperCase()}
+                    </div>
+                  )
+                )}
+                <div className={cn("max-w-[80%] space-y-0.5", isMe ? "items-end" : "items-start")}>
+                  {msg.filtered ? (
+                    <div className={cn(
+                      "flex items-center gap-1.5 px-3 py-2 rounded-2xl text-sm",
+                      isMe ? "bg-primary/20 text-primary/60 rounded-br-sm" : "bg-white/10 text-muted-foreground rounded-bl-sm"
+                    )}>
+                      <AlertTriangle className="w-3 h-3 flex-shrink-0" />
+                      <span className="italic text-xs">Message filtered</span>
+                    </div>
+                  ) : (
+                    <div className={cn(
+                      "px-3 py-2 rounded-2xl text-sm break-words",
+                      isMe
+                        ? "bg-gradient-to-br from-primary to-secondary text-white rounded-br-sm"
+                        : "bg-white/10 text-white rounded-bl-sm"
+                    )}>
+                      {msg.content}
+                    </div>
+                  )}
+                  <p className={cn("text-[10px] text-muted-foreground px-1", isMe ? "text-right" : "text-left")}>
+                    {new Date(msg.timestamp).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })}
+                  </p>
+                </div>
+              </div>
+            );
+          })
+        )}
+        <div ref={bottomRef} />
+      </div>
+
+      <div className="flex-shrink-0 border-t border-white/10 p-3 space-y-2">
+        {startError && (
+          <p className="text-red-400 text-xs px-1">{startError}</p>
+        )}
+        {!conversationId ? (
+          <div className="flex gap-2">
+            <input
+              value={firstDraft}
+              onChange={(e) => setFirstDraft(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && handleStart()}
+              placeholder="Type your first message…"
+              className="flex-1 bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm text-white outline-none focus:border-primary/50 placeholder:text-muted-foreground/50"
+            />
+            <button
+              onClick={handleStart}
+              disabled={!firstDraft.trim() || startConv.isPending}
+              className="w-9 h-9 rounded-xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center text-white disabled:opacity-40 transition-opacity flex-shrink-0"
+            >
+              {startConv.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+            </button>
+          </div>
+        ) : (
+          <div className="flex gap-2">
+            <input
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && handleSend()}
+              placeholder="Message…"
+              className="flex-1 bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm text-white outline-none focus:border-primary/50 placeholder:text-muted-foreground/50"
+            />
+            <button
+              onClick={handleSend}
+              disabled={!draft.trim() || sendMsg.isPending}
+              className="w-9 h-9 rounded-xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center text-white disabled:opacity-40 transition-opacity flex-shrink-0"
+            >
+              {sendMsg.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+            </button>
+          </div>
+        )}
+        <p className="text-[10px] text-muted-foreground/50 text-center">Messages are moderated. Be respectful.</p>
+      </div>
+    </motion.div>
+  );
+}
+
 export default function ListingsPage() {
   const { data: listings = [], isLoading } = useListings();
-  const { data: config } = useConfig();
+  const { user } = useAuth();
+
+  const [chatTarget, setChatTarget] = useState<{
+    listingId: string;
+    listingTitle: string;
+    sellerId: string;
+    sellerName: string;
+    sellerAvatar: string | null;
+  } | null>(null);
+  const [loginPrompt, setLoginPrompt] = useState(false);
 
   const activeListings = [...listings]
     .reverse()
     .filter((l) => l.items.some((i) => !i.soldOut));
+
+  function openChat(listing: typeof activeListings[0]) {
+    if (!user) {
+      setLoginPrompt(true);
+      return;
+    }
+    if (listing.discordUserId === user.id) return;
+    const title = listing.items.filter((i) => !i.soldOut).map((i) => i.name).slice(0, 2).join(", ");
+    setChatTarget({
+      listingId: listing.id,
+      listingTitle: `${listing.seller}'s Stock (${title})`,
+      sellerId: listing.discordUserId ?? listing.seller,
+      sellerName: listing.seller,
+      sellerAvatar: listing.discordAvatar,
+    });
+  }
 
   return (
     <div className="min-h-screen pb-24 relative overflow-x-hidden">
@@ -36,7 +267,7 @@ export default function ListingsPage() {
             Browse <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-secondary text-glow">Listings</span>
           </h1>
           <p className="text-muted-foreground text-lg max-w-xl mx-auto">
-            Active stock listings from all sellers. Click "Buy via Discord" to open a ticket.
+            Active stock listings from all sellers. Click "Message Seller" to start a trade.
           </p>
         </motion.div>
 
@@ -56,8 +287,8 @@ export default function ListingsPage() {
               const listingAvatar = listing.discordUserId && listing.discordAvatar
                 ? `https://cdn.discordapp.com/avatars/${listing.discordUserId}/${listing.discordAvatar}.png?size=64`
                 : null;
-              const inviteUrl = config?.discordInviteUrl ?? null;
               const availableItems = listing.items.filter((i) => !i.soldOut);
+              const isOwnListing = !!user && user.id === listing.discordUserId;
 
               return (
                 <motion.div
@@ -66,7 +297,7 @@ export default function ListingsPage() {
                   animate={{ opacity: 1, y: 0 }}
                   className="glass-panel rounded-2xl p-6 border border-white/10"
                 >
-                  <div className="flex items-start justify-between mb-4">
+                  <div className="flex items-start justify-between mb-4 flex-wrap gap-3">
                     <div className="flex items-center gap-3">
                       {listingAvatar ? (
                         <img src={listingAvatar} alt={listing.seller} className="w-9 h-9 rounded-full ring-2 ring-white/10" />
@@ -97,18 +328,14 @@ export default function ListingsPage() {
                       </div>
                     </div>
 
-                    {inviteUrl && (
-                      <a
-                        href={inviteUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg bg-[#5865F2]/20 text-[#5865F2] hover:bg-[#5865F2]/30 border border-[#5865F2]/30 transition-colors whitespace-nowrap"
+                    {!isOwnListing && (
+                      <button
+                        onClick={() => openChat(listing)}
+                        className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg bg-primary/20 text-primary hover:bg-primary/30 border border-primary/30 transition-colors whitespace-nowrap"
                       >
-                        <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
-                          <path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057c.002.022.015.042.031.054a19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994a.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03z"/>
-                        </svg>
-                        Buy via Discord
-                      </a>
+                        <MessageCircle className="w-3.5 h-3.5" />
+                        Message Seller
+                      </button>
                     )}
                   </div>
 
@@ -145,6 +372,56 @@ export default function ListingsPage() {
           </div>
         )}
       </div>
+
+      <AnimatePresence>
+        {loginPrompt && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm"
+            onClick={() => setLoginPrompt(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.92, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.92, opacity: 0 }}
+              className="glass-panel rounded-2xl p-8 max-w-sm w-full text-center border border-white/15 shadow-2xl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <LogIn className="w-10 h-10 text-primary mx-auto mb-4" />
+              <h3 className="font-display font-bold text-xl text-white mb-2">Login Required</h3>
+              <p className="text-muted-foreground text-sm mb-6">
+                You need to log in with Discord to message sellers.
+              </p>
+              <a
+                href="/api/auth/discord"
+                className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-[#5865F2] hover:bg-[#4752C4] text-white font-semibold transition-colors"
+              >
+                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057c.002.022.015.042.031.054a19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994a.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03z"/>
+                </svg>
+                Login with Discord
+              </a>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {chatTarget && user && (
+          <ChatPanel
+            key={chatTarget.listingId}
+            listingId={chatTarget.listingId}
+            listingTitle={chatTarget.listingTitle}
+            sellerId={chatTarget.sellerId}
+            sellerName={chatTarget.sellerName}
+            sellerAvatar={chatTarget.sellerAvatar}
+            myId={user.id}
+            onClose={() => setChatTarget(null)}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }

@@ -9,6 +9,8 @@ const router = Router();
 const DISCORD_CLIENT_ID = process.env["DISCORD_CLIENT_ID"] ?? "";
 const DISCORD_CLIENT_SECRET = process.env["DISCORD_CLIENT_SECRET"] ?? "";
 const DISCORD_INVITE_URL = process.env["DISCORD_INVITE_URL"] ?? "";
+const LISTING_CHANNEL_ID = "1486949502349873313";
+const MOD_ROLE_ID = process.env["MOD_ROLE_ID"] ?? "1441178708311281845";
 
 function getRedirectUri(req: Request): string {
   const domain = process.env["REPLIT_DEV_DOMAIN"] ?? req.get("host") ?? "localhost:8080";
@@ -116,6 +118,31 @@ router.post("/auth/logout", (req: Request, res: Response) => {
   });
 });
 
+router.get("/auth/is-mod", async (req: Request, res: Response) => {
+  if (!req.session.discordUser) {
+    res.json({ isMod: false });
+    return;
+  }
+  const botClient = getBotClient();
+  if (!botClient) {
+    res.json({ isMod: false });
+    return;
+  }
+  const userId = req.session.discordUser.id;
+  for (const [, guild] of botClient.guilds.cache) {
+    try {
+      const member = await guild.members.fetch(userId);
+      if (member.roles.cache.has(MOD_ROLE_ID)) {
+        res.json({ isMod: true });
+        return;
+      }
+    } catch {
+      // user not in this guild — skip
+    }
+  }
+  res.json({ isMod: false });
+});
+
 router.get("/auth/guilds", async (req: Request, res: Response) => {
   if (!req.session.discordUser) {
     res.status(401).json({ error: "Not authenticated" });
@@ -200,16 +227,12 @@ router.post("/auth/post-listing/:listingId", async (req: Request, res: Response)
     return;
   }
 
-  const textChannel = guild.channels.cache.find(
-    (ch) =>
-      ch.type === ChannelType.GuildText &&
-      ch
-        .permissionsFor(guild.members.me!)
-        ?.has(PermissionFlagsBits.SendMessages) === true
-  );
-
+  let textChannel = guild.channels.cache.get(LISTING_CHANNEL_ID);
   if (!textChannel || !textChannel.isTextBased()) {
-    res.status(404).json({ error: "No accessible text channel found in that server" });
+    textChannel = await botClient.channels.fetch(LISTING_CHANNEL_ID).catch(() => null) as any;
+  }
+  if (!textChannel || !textChannel.isTextBased()) {
+    res.status(404).json({ error: "Listing channel not found or bot cannot access it." });
     return;
   }
 

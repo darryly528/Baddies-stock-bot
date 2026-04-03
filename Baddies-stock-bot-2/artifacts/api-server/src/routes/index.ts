@@ -4,6 +4,7 @@ import catalogRouter from "./catalog";
 import listingsRouter from "./listings";
 import authRouter from "./auth";
 import controlRouter from "./control";
+import messagesRouter from "./messages";
 
 const router: IRouter = Router();
 
@@ -12,5 +13,6 @@ router.use(healthRouter);
 router.use(catalogRouter);
 router.use(listingsRouter);
 router.use(controlRouter);
+router.use(messagesRouter);
 
 export default router;

@@ -4,6 +4,7 @@ import { useListings, useCreateListing, useMarkSold, useDeleteListing, usePostLi
 import { useConfig } from "@/hooks/use-config";
 import type { ListingItem } from "@/hooks/use-listings";
 import { useAuth } from "@/contexts/auth-context";
+import { useIsMod, useConversations, useConversation, useSendMessage } from "@/hooks/use-messages";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { motion, AnimatePresence } from "framer-motion";
@@ -22,6 +23,8 @@ import {
   MessageCircle,
   ChevronDown,
   ServerIcon,
+  AlertTriangle,
+  Inbox,
 } from "lucide-react";
 import { cn, formatNumber } from "@/lib/utils";
 
@@ -49,7 +52,8 @@ interface Guild {
 
 export default function ListPage() {
   const { user, loading: authLoading } = useAuth();
-  const [step, setStep] = useState<"select" | "review">("select");
+  const [step, setStep] = useState<"select" | "review" | "messages">("select");
+  const [openConvId, setOpenConvId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [searchInput, setSearchInput] = useState("");
   const [itemType, setItemType] = useState("All");
@@ -75,6 +79,14 @@ export default function ListPage() {
 
   const { data: listings = [], isLoading: listingsLoading } = useListings();
   const { data: config } = useConfig();
+  const { data: modData } = useIsMod();
+  const isMod = modData?.isMod ?? false;
+  const { data: conversations = [] } = useConversations();
+  const unreadCount = conversations.filter((c) => c.unread).length;
+  const { data: openConv } = useConversation(openConvId);
+  const sendMsgInConv = useSendMessage(openConvId);
+  const [replyDraft, setReplyDraft] = useState("");
+  const convBottomRef = useRef<HTMLDivElement>(null);
   const createListing = useCreateListing();
   const markSold = useMarkSold();
   const deleteListing = useDeleteListing();
@@ -254,7 +266,7 @@ export default function ListPage() {
         </motion.div>
 
         {/* Tab switcher */}
-        <div className="flex gap-3 mb-8 glass-panel rounded-2xl p-1.5 max-w-sm mx-auto">
+        <div className="flex gap-2 mb-8 glass-panel rounded-2xl p-1.5 max-w-lg mx-auto">
           <button
             onClick={() => setStep("select")}
             className={cn(
@@ -277,10 +289,27 @@ export default function ListPage() {
             )}
           >
             <ListChecks className="w-4 h-4" />
-            Active Listings
+            My Listings
             {activeListings.length > 0 && (
               <span className="ml-1 bg-white/20 text-white text-xs px-1.5 py-0.5 rounded-full">
                 {activeListings.length}
+              </span>
+            )}
+          </button>
+          <button
+            onClick={() => { setStep("messages"); setOpenConvId(null); }}
+            className={cn(
+              "flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-medium transition-all",
+              step === "messages"
+                ? "bg-gradient-to-r from-primary to-secondary text-white shadow-lg"
+                : "text-muted-foreground hover:text-white"
+            )}
+          >
+            <Inbox className="w-4 h-4" />
+            Messages
+            {unreadCount > 0 && (
+              <span className="ml-1 bg-white/20 text-white text-xs px-1.5 py-0.5 rounded-full">
+                {unreadCount}
               </span>
             )}
           </button>
@@ -445,7 +474,7 @@ export default function ListPage() {
                   </div>
                 )}
 
-                {/* Post to Discord after publishing */}
+                {/* Post to Discord after publishing — mod only */}
                 <AnimatePresence>
                   {postedListingId && !selected.length && (
                     <motion.div
@@ -457,31 +486,35 @@ export default function ListPage() {
                       <p className="text-green-400 text-sm flex items-center gap-2">
                         <CheckCircle2 className="w-4 h-4" /> Listing published successfully!
                       </p>
-                      {postSuccess ? (
-                        <p className="text-[#5865F2] text-sm flex items-center gap-2">
-                          <CheckCircle2 className="w-4 h-4" /> {postSuccess}
-                        </p>
-                      ) : (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={loadGuilds}
-                          disabled={guildsLoading}
-                          className="border-[#5865F2]/40 text-[#5865F2] hover:bg-[#5865F2]/10"
-                        >
-                          {guildsLoading ? (
-                            <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Loading servers...</>
-                          ) : (
-                            <>
-                              <svg className="w-4 h-4 mr-2" viewBox="0 0 24 24" fill="currentColor">
-                                <path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057c.002.022.015.042.031.054a19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994a.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03z"/>
-                              </svg>
-                              Post to Discord Server
-                            </>
-                          )}
-                        </Button>
+                      {isMod && (
+                        postSuccess ? (
+                          <p className="text-[#5865F2] text-sm flex items-center gap-2">
+                            <CheckCircle2 className="w-4 h-4" /> {postSuccess}
+                          </p>
+                        ) : (
+                          <>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={loadGuilds}
+                              disabled={guildsLoading}
+                              className="border-[#5865F2]/40 text-[#5865F2] hover:bg-[#5865F2]/10"
+                            >
+                              {guildsLoading ? (
+                                <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Loading servers...</>
+                              ) : (
+                                <>
+                                  <svg className="w-4 h-4 mr-2" viewBox="0 0 24 24" fill="currentColor">
+                                    <path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057c.002.022.015.042.031.054a19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994a.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03z"/>
+                                  </svg>
+                                  Post to Discord Server
+                                </>
+                              )}
+                            </Button>
+                            {postError && <p className="text-red-400 text-sm">{postError}</p>}
+                          </>
+                        )
                       )}
-                      {postError && <p className="text-red-400 text-sm">{postError}</p>}
                     </motion.div>
                   )}
                 </AnimatePresence>
@@ -560,6 +593,146 @@ export default function ListPage() {
                     );
                   })}
                 </div>
+              )}
+            </motion.div>
+          )}
+
+          {step === "messages" && (
+            <motion.div
+              key="messages"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 20 }}
+              transition={{ duration: 0.25 }}
+            >
+              {conversations.length === 0 ? (
+                <div className="text-center py-24 glass-panel rounded-3xl">
+                  <Inbox className="w-12 h-12 text-muted-foreground/30 mx-auto mb-4" />
+                  <h3 className="text-xl font-bold mb-2">No messages yet</h3>
+                  <p className="text-muted-foreground text-sm">Buyers who message you from the Listings page will appear here.</p>
+                </div>
+              ) : !openConvId ? (
+                <div className="space-y-3">
+                  {[...conversations].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)).map((conv) => {
+                    const isSellerView = !!user && conv.sellerId === user.id;
+                    const otherName = isSellerView ? conv.buyerName : conv.sellerName;
+                    const otherAvatar = isSellerView
+                      ? (conv.buyerId && conv.buyerAvatar ? `https://cdn.discordapp.com/avatars/${conv.buyerId}/${conv.buyerAvatar}.png?size=64` : null)
+                      : (conv.sellerId && conv.sellerAvatar ? `https://cdn.discordapp.com/avatars/${conv.sellerId}/${conv.sellerAvatar}.png?size=64` : null);
+                    return (
+                      <motion.button
+                        key={conv.id}
+                        onClick={() => setOpenConvId(conv.id)}
+                        className={cn(
+                          "w-full glass-panel rounded-2xl p-4 border text-left flex items-start gap-3 transition-all hover:border-primary/30",
+                          conv.unread ? "border-primary/40 bg-primary/5" : "border-white/10"
+                        )}
+                      >
+                        {otherAvatar ? (
+                          <img src={otherAvatar} alt={otherName} className="w-10 h-10 rounded-full flex-shrink-0" />
+                        ) : (
+                          <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center text-sm font-bold text-primary flex-shrink-0">
+                            {otherName[0]?.toUpperCase()}
+                          </div>
+                        )}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between gap-2">
+                            <p className={cn("text-sm font-semibold truncate", conv.unread ? "text-white" : "text-white/80")}>{otherName}</p>
+                            {conv.unread && <span className="w-2 h-2 rounded-full bg-primary flex-shrink-0" />}
+                          </div>
+                          <p className="text-xs text-muted-foreground truncate mt-0.5">{conv.listingTitle}</p>
+                          {conv.lastMessage && (
+                            <p className="text-xs text-muted-foreground/70 truncate mt-1">
+                              {conv.lastMessage.filtered ? "Message filtered" : conv.lastMessage.content}
+                            </p>
+                          )}
+                        </div>
+                        <p className="text-[10px] text-muted-foreground flex-shrink-0">
+                          {new Date(conv.updatedAt).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
+                        </p>
+                      </motion.button>
+                    );
+                  })}
+                </div>
+              ) : openConv ? (
+                <div className="glass-panel rounded-2xl border border-white/10 overflow-hidden flex flex-col" style={{ maxHeight: "600px" }}>
+                  <div className="flex items-center gap-3 px-4 py-3 border-b border-white/10 bg-white/5 flex-shrink-0">
+                    <button onClick={() => setOpenConvId(null)} className="text-muted-foreground hover:text-white transition-colors p-1">
+                      <X className="w-4 h-4" />
+                    </button>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-white truncate">
+                        {user?.id === openConv.sellerId ? openConv.buyerName : openConv.sellerName}
+                      </p>
+                      <p className="text-xs text-muted-foreground truncate">{openConv.listingTitle}</p>
+                    </div>
+                  </div>
+                  <div className="flex-1 overflow-y-auto p-4 space-y-3">
+                    {openConv.messages.map((msg) => {
+                      const isMe = msg.senderId === user?.id;
+                      const avatarUrl = msg.senderId && msg.senderAvatar
+                        ? `https://cdn.discordapp.com/avatars/${msg.senderId}/${msg.senderAvatar}.png?size=64`
+                        : null;
+                      return (
+                        <div key={msg.id} className={cn("flex gap-2 items-end", isMe ? "flex-row-reverse" : "flex-row")}>
+                          {!isMe && (avatarUrl ? (
+                            <img src={avatarUrl} alt={msg.senderName} className="w-6 h-6 rounded-full flex-shrink-0" />
+                          ) : (
+                            <div className="w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center text-[10px] font-bold text-primary flex-shrink-0">
+                              {msg.senderName[0]?.toUpperCase()}
+                            </div>
+                          ))}
+                          <div className={cn("max-w-[75%]", isMe ? "items-end" : "items-start")}>
+                            {msg.filtered ? (
+                              <div className={cn("flex items-center gap-1.5 px-3 py-2 rounded-2xl text-sm", isMe ? "bg-primary/20 text-primary/60 rounded-br-sm" : "bg-white/10 text-muted-foreground rounded-bl-sm")}>
+                                <AlertTriangle className="w-3 h-3" />
+                                <span className="italic text-xs">Message filtered</span>
+                              </div>
+                            ) : (
+                              <div className={cn("px-3 py-2 rounded-2xl text-sm break-words", isMe ? "bg-gradient-to-br from-primary to-secondary text-white rounded-br-sm" : "bg-white/10 text-white rounded-bl-sm")}>
+                                {msg.content}
+                              </div>
+                            )}
+                            <p className={cn("text-[10px] text-muted-foreground px-1 mt-0.5", isMe ? "text-right" : "text-left")}>
+                              {new Date(msg.timestamp).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })}
+                            </p>
+                          </div>
+                        </div>
+                      );
+                    })}
+                    <div ref={convBottomRef} />
+                  </div>
+                  <div className="flex-shrink-0 border-t border-white/10 p-3 flex gap-2">
+                    <input
+                      value={replyDraft}
+                      onChange={(e) => setReplyDraft(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && !e.shiftKey && replyDraft.trim()) {
+                          e.preventDefault();
+                          const text = replyDraft.trim();
+                          setReplyDraft("");
+                          sendMsgInConv.mutate(text);
+                        }
+                      }}
+                      placeholder="Reply…"
+                      className="flex-1 bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm text-white outline-none focus:border-primary/50 placeholder:text-muted-foreground/50"
+                    />
+                    <button
+                      disabled={!replyDraft.trim() || sendMsgInConv.isPending}
+                      onClick={() => {
+                        const text = replyDraft.trim();
+                        if (!text) return;
+                        setReplyDraft("");
+                        sendMsgInConv.mutate(text);
+                      }}
+                      className="w-9 h-9 rounded-xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center text-white disabled:opacity-40 transition-opacity flex-shrink-0"
+                    >
+                      {sendMsgInConv.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex justify-center py-12"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>
               )}
             </motion.div>
           )}
