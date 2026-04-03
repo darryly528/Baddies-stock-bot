@@ -3,9 +3,11 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import Home from "./pages/home";
 import ListPage from "./pages/list";
 import ListingsPage from "./pages/listings";
-import { PackagePlus, ShoppingBag, LogOut, LayoutList } from "lucide-react";
+import MessagesPage from "./pages/messages";
+import { PackagePlus, ShoppingBag, LogOut, LayoutList, Inbox } from "lucide-react";
 import { cn } from "./lib/utils";
 import { AuthProvider, useAuth } from "./contexts/auth-context";
+import { useConversations } from "./hooks/use-messages";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -19,6 +21,8 @@ const queryClient = new QueryClient({
 function NavBar() {
   const [location] = useLocation();
   const { user, loading, logout } = useAuth();
+  const { data: conversations = [] } = useConversations();
+  const unreadCount = conversations.filter((c) => c.unread).length;
 
   const avatarUrl = user?.avatar
     ? `https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png?size=64`
@@ -66,6 +70,28 @@ function NavBar() {
           <PackagePlus className="w-4 h-4" />
           List Items
         </Link>
+
+        {user && (
+          <Link
+            href="/messages"
+            className={cn(
+              "flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all relative",
+              location === "/messages"
+                ? "bg-white/10 text-white"
+                : "text-muted-foreground hover:text-white hover:bg-white/5"
+            )}
+          >
+            <span className="relative">
+              <Inbox className="w-4 h-4" />
+              {unreadCount > 0 && (
+                <span className="absolute -top-1.5 -right-1.5 min-w-[14px] h-3.5 px-0.5 rounded-full bg-primary text-[9px] text-white font-bold flex items-center justify-center leading-none">
+                  {unreadCount}
+                </span>
+              )}
+            </span>
+            Messages
+          </Link>
+        )}
 
         {!loading && (
           user ? (
@@ -126,6 +152,7 @@ function AppRouter() {
           <Route path="/" component={Home} />
           <Route path="/listings" component={ListingsPage} />
           <Route path="/list" component={ListPage} />
+          <Route path="/messages" component={MessagesPage} />
           <Route component={NotFound} />
         </Switch>
       </div>

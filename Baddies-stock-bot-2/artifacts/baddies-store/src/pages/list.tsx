@@ -199,7 +199,7 @@ export default function ListPage() {
     setSoldQtyInput("");
   }
 
-  const activeListings = listings.filter((l) => l.items.some((i) => !i.soldOut));
+  const myListings = listings.filter((l) => l.discordUserId === user?.id && l.items.some((i) => !i.soldOut));
 
   if (authLoading) {
     return (
@@ -290,9 +290,9 @@ export default function ListPage() {
           >
             <ListChecks className="w-4 h-4" />
             My Listings
-            {activeListings.length > 0 && (
+            {myListings.length > 0 && (
               <span className="ml-1 bg-white/20 text-white text-xs px-1.5 py-0.5 rounded-full">
-                {activeListings.length}
+                {myListings.length}
               </span>
             )}
           </button>
@@ -749,7 +749,7 @@ export default function ListPage() {
                 <div className="flex items-center justify-center py-24">
                   <Loader2 className="w-10 h-10 animate-spin text-primary" />
                 </div>
-              ) : listings.length === 0 ? (
+              ) : myListings.length === 0 ? (
                 <div className="text-center py-24 glass-panel rounded-3xl">
                   <ListChecks className="w-12 h-12 text-muted-foreground/30 mx-auto mb-4" />
                   <h3 className="text-xl font-bold mb-2">No listings yet</h3>
@@ -758,7 +758,7 @@ export default function ListPage() {
                 </div>
               ) : (
                 <div className="space-y-4">
-                  {[...listings].reverse().map((listing) => {
+                  {[...myListings].reverse().map((listing) => {
                     const listingAvatar = listing.discordUserId && listing.discordAvatar
                       ? `https://cdn.discordapp.com/avatars/${listing.discordUserId}/${listing.discordAvatar}.png?size=64`
                       : null;

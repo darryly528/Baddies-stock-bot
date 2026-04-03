@@ -239,12 +239,13 @@ export default function ListingsPage() {
       setLoginPrompt(true);
       return;
     }
+    if (!listing.discordUserId) return;
     if (listing.discordUserId === user.id) return;
     const title = listing.items.filter((i) => !i.soldOut).map((i) => i.name).slice(0, 2).join(", ");
     setChatTarget({
       listingId: listing.id,
       listingTitle: `${listing.seller}'s Stock (${title})`,
-      sellerId: listing.discordUserId ?? listing.seller,
+      sellerId: listing.discordUserId,
       sellerName: listing.seller,
       sellerAvatar: listing.discordAvatar,
     });
