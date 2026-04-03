@@ -83,7 +83,7 @@ export default function Home() {
           <a href="https://discord.gg/gSBxZ75c2x" target="_blank" rel="noopener noreferrer">
             <Button variant="discord" size="lg" className="group">
               <MessageSquare className="w-5 h-5 mr-2 group-hover:animate-bounce" />
-              Join the Discord to Buy
+              Join the Discord for Middle Man service
             </Button>
           </a>
         </motion.div>
