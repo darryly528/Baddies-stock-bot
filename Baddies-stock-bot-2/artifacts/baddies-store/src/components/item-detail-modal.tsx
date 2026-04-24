@@ -151,14 +151,14 @@ export function ItemDetailModal({ item, onClose }: Props) {
         exit={{ opacity: 0 }}
         transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
         onClick={onClose}
-        className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-sm flex items-start sm:items-center justify-center p-4 overflow-y-auto"
+        className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-sm flex items-start sm:items-center justify-center p-2 sm:p-4 overflow-y-auto"
       >
         <motion.div
           key="modal"
           layoutId={`item-card-${item.itemId}`}
           transition={{ type: "spring", stiffness: 260, damping: 30, mass: 0.9 }}
           onClick={(e) => e.stopPropagation()}
-          className="relative w-full max-w-3xl my-8 glass-panel rounded-3xl border border-white/10 overflow-hidden"
+          className="relative w-full max-w-3xl my-2 sm:my-8 glass-panel rounded-2xl sm:rounded-3xl border border-white/10 overflow-hidden"
         >
           <motion.button
             onClick={onClose}
@@ -175,33 +175,33 @@ export function ItemDetailModal({ item, onClose }: Props) {
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0, transition: { delay: 0.18, duration: 0.28, ease: [0.16, 1, 0.3, 1] } }}
             exit={{ opacity: 0, transition: { duration: 0.1 } }}
-            className="p-6 sm:p-8"
+            className="p-4 sm:p-8"
           >
-            <div className="flex flex-col sm:flex-row gap-6 mb-6">
-              <div className={cn("relative w-full sm:w-48 h-48 flex-shrink-0 rounded-2xl border-2 bg-black/40 flex items-center justify-center p-4", rarityStyle.border)}>
+            <div className="flex flex-col sm:flex-row gap-4 sm:gap-6 mb-5 sm:mb-6">
+              <div className={cn("relative w-32 h-32 sm:w-48 sm:h-48 mx-auto sm:mx-0 flex-shrink-0 rounded-2xl border-2 bg-black/40 flex items-center justify-center p-3 sm:p-4", rarityStyle.border)}>
                 {item.imageUrl ? (
                   <img src={item.imageUrl} alt={item.name} className="object-contain w-full h-full drop-shadow-2xl" />
                 ) : (
                   <span className="text-muted-foreground/50 text-sm">No image</span>
                 )}
-                <span className={cn("absolute top-2 left-2 px-2 py-0.5 text-[10px] font-bold rounded uppercase tracking-wider backdrop-blur-md border", rarityStyle.bg, rarityStyle.text, rarityStyle.border)}>
+                <span className={cn("absolute top-1.5 left-1.5 px-1.5 py-0.5 text-[9px] sm:text-[10px] font-bold rounded uppercase tracking-wider backdrop-blur-md border", rarityStyle.bg, rarityStyle.text, rarityStyle.border)}>
                   {item.rarity}
                 </span>
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-start gap-2 flex-wrap mb-2">
-                  <h2 className="text-3xl font-display font-extrabold text-white leading-tight">{item.name}</h2>
+                  <h2 className="text-2xl sm:text-3xl font-display font-extrabold text-white leading-tight pr-8 sm:pr-0">{item.name}</h2>
                   {item.acronym && (
-                    <span className="text-xs font-medium text-muted-foreground bg-white/5 px-2 py-0.5 rounded mt-2">
+                    <span className="text-xs font-medium text-muted-foreground bg-white/5 px-2 py-0.5 rounded mt-1 sm:mt-2">
                       {item.acronym}
                     </span>
                   )}
                 </div>
-                <div className="flex items-center gap-2 mb-4">
+                <div className="flex items-center gap-2 mb-4 flex-wrap">
                   <span className="px-2 py-0.5 text-xs font-semibold rounded bg-white/10 text-white/80">{item.itemType}</span>
                   {item.category && <span className="text-xs text-muted-foreground">{item.category}</span>}
                 </div>
-                <div className="grid grid-cols-2 gap-3 text-sm">
+                <div className="grid grid-cols-2 gap-2 sm:gap-3 text-sm">
                   <div>
                     <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Demand</p>
                     <p className={cn("font-semibold mt-0.5",
@@ -230,15 +230,15 @@ export function ItemDetailModal({ item, onClose }: Props) {
               </div>
             </div>
 
-            <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
-              <h3 className="text-lg font-bold text-white">Value &amp; RAP History</h3>
-              <div className="flex items-center gap-1 bg-white/5 rounded-xl p-1 border border-white/10">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 gap-2">
+              <h3 className="text-base sm:text-lg font-bold text-white">Value &amp; RAP History</h3>
+              <div className="flex items-center gap-1 bg-white/5 rounded-xl p-1 border border-white/10 overflow-x-auto hide-scrollbar -mx-1 sm:mx-0 px-1 sm:px-1">
                 {RANGES.map((r) => (
                   <button
                     key={r.value}
                     onClick={() => setRange(r.value)}
                     className={cn(
-                      "px-3 py-1 text-xs font-semibold rounded-lg transition-colors",
+                      "px-2.5 sm:px-3 py-1 text-[11px] sm:text-xs font-semibold rounded-lg transition-colors whitespace-nowrap shrink-0",
                       range === r.value ? "bg-primary text-white" : "text-muted-foreground hover:text-white"
                     )}
                   >

@@ -86,4 +86,19 @@
   .text-glow {
     text-shadow: 0 0 20px rgba(255, 0, 128, 0.5);
   }
+
+  .hide-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .hide-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* xs breakpoint helper for tiny mobile screens */
+@media (min-width: 400px) {
+  .xs\:inline {
+    display: inline;
+  }
 }

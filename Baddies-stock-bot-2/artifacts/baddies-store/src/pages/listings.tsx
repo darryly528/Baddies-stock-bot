@@ -93,8 +93,8 @@ function ChatPanel({ listingId, listingTitle, sellerId, sellerName, sellerAvatar
       initial={{ opacity: 0, scale: 0.96, y: 12 }}
       animate={{ opacity: 1, scale: 1, y: 0 }}
       exit={{ opacity: 0, scale: 0.96, y: 12 }}
-      className="fixed bottom-6 right-6 z-50 w-full max-w-sm flex flex-col glass-panel rounded-2xl border border-white/15 shadow-2xl overflow-hidden"
-      style={{ maxHeight: "520px" }}
+      className="fixed inset-x-2 bottom-20 sm:inset-x-auto sm:bottom-6 sm:right-6 z-50 w-auto sm:w-full sm:max-w-sm flex flex-col glass-panel rounded-2xl border border-white/15 shadow-2xl overflow-hidden"
+      style={{ maxHeight: "min(75vh, 520px)" }}
     >
       <div className="flex items-center gap-3 px-4 py-3 border-b border-white/10 bg-white/5 flex-shrink-0">
         {sellerAvatarUrl ? (
@@ -252,23 +252,23 @@ export default function ListingsPage() {
   }
 
   return (
-    <div className="min-h-screen pb-24 relative overflow-x-hidden">
-      <div className="relative z-10 max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-16 pb-8">
+    <div className="min-h-screen pb-12 relative overflow-x-hidden">
+      <div className="relative z-10 max-w-6xl mx-auto px-3 sm:px-6 lg:px-8 pt-8 sm:pt-16 pb-8">
         <motion.div
           initial={{ opacity: 0, y: 24 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}
-          className="text-center mb-12"
+          className="text-center mb-8 sm:mb-12"
         >
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full glass-panel border-primary/30 text-primary mb-6 shadow-[0_0_30px_rgba(255,0,128,0.2)]">
-            <LayoutList className="w-4 h-4" />
-            <span className="text-sm font-semibold tracking-wide uppercase">All Listings</span>
+          <div className="inline-flex items-center gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full glass-panel border-primary/30 text-primary mb-4 sm:mb-6 shadow-[0_0_30px_rgba(255,0,128,0.2)]">
+            <LayoutList className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+            <span className="text-[10px] sm:text-sm font-semibold tracking-wide uppercase">All Listings</span>
           </div>
-          <h1 className="text-4xl md:text-6xl font-display font-extrabold text-transparent bg-clip-text bg-gradient-to-br from-white via-white to-white/40 mb-4">
+          <h1 className="text-3xl sm:text-4xl md:text-6xl font-display font-extrabold text-transparent bg-clip-text bg-gradient-to-br from-white via-white to-white/40 mb-3 sm:mb-4">
             Browse <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-secondary text-glow">Listings</span>
           </h1>
-          <p className="text-muted-foreground text-lg max-w-xl mx-auto">
-            Active stock listings from all sellers. Click "Message Seller" to start a trade.
+          <p className="text-muted-foreground text-sm sm:text-lg max-w-xl mx-auto px-2">
+            Active stock listings from all sellers. Tap "Message Seller" to start a trade.
           </p>
         </motion.div>
 
@@ -296,21 +296,21 @@ export default function ListingsPage() {
                   key={listing.id}
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="glass-panel rounded-2xl p-6 border border-white/10"
+                  className="glass-panel rounded-2xl p-4 sm:p-6 border border-white/10"
                 >
                   <div className="flex items-start justify-between mb-4 flex-wrap gap-3">
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-3 min-w-0 flex-1">
                       {listingAvatar ? (
-                        <img src={listingAvatar} alt={listing.seller} className="w-9 h-9 rounded-full ring-2 ring-white/10" />
+                        <img src={listingAvatar} alt={listing.seller} className="w-9 h-9 rounded-full ring-2 ring-white/10 flex-shrink-0" />
                       ) : (
-                        <div className="w-9 h-9 rounded-full bg-primary/20 flex items-center justify-center text-sm font-bold text-primary">
+                        <div className="w-9 h-9 rounded-full bg-primary/20 flex items-center justify-center text-sm font-bold text-primary flex-shrink-0">
                           {listing.seller[0]?.toUpperCase()}
                         </div>
                       )}
-                      <div>
-                        <h3 className="font-display font-bold text-lg text-white">{listing.seller}</h3>
-                        <div className="flex items-center gap-3 mt-0.5 flex-wrap">
-                          <p className="text-muted-foreground text-xs">
+                      <div className="min-w-0">
+                        <h3 className="font-display font-bold text-base sm:text-lg text-white truncate">{listing.seller}</h3>
+                        <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                          <p className="text-muted-foreground text-[11px] sm:text-xs">
                             {new Date(listing.createdAt).toLocaleDateString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
                           </p>
                           {listing.paymentMethods?.length > 0 && (
@@ -332,10 +332,11 @@ export default function ListingsPage() {
                     {!isOwnListing && (
                       <button
                         onClick={() => openChat(listing)}
-                        className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg bg-primary/20 text-primary hover:bg-primary/30 border border-primary/30 transition-colors whitespace-nowrap"
+                        className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg bg-primary/20 text-primary hover:bg-primary/30 border border-primary/30 transition-colors whitespace-nowrap shrink-0"
                       >
                         <MessageCircle className="w-3.5 h-3.5" />
-                        Message Seller
+                        <span className="hidden xs:inline">Message Seller</span>
+                        <span className="xs:hidden">Message</span>
                       </button>
                     )}
                   </div>

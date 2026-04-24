@@ -245,28 +245,28 @@ export default function ListPage() {
     : null;
 
   return (
-    <div className="min-h-screen pb-24 relative overflow-x-hidden">
-      <div className="relative z-10 max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-16 pb-8">
+    <div className="min-h-screen pb-12 relative overflow-x-hidden">
+      <div className="relative z-10 max-w-6xl mx-auto px-3 sm:px-6 lg:px-8 pt-8 sm:pt-16 pb-8">
         <motion.div
           initial={{ opacity: 0, y: 24 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}
-          className="text-center mb-12"
+          className="text-center mb-6 sm:mb-12"
         >
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full glass-panel border-primary/30 text-primary mb-6 shadow-[0_0_30px_rgba(255,0,128,0.2)]">
-            <PackagePlus className="w-4 h-4" />
-            <span className="text-sm font-semibold tracking-wide uppercase">Stock Management</span>
+          <div className="inline-flex items-center gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full glass-panel border-primary/30 text-primary mb-4 sm:mb-6 shadow-[0_0_30px_rgba(255,0,128,0.2)]">
+            <PackagePlus className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+            <span className="text-[10px] sm:text-sm font-semibold tracking-wide uppercase">Stock Management</span>
           </div>
-          <h1 className="text-4xl md:text-6xl font-display font-extrabold text-transparent bg-clip-text bg-gradient-to-br from-white via-white to-white/40 mb-4">
+          <h1 className="text-3xl sm:text-4xl md:text-6xl font-display font-extrabold text-transparent bg-clip-text bg-gradient-to-br from-white via-white to-white/40 mb-3 sm:mb-4">
             List <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-secondary text-glow">Items</span>
           </h1>
-          <p className="text-muted-foreground text-lg max-w-xl mx-auto">
+          <p className="text-muted-foreground text-sm sm:text-lg max-w-xl mx-auto px-2">
             Select items from the catalog, set quantities, and publish your listing.
           </p>
         </motion.div>
 
         {/* Tab switcher */}
-        <div className="flex gap-2 mb-8 glass-panel rounded-2xl p-1.5 max-w-lg mx-auto">
+        <div className="flex gap-2 mb-6 sm:mb-8 glass-panel rounded-2xl p-1.5 max-w-lg mx-auto">
           <button
             onClick={() => setStep("select")}
             className={cn(
@@ -308,7 +308,7 @@ export default function ListPage() {
               transition={{ duration: 0.25 }}
             >
               {/* Seller info + config */}
-              <div className="glass-panel rounded-2xl p-6 mb-6 space-y-5">
+              <div className="glass-panel rounded-2xl p-4 sm:p-6 mb-6 space-y-5">
                 {/* Seller display */}
                 <div className="flex items-center gap-3">
                   {avatarUrl ? (
@@ -504,7 +504,7 @@ export default function ListPage() {
               </div>
 
               {/* Search + filters */}
-              <div className="glass-panel rounded-2xl p-3 mb-6 flex flex-col sm:flex-row gap-3 items-center">
+              <div className="glass-panel rounded-2xl p-3 mb-6 flex flex-col sm:flex-row gap-3 items-stretch sm:items-center">
                 <div className="flex w-full sm:w-auto p-1 bg-black/40 rounded-xl overflow-x-auto">
                   {ITEM_TYPES.map((t) => (
                     <button
@@ -538,7 +538,7 @@ export default function ListPage() {
                   <Loader2 className="w-10 h-10 animate-spin text-primary" />
                 </div>
               ) : (
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2.5 sm:gap-4">
                   {items.map((item) => {
                     const isSelected = selected.some((s) => s.name === item.name);
                     return (
@@ -546,7 +546,7 @@ export default function ListPage() {
                         key={item.itemId}
                         onClick={() => toggleItem(item)}
                         className={cn(
-                          "relative flex flex-col items-center gap-2 p-4 rounded-2xl glass-panel border transition-all duration-200 text-left",
+                          "relative flex flex-col items-center gap-2 p-3 sm:p-4 rounded-2xl glass-panel border transition-all duration-200 text-left",
                           isSelected
                             ? "border-primary shadow-[0_0_20px_rgba(255,0,128,0.25)] bg-primary/10"
                             : "border-white/10 hover:border-white/30 hover:bg-white/5"
@@ -554,22 +554,22 @@ export default function ListPage() {
                         whileTap={{ scale: 0.97 }}
                       >
                         {isSelected && (
-                          <div className="absolute top-2 right-2 w-5 h-5 rounded-full bg-primary flex items-center justify-center">
+                          <div className="absolute top-1.5 right-1.5 sm:top-2 sm:right-2 w-5 h-5 rounded-full bg-primary flex items-center justify-center">
                             <CheckCircle2 className="w-3.5 h-3.5 text-white" />
                           </div>
                         )}
-                        <div className="w-16 h-16 flex items-center justify-center">
+                        <div className="w-12 h-12 sm:w-16 sm:h-16 flex items-center justify-center">
                           {item.imageUrl ? (
                             <img src={item.imageUrl} alt={item.name} className="w-full h-full object-contain drop-shadow-lg" loading="lazy" />
                           ) : (
-                            <ShoppingBag className="w-8 h-8 text-muted-foreground/50" />
+                            <ShoppingBag className="w-7 h-7 sm:w-8 sm:h-8 text-muted-foreground/50" />
                           )}
                         </div>
                         <div className="w-full text-center">
-                          <p className="text-xs font-semibold text-white leading-tight line-clamp-2">{item.name}</p>
-                          <p className="text-[10px] text-muted-foreground mt-0.5">{item.itemType}</p>
+                          <p className="text-[11px] sm:text-xs font-semibold text-white leading-tight line-clamp-2">{item.name}</p>
+                          <p className="text-[9px] sm:text-[10px] text-muted-foreground mt-0.5">{item.itemType}</p>
                           {item.value && (
-                            <p className="text-[10px] text-yellow-400 font-mono mt-0.5">{formatNumber(item.value)}</p>
+                            <p className="text-[9px] sm:text-[10px] text-yellow-400 font-mono mt-0.5">{formatNumber(item.value)}</p>
                           )}
                         </div>
                       </motion.button>
@@ -752,21 +752,21 @@ export default function ListPage() {
                         key={listing.id}
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
-                        className="glass-panel rounded-2xl p-6 border border-white/10"
+                        className="glass-panel rounded-2xl p-4 sm:p-6 border border-white/10"
                       >
-                        <div className="flex items-start justify-between mb-4">
-                          <div className="flex items-center gap-3">
+                        <div className="flex items-start justify-between mb-4 gap-3 flex-wrap">
+                          <div className="flex items-center gap-3 min-w-0 flex-1">
                             {listingAvatar ? (
-                              <img src={listingAvatar} alt={listing.seller} className="w-9 h-9 rounded-full ring-2 ring-white/10" />
+                              <img src={listingAvatar} alt={listing.seller} className="w-9 h-9 rounded-full ring-2 ring-white/10 flex-shrink-0" />
                             ) : (
-                              <div className="w-9 h-9 rounded-full bg-primary/20 flex items-center justify-center text-sm font-bold text-primary">
+                              <div className="w-9 h-9 rounded-full bg-primary/20 flex items-center justify-center text-sm font-bold text-primary flex-shrink-0">
                                 {listing.seller[0]?.toUpperCase()}
                               </div>
                             )}
-                            <div>
-                              <h3 className="font-display font-bold text-lg text-white">{listing.seller}</h3>
-                              <div className="flex items-center gap-3 mt-0.5">
-                                <p className="text-muted-foreground text-xs">
+                            <div className="min-w-0">
+                              <h3 className="font-display font-bold text-base sm:text-lg text-white truncate">{listing.seller}</h3>
+                              <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                                <p className="text-muted-foreground text-[11px] sm:text-xs">
                                   {new Date(listing.createdAt).toLocaleDateString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
                                 </p>
                                 {listing.paymentMethods?.length > 0 && (
@@ -784,7 +784,7 @@ export default function ListPage() {
                               </div>
                             </div>
                           </div>
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-2 shrink-0">
                             {!isOwner && inviteUrl && (
                               <button
                                 onClick={() => handleBuyViaDiscord(listing.id, inviteUrl)}

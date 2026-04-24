@@ -84,38 +84,38 @@ export default function Home() {
       </div>
 
       {/* Hero Content */}
-      <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-16 text-center">
+      <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-12 sm:pt-24 pb-10 sm:pb-16 text-center">
         <motion.div
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, ease: "easeOut" }}
           className="flex flex-col items-center"
         >
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full glass-panel border-primary/30 text-primary mb-8 shadow-[0_0_30px_rgba(255,0,128,0.2)]">
-            <Sparkles className="w-4 h-4" />
-            <span className="text-sm font-semibold tracking-wide uppercase">Official Stock Explorer</span>
+          <div className="inline-flex items-center gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full glass-panel border-primary/30 text-primary mb-5 sm:mb-8 shadow-[0_0_30px_rgba(255,0,128,0.2)]">
+            <Sparkles className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+            <span className="text-[10px] sm:text-sm font-semibold tracking-wide uppercase">Official Stock Explorer</span>
           </div>
           
-          <h1 className="text-5xl md:text-7xl font-display font-extrabold text-transparent bg-clip-text bg-gradient-to-br from-white via-white to-white/40 mb-6 drop-shadow-sm">
+          <h1 className="text-4xl sm:text-5xl md:text-7xl font-display font-extrabold text-transparent bg-clip-text bg-gradient-to-br from-white via-white to-white/40 mb-4 sm:mb-6 drop-shadow-sm">
             Baddies <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-secondary text-glow">Store</span>
           </h1>
           
-          <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto mb-10 leading-relaxed">
+          <p className="text-base sm:text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto mb-6 sm:mb-10 leading-relaxed px-2">
             Browse our complete catalog of Weapons, Fighting Styles, and exclusive Skins. Find exactly what you need to dominate.
           </p>
 
-          <a href="https://discord.gg/gSBxZ75c2x" target="_blank" rel="noopener noreferrer">
-            <Button variant="discord" size="lg" className="group">
+          <a href="https://discord.gg/gSBxZ75c2x" target="_blank" rel="noopener noreferrer" className="w-full sm:w-auto">
+            <Button variant="discord" size="lg" className="group w-full sm:w-auto">
               <MessageSquare className="w-5 h-5 mr-2 group-hover:animate-bounce" />
-              Join the Discord for Middle Man service
+              <span className="text-sm sm:text-base">Join Discord for Middle Man service</span>
             </Button>
           </a>
         </motion.div>
       </div>
 
       {/* Interactive Filters Section */}
-      <div className="relative z-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-12">
-        <div className="glass-panel rounded-2xl p-2 md:p-4 shadow-2xl flex flex-col lg:flex-row gap-4 items-center justify-between sticky top-4">
+      <div className="relative z-20 max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 mb-8 sm:mb-12">
+        <div className="glass-panel rounded-2xl p-2 md:p-4 shadow-2xl flex flex-col lg:flex-row gap-3 lg:gap-4 items-stretch lg:items-center justify-between sticky top-16 md:top-4">
           
           {/* Main Type Toggles */}
           <div className="flex w-full lg:w-auto p-1 bg-black/40 rounded-xl overflow-x-auto hide-scrollbar">
@@ -174,18 +174,18 @@ export default function Home() {
       </div>
 
       {/* Main Grid */}
-      <main className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <main className="relative z-10 max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
         {/* Results Info */}
         {!isLoading && !isError && (
-          <div className="flex justify-between items-end mb-8 border-b border-white/10 pb-4">
-            <h2 className="text-2xl font-display font-bold">
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-end gap-3 mb-6 sm:mb-8 border-b border-white/10 pb-4">
+            <h2 className="text-xl sm:text-2xl font-display font-bold">
               {itemType === "All" ? "Catalog" : ITEM_TYPES.find(t => t.value === itemType)?.label}
               {category !== "All" && <span className="text-muted-foreground font-normal"> / {category}</span>}
               {search && <span className="text-primary font-normal"> "{search}"</span>}
             </h2>
-            <div className="flex items-center gap-3">
-              <p className="text-muted-foreground text-sm font-medium">
-                Showing {items.length} of {totalItems} items
+            <div className="flex items-center justify-between sm:justify-end gap-3 flex-wrap">
+              <p className="text-muted-foreground text-xs sm:text-sm font-medium">
+                {items.length} of {totalItems} items
               </p>
               <button
                 onClick={handleRefresh}
@@ -194,7 +194,7 @@ export default function Home() {
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-medium text-muted-foreground hover:text-white disabled:opacity-50 disabled:cursor-not-allowed transition-all"
               >
                 <RefreshCw className={cn("w-3.5 h-3.5", refreshing && "animate-spin")} />
-                {refreshing ? "Refreshing…" : "Refresh values"}
+                {refreshing ? "Refreshing…" : "Refresh"}
               </button>
             </div>
           </div>
@@ -246,7 +246,7 @@ export default function Home() {
 
         {/* Grid */}
         <motion.div 
-          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
+          className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-6"
           initial="hidden"
           animate="show"
           variants={{

@@ -51,17 +51,17 @@ export default function MessagesPage() {
   const unreadCount = conversations.filter((c) => c.unread).length;
 
   return (
-    <div className="min-h-screen pb-24">
-      <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 pt-10 pb-8">
+    <div className="min-h-screen pb-12">
+      <div className="max-w-3xl mx-auto px-3 sm:px-6 lg:px-8 pt-6 sm:pt-10 pb-8">
         <motion.div
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4 }}
-          className="mb-8"
+          className="mb-6 sm:mb-8"
         >
           <div className="flex items-center gap-3 mb-1">
-            <Inbox className="w-6 h-6 text-primary" />
-            <h1 className="text-3xl font-display font-extrabold text-white">Messages</h1>
+            <Inbox className="w-5 h-5 sm:w-6 sm:h-6 text-primary" />
+            <h1 className="text-2xl sm:text-3xl font-display font-extrabold text-white">Messages</h1>
             {unreadCount > 0 && (
               <span className="px-2 py-0.5 rounded-full bg-primary/30 text-primary text-xs font-bold">
                 {unreadCount} unread
@@ -147,7 +147,7 @@ export default function MessagesPage() {
               exit={{ opacity: 0, x: 20 }}
               transition={{ duration: 0.2 }}
               className="glass-panel rounded-2xl border border-white/10 overflow-hidden flex flex-col"
-              style={{ height: "600px" }}
+              style={{ height: "min(600px, calc(100vh - 200px))" }}
             >
               <div className="flex items-center gap-3 px-4 py-3 border-b border-white/10 bg-white/5 flex-shrink-0">
                 <button onClick={() => setOpenConvId(null)} className="text-muted-foreground hover:text-white transition-colors p-1">
