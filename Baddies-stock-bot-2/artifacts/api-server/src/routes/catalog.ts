@@ -4,7 +4,7 @@ import { getHistory } from "../valueHistory";
 
 const router: IRouter = Router();
 
-router.get("/catalog/items/:itemId/history", (req, res) => {
+router.get("/catalog/items/:itemId/history", async (req, res) => {
   const itemId = parseInt(req.params.itemId, 10);
   if (!Number.isFinite(itemId)) {
     res.status(400).json({ error: "Invalid itemId" });
@@ -12,13 +12,14 @@ router.get("/catalog/items/:itemId/history", (req, res) => {
   }
   const range = ((req.query["range"] as string) ?? "all").toLowerCase();
   const item = catalog.find((c) => c.itemId === itemId);
-  const history = getHistory(itemId, range);
-  res.json({
-    itemId,
-    name: item?.name ?? null,
-    range,
-    history,
-  });
+  try {
+    const history = await getHistory(itemId, range);
+    res.json({ itemId, name: item?.name ?? null, range, history });
+  } catch (err) {
+    res.status(502).json({
+      error: err instanceof Error ? err.message : "Failed to fetch history",
+    });
+  }
 });
 
 let refreshInFlight: Promise<{ count: number; updatedAt: string }> | null = null;

@@ -76,7 +76,7 @@ function ChartCard({
       <div className="h-44">
         {valid.length < 2 ? (
           <div className="h-full flex items-center justify-center text-xs text-muted-foreground/60 italic text-center px-4">
-            Not enough history yet — values are recorded automatically every 15 minutes.
+            No history available for this item yet.
           </div>
         ) : (
           <ResponsiveContainer width="100%" height="100%">

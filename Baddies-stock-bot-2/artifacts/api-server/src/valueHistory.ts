@@ -1,64 +1,25 @@
-import fs from "fs";
-import path from "path";
-import type { CatalogItem } from "./catalogUpdater";
-
-const HISTORY_PATH = path.resolve(process.cwd(), "../../value-history.json");
-
 export interface Snapshot {
   t: number;
   v: number | null;
   r: number | null;
 }
 
-type HistoryStore = Record<string, Snapshot[]>;
-
-let store: HistoryStore = {};
-let loaded = false;
-
-function load(): HistoryStore {
-  if (loaded) return store;
-  try {
-    const raw = fs.readFileSync(HISTORY_PATH, "utf8");
-    store = JSON.parse(raw) as HistoryStore;
-    console.log(`[history] Loaded value history for ${Object.keys(store).length} items.`);
-  } catch {
-    store = {};
-  }
-  loaded = true;
-  return store;
+interface BloxtsarChartPoint {
+  date: number;
+  Value: number | null;
+  RAP: number | null;
 }
 
-let saveTimer: NodeJS.Timeout | null = null;
-function scheduleSave() {
-  if (saveTimer) return;
-  saveTimer = setTimeout(() => {
-    saveTimer = null;
-    try {
-      fs.writeFileSync(HISTORY_PATH, JSON.stringify(store));
-    } catch (err) {
-      console.error("[history] Save failed:", err);
-    }
-  }, 1000);
+interface CacheEntry {
+  history: Snapshot[];
+  fetchedAt: number;
+  error?: string;
 }
 
-export function recordSnapshots(items: CatalogItem[]): void {
-  load();
-  const now = Date.now();
-  let added = 0;
-  for (const item of items) {
-    const key = String(item.itemId);
-    const arr = store[key] ?? (store[key] = []);
-    const last = arr[arr.length - 1];
-    if (!last || last.v !== item.value || last.r !== item.rap) {
-      arr.push({ t: now, v: item.value, r: item.rap });
-      added++;
-    }
-  }
-  if (added > 0) {
-    console.log(`[history] Recorded ${added} new snapshot(s).`);
-    scheduleSave();
-  }
-}
+const CACHE_TTL_MS = 10 * 60 * 1000;
+const FETCH_TIMEOUT_MS = 8000;
+const cache = new Map<number, CacheEntry>();
+const inflight = new Map<number, Promise<Snapshot[]>>();
 
 const RANGE_MS: Record<string, number> = {
   "1d": 24 * 60 * 60 * 1000,
@@ -69,9 +30,87 @@ const RANGE_MS: Record<string, number> = {
   "1y": 365 * 24 * 60 * 60 * 1000,
 };
 
-export function getHistory(itemId: number, range: string = "all"): Snapshot[] {
-  load();
-  const arr = store[String(itemId)] ?? [];
+function extractInitialChartData(payload: string): BloxtsarChartPoint[] | null {
+  const marker = '"initialChartData":[';
+  const idx = payload.indexOf(marker);
+  if (idx === -1) return null;
+  const start = idx + marker.length - 1;
+  let depth = 0;
+  let i = start;
+  while (i < payload.length) {
+    const c = payload[i];
+    if (c === "[") depth++;
+    else if (c === "]") {
+      depth--;
+      if (depth === 0) break;
+    }
+    i++;
+  }
+  if (depth !== 0) return null;
+  const arr = payload.slice(start, i + 1);
+  try {
+    return JSON.parse(arr) as BloxtsarChartPoint[];
+  } catch {
+    return null;
+  }
+}
+
+async function fetchHistoryFromBloxtsar(itemId: number): Promise<Snapshot[]> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+  try {
+    const res = await fetch(`https://bloxtsar.com/baddies/item/${itemId}`, {
+      headers: {
+        "RSC": "1",
+        "Next-Url": `/baddies/item/${itemId}`,
+        "Accept": "text/x-component",
+        "User-Agent": "Mozilla/5.0 (compatible; BaddiesStoreBot/1.0)",
+      },
+      signal: controller.signal,
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const text = await res.text();
+    const points = extractInitialChartData(text);
+    if (!points) throw new Error("No initialChartData in payload");
+    return points
+      .map<Snapshot>((p) => ({ t: p.date, v: p.Value ?? null, r: p.RAP ?? null }))
+      .sort((a, b) => a.t - b.t);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+async function loadHistory(itemId: number): Promise<Snapshot[]> {
+  const cached = cache.get(itemId);
+  if (cached && Date.now() - cached.fetchedAt < CACHE_TTL_MS && !cached.error) {
+    return cached.history;
+  }
+  const existing = inflight.get(itemId);
+  if (existing) return existing;
+  const p = (async () => {
+    try {
+      const history = await fetchHistoryFromBloxtsar(itemId);
+      cache.set(itemId, { history, fetchedAt: Date.now() });
+      return history;
+    } catch (err) {
+      const fallback = cached?.history ?? [];
+      cache.set(itemId, {
+        history: fallback,
+        fetchedAt: Date.now(),
+        error: err instanceof Error ? err.message : String(err),
+      });
+      console.warn(`[history] Bloxtsar fetch failed for item ${itemId}:`, err);
+      return fallback;
+    } finally {
+      inflight.delete(itemId);
+    }
+  })();
+  inflight.set(itemId, p);
+  return p;
+}
+
+export async function getHistory(itemId: number, range: string = "all"): Promise<Snapshot[]> {
+  const arr = await loadHistory(itemId);
   if (range === "all" || !RANGE_MS[range]) return arr;
   const cutoff = Date.now() - RANGE_MS[range]!;
   const filtered = arr.filter((s) => s.t >= cutoff);
