@@ -34,12 +34,14 @@ export function ItemCard({ item, onClick }: ItemCardProps) {
         hidden: { opacity: 0, y: 20 },
         show: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 300, damping: 24 } }
       }}
+      whileHover={onClick ? { y: -4, transition: { type: "spring", stiffness: 400, damping: 25 } } : undefined}
+      whileTap={onClick ? { scale: 0.97, transition: { duration: 0.1, ease: "easeOut" } } : undefined}
       onClick={onClick}
       role={onClick ? "button" : undefined}
       tabIndex={onClick ? 0 : undefined}
       onKeyDown={onClick ? (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onClick(); } } : undefined}
       className={cn(
-        "group relative flex flex-col overflow-hidden rounded-2xl glass-panel transition-all duration-500 hover:-translate-y-1 hover:shadow-2xl",
+        "group relative flex flex-col overflow-hidden rounded-2xl glass-panel hover:shadow-2xl",
         onClick && "cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/50",
         rarityStyle.border,
         rarityStyle.glow

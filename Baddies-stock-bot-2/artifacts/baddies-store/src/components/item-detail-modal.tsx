@@ -149,16 +149,16 @@ export function ItemDetailModal({ item, onClose }: Props) {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        transition={{ duration: 0.15 }}
+        transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
         onClick={onClose}
         className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-sm flex items-start sm:items-center justify-center p-4 overflow-y-auto"
       >
         <motion.div
           key="modal"
-          initial={{ opacity: 0, scale: 0.95, y: 20 }}
+          initial={{ opacity: 0, scale: 0.92, y: 30 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
-          exit={{ opacity: 0, scale: 0.95, y: 20 }}
-          transition={{ duration: 0.2, ease: "easeOut" }}
+          exit={{ opacity: 0, scale: 0.96, y: 10, transition: { duration: 0.18, ease: "easeIn" } }}
+          transition={{ type: "spring", stiffness: 320, damping: 28, mass: 0.8 }}
           onClick={(e) => e.stopPropagation()}
           className="relative w-full max-w-3xl my-8 glass-panel rounded-3xl border border-white/10 overflow-hidden"
         >
