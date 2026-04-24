@@ -149,28 +149,34 @@ export function ItemDetailModal({ item, onClose }: Props) {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
+        transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
         onClick={onClose}
         className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-sm flex items-start sm:items-center justify-center p-4 overflow-y-auto"
       >
         <motion.div
           key="modal"
-          initial={{ opacity: 0, scale: 0.92, y: 30 }}
-          animate={{ opacity: 1, scale: 1, y: 0 }}
-          exit={{ opacity: 0, scale: 0.96, y: 10, transition: { duration: 0.18, ease: "easeIn" } }}
-          transition={{ type: "spring", stiffness: 320, damping: 28, mass: 0.8 }}
+          layoutId={`item-card-${item.itemId}`}
+          transition={{ type: "spring", stiffness: 260, damping: 30, mass: 0.9 }}
           onClick={(e) => e.stopPropagation()}
           className="relative w-full max-w-3xl my-8 glass-panel rounded-3xl border border-white/10 overflow-hidden"
         >
-          <button
+          <motion.button
             onClick={onClose}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1, transition: { delay: 0.2, duration: 0.2 } }}
+            exit={{ opacity: 0, transition: { duration: 0.1 } }}
             className="absolute top-4 right-4 z-10 p-2 rounded-full bg-white/5 hover:bg-white/10 text-muted-foreground hover:text-white transition-colors"
             aria-label="Close"
           >
             <X className="w-5 h-5" />
-          </button>
+          </motion.button>
 
-          <div className="p-6 sm:p-8">
+          <motion.div
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0, transition: { delay: 0.18, duration: 0.28, ease: [0.16, 1, 0.3, 1] } }}
+            exit={{ opacity: 0, transition: { duration: 0.1 } }}
+            className="p-6 sm:p-8"
+          >
             <div className="flex flex-col sm:flex-row gap-6 mb-6">
               <div className={cn("relative w-full sm:w-48 h-48 flex-shrink-0 rounded-2xl border-2 bg-black/40 flex items-center justify-center p-4", rarityStyle.border)}>
                 {item.imageUrl ? (
@@ -266,7 +272,7 @@ export function ItemDetailModal({ item, onClose }: Props) {
                 />
               </div>
             )}
-          </div>
+          </motion.div>
         </motion.div>
       </motion.div>
     </AnimatePresence>
