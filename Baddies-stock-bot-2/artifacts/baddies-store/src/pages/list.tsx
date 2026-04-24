@@ -296,23 +296,6 @@ export default function ListPage() {
               </span>
             )}
           </button>
-          <button
-            onClick={() => { setStep("messages"); setOpenConvId(null); }}
-            className={cn(
-              "flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-medium transition-all",
-              step === "messages"
-                ? "bg-gradient-to-r from-primary to-secondary text-white shadow-lg"
-                : "text-muted-foreground hover:text-white"
-            )}
-          >
-            <Inbox className="w-4 h-4" />
-            Messages
-            {unreadCount > 0 && (
-              <span className="ml-1 bg-white/20 text-white text-xs px-1.5 py-0.5 rounded-full">
-                {unreadCount}
-              </span>
-            )}
-          </button>
         </div>
 
         <AnimatePresence mode="wait">
