@@ -2,6 +2,8 @@ import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useInfiniteCatalogItems, useCatalogCategories } from "@/hooks/use-catalog";
 import { ItemCard } from "@/components/item-card";
+import { ItemDetailModal } from "@/components/item-detail-modal";
+import type { CatalogItem } from "@/hooks/use-catalog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { motion } from "framer-motion";
@@ -25,6 +27,7 @@ export default function Home() {
   const [category, setCategory] = useState("All");
   const [refreshing, setRefreshing] = useState(false);
   const [lastRefreshAt, setLastRefreshAt] = useState<string | null>(null);
+  const [selectedItem, setSelectedItem] = useState<CatalogItem | null>(null);
 
   async function handleRefresh() {
     if (refreshing) return;
@@ -252,7 +255,7 @@ export default function Home() {
           }}
         >
           {items.map((item, index) => (
-            <ItemCard key={`${item.itemId}-${index}`} item={item} />
+            <ItemCard key={`${item.itemId}-${index}`} item={item} onClick={() => setSelectedItem(item)} />
           ))}
         </motion.div>
 
@@ -278,6 +281,10 @@ export default function Home() {
           </div>
         )}
       </main>
+
+      {selectedItem && (
+        <ItemDetailModal item={selectedItem} onClose={() => setSelectedItem(null)} />
+      )}
     </div>
   );
 }

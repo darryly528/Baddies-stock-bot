@@ -5,6 +5,7 @@ import { TrendingUp, TrendingDown, Minus, Coins, Box } from "lucide-react";
 
 interface ItemCardProps {
   item: CatalogItem;
+  onClick?: () => void;
 }
 
 function getRarityStyles(rarity: string) {
@@ -24,7 +25,7 @@ function getTrendIcon(trend: string | null) {
   return <Minus className="w-4 h-4 text-gray-400" />;
 }
 
-export function ItemCard({ item }: ItemCardProps) {
+export function ItemCard({ item, onClick }: ItemCardProps) {
   const rarityStyle = getRarityStyles(item.rarity);
 
   return (
@@ -33,8 +34,13 @@ export function ItemCard({ item }: ItemCardProps) {
         hidden: { opacity: 0, y: 20 },
         show: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 300, damping: 24 } }
       }}
+      onClick={onClick}
+      role={onClick ? "button" : undefined}
+      tabIndex={onClick ? 0 : undefined}
+      onKeyDown={onClick ? (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onClick(); } } : undefined}
       className={cn(
         "group relative flex flex-col overflow-hidden rounded-2xl glass-panel transition-all duration-500 hover:-translate-y-1 hover:shadow-2xl",
+        onClick && "cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/50",
         rarityStyle.border,
         rarityStyle.glow
       )}

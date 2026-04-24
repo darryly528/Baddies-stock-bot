@@ -1,5 +1,6 @@
 import fs from "fs";
 import path from "path";
+import { recordSnapshots } from "./valueHistory";
 
 const CATALOG_PATH = path.resolve(process.cwd(), "../../catalog.json");
 const UPDATE_INTERVAL_MS = 15 * 60 * 1000; // 15 minutes
@@ -31,6 +32,7 @@ function loadFromDisk(): void {
     const items = deduplicateById(parsed);
     catalog.splice(0, catalog.length, ...items);
     console.log(`[catalog] Loaded ${catalog.length} items from disk.`);
+    recordSnapshots(items);
   } catch {
     console.warn("[catalog] Could not load catalog.json from disk.");
   }
@@ -94,6 +96,7 @@ async function runUpdate(): Promise<void> {
     catalog.splice(0, catalog.length, ...items);
     fs.writeFileSync(CATALOG_PATH, JSON.stringify(items, null, 2));
     console.log(`[catalog] Updated catalog with ${items.length} items.`);
+    recordSnapshots(items);
   } catch (err) {
     console.error("[catalog] Update failed:", err);
   }

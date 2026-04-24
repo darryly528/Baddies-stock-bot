@@ -1,7 +1,25 @@
 import { Router, type IRouter } from "express";
 import { catalog, runCatalogUpdateNow } from "../catalogUpdater";
+import { getHistory } from "../valueHistory";
 
 const router: IRouter = Router();
+
+router.get("/catalog/items/:itemId/history", (req, res) => {
+  const itemId = parseInt(req.params.itemId, 10);
+  if (!Number.isFinite(itemId)) {
+    res.status(400).json({ error: "Invalid itemId" });
+    return;
+  }
+  const range = ((req.query["range"] as string) ?? "all").toLowerCase();
+  const item = catalog.find((c) => c.itemId === itemId);
+  const history = getHistory(itemId, range);
+  res.json({
+    itemId,
+    name: item?.name ?? null,
+    range,
+    history,
+  });
+});
 
 let refreshInFlight: Promise<{ count: number; updatedAt: string }> | null = null;
 
