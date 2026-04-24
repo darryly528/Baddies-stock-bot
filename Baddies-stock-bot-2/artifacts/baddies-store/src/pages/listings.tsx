@@ -268,7 +268,7 @@ export default function ListingsPage() {
             Browse <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-secondary text-glow">Listings</span>
           </h1>
           <p className="text-muted-foreground text-lg max-w-xl mx-auto">
-            Active stock listings from all sellers. Click "Message Seller" to start a trade.
+            Active stock listings from all sellers.
           </p>
         </motion.div>
 
@@ -329,15 +329,6 @@ export default function ListingsPage() {
                       </div>
                     </div>
 
-                    {!isOwnListing && (
-                      <button
-                        onClick={() => openChat(listing)}
-                        className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg bg-primary/20 text-primary hover:bg-primary/30 border border-primary/30 transition-colors whitespace-nowrap"
-                      >
-                        <MessageCircle className="w-3.5 h-3.5" />
-                        Message Seller
-                      </button>
-                    )}
                   </div>
 
                   {listing.customMessage && (
