@@ -1,7 +1,23 @@
 import { Router, type IRouter } from "express";
-import { catalog } from "../catalogUpdater";
+import { catalog, runCatalogUpdateNow } from "../catalogUpdater";
 
 const router: IRouter = Router();
+
+let refreshInFlight: Promise<{ count: number; updatedAt: string }> | null = null;
+
+router.post("/catalog/refresh", async (_req, res) => {
+  try {
+    if (!refreshInFlight) {
+      refreshInFlight = runCatalogUpdateNow().finally(() => {
+        refreshInFlight = null;
+      });
+    }
+    const result = await refreshInFlight;
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: err instanceof Error ? err.message : "Refresh failed" });
+  }
+});
 
 router.get("/catalog/items", (req, res) => {
   const search = ((req.query["search"] as string) ?? "").toLowerCase().trim();

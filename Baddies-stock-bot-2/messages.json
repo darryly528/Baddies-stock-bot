@@ -1,0 +1,128 @@
+[
+  {
+    "id": "2324f594-9117-48f5-99ca-a3fe4c7f8788",
+    "listingId": "2708decf-3db0-4098-b163-9ca4be7eb165",
+    "listingTitle": "disgust_tf's Stock (Crowbar)",
+    "buyerId": "718222852918083615",
+    "buyerName": "pussbitter3000",
+    "buyerAvatar": "70c1a49baf3697bc81b31419b13b0e03",
+    "sellerId": "916248084697190440",
+    "sellerName": "disgust_tf",
+    "sellerAvatar": "f14e3b4947ec4704ece95a921e7e79a4",
+    "messages": [
+      {
+        "id": "8f239e14-132d-4a0f-a093-72cef5f0d44d",
+        "senderId": "718222852918083615",
+        "senderName": "pussbitter3000",
+        "senderAvatar": "70c1a49baf3697bc81b31419b13b0e03",
+        "content": "hi",
+        "timestamp": "2026-04-03T10:21:41.750Z",
+        "filtered": false
+      },
+      {
+        "id": "b94aacb6-316a-483e-8e2b-363690f073c0",
+        "senderId": "916248084697190440",
+        "senderName": "disgust_tf",
+        "senderAvatar": "f14e3b4947ec4704ece95a921e7e79a4",
+        "content": "ho",
+        "timestamp": "2026-04-03T10:22:37.492Z",
+        "filtered": false
+      },
+      {
+        "id": "86ea35a4-6adb-41d0-baed-417c84375264",
+        "senderId": "916248084697190440",
+        "senderName": "disgust_tf",
+        "senderAvatar": "f14e3b4947ec4704ece95a921e7e79a4",
+        "content": "hoe",
+        "timestamp": "2026-04-03T10:22:39.995Z",
+        "filtered": false
+      },
+      {
+        "id": "5411e806-94b6-4d7a-8439-8de8564f35d6",
+        "senderId": "916248084697190440",
+        "senderName": "disgust_tf",
+        "senderAvatar": "f14e3b4947ec4704ece95a921e7e79a4",
+        "content": "###",
+        "timestamp": "2026-04-03T10:22:42.071Z",
+        "filtered": true
+      },
+      {
+        "id": "45e5cbec-041a-441c-90f7-d118ce434758",
+        "senderId": "916248084697190440",
+        "senderName": "disgust_tf",
+        "senderAvatar": "f14e3b4947ec4704ece95a921e7e79a4",
+        "content": "###",
+        "timestamp": "2026-04-03T10:22:44.647Z",
+        "filtered": true
+      },
+      {
+        "id": "cef1b6ff-58f4-4ba3-9f37-53fda72418f9",
+        "senderId": "916248084697190440",
+        "senderName": "disgust_tf",
+        "senderAvatar": "f14e3b4947ec4704ece95a921e7e79a4",
+        "content": "kill your slef",
+        "timestamp": "2026-04-03T10:22:50.399Z",
+        "filtered": false
+      },
+      {
+        "id": "7ffdbb84-ad7a-4d88-a84e-43fac282269b",
+        "senderId": "916248084697190440",
+        "senderName": "disgust_tf",
+        "senderAvatar": "f14e3b4947ec4704ece95a921e7e79a4",
+        "content": "###",
+        "timestamp": "2026-04-03T10:22:57.105Z",
+        "filtered": true
+      },
+      {
+        "id": "2412d94c-2305-4111-9324-0cb0c8d429d2",
+        "senderId": "916248084697190440",
+        "senderName": "disgust_tf",
+        "senderAvatar": "f14e3b4947ec4704ece95a921e7e79a4",
+        "content": "jump",
+        "timestamp": "2026-04-03T10:23:01.081Z",
+        "filtered": false
+      },
+      {
+        "id": "20dd228b-c308-41fc-afd5-2fc14b76c2aa",
+        "senderId": "916248084697190440",
+        "senderName": "disgust_tf",
+        "senderAvatar": "f14e3b4947ec4704ece95a921e7e79a4",
+        "content": "slit",
+        "timestamp": "2026-04-03T10:23:02.315Z",
+        "filtered": false
+      },
+      {
+        "id": "6b2e6663-2a5b-405e-a6fa-984b7796b3de",
+        "senderId": "916248084697190440",
+        "senderName": "disgust_tf",
+        "senderAvatar": "f14e3b4947ec4704ece95a921e7e79a4",
+        "content": "hang",
+        "timestamp": "2026-04-03T10:23:04.089Z",
+        "filtered": false
+      },
+      {
+        "id": "e708a220-b8c3-47a0-9789-8da672953277",
+        "senderId": "916248084697190440",
+        "senderName": "disgust_tf",
+        "senderAvatar": "f14e3b4947ec4704ece95a921e7e79a4",
+        "content": "dyke",
+        "timestamp": "2026-04-03T10:23:05.384Z",
+        "filtered": false
+      },
+      {
+        "id": "14252258-7a51-4575-ad43-68737ebfcdbe",
+        "senderId": "916248084697190440",
+        "senderName": "disgust_tf",
+        "senderAvatar": "f14e3b4947ec4704ece95a921e7e79a4",
+        "content": "ponk",
+        "timestamp": "2026-04-03T10:23:07.199Z",
+        "filtered": false
+      }
+    ],
+    "createdAt": "2026-04-03T10:21:41.750Z",
+    "updatedAt": "2026-04-03T10:23:07.199Z",
+    "readBy": [
+      "916248084697190440"
+    ]
+  }
+]

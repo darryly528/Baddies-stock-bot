@@ -1,11 +1,14 @@
 import { useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useInfiniteCatalogItems, useCatalogCategories } from "@/hooks/use-catalog";
 import { ItemCard } from "@/components/item-card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { motion } from "framer-motion";
-import { Search, Loader2, MessageSquare, FilterX, Sparkles, Box } from "lucide-react";
+import { Search, Loader2, MessageSquare, FilterX, Sparkles, Box, RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils";
+
+const apiBase = import.meta.env.VITE_API_URL ?? "";
 
 const ITEM_TYPES = [
   { label: "All", value: "All", emoji: "✨" },
@@ -15,10 +18,28 @@ const ITEM_TYPES = [
 ];
 
 export default function Home() {
+  const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
   const [searchInput, setSearchInput] = useState(""); // Debounced visually
   const [itemType, setItemType] = useState("All");
   const [category, setCategory] = useState("All");
+  const [refreshing, setRefreshing] = useState(false);
+  const [lastRefreshAt, setLastRefreshAt] = useState<string | null>(null);
+
+  async function handleRefresh() {
+    if (refreshing) return;
+    setRefreshing(true);
+    try {
+      const res = await fetch(`${apiBase}/api/catalog/refresh`, { method: "POST" });
+      if (res.ok) {
+        const data = (await res.json()) as { count: number; updatedAt: string };
+        setLastRefreshAt(data.updatedAt);
+        await queryClient.invalidateQueries({ queryKey: ["catalog"] });
+      }
+    } finally {
+      setRefreshing(false);
+    }
+  }
 
   const { data: categoriesData } = useCatalogCategories();
   
@@ -159,9 +180,20 @@ export default function Home() {
               {category !== "All" && <span className="text-muted-foreground font-normal"> / {category}</span>}
               {search && <span className="text-primary font-normal"> "{search}"</span>}
             </h2>
-            <p className="text-muted-foreground text-sm font-medium">
-              Showing {items.length} of {totalItems} items
-            </p>
+            <div className="flex items-center gap-3">
+              <p className="text-muted-foreground text-sm font-medium">
+                Showing {items.length} of {totalItems} items
+              </p>
+              <button
+                onClick={handleRefresh}
+                disabled={refreshing}
+                title={lastRefreshAt ? `Last refreshed ${new Date(lastRefreshAt).toLocaleTimeString()}` : "Refresh values from bloxtsar.com"}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-medium text-muted-foreground hover:text-white disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+              >
+                <RefreshCw className={cn("w-3.5 h-3.5", refreshing && "animate-spin")} />
+                {refreshing ? "Refreshing…" : "Refresh values"}
+              </button>
+            </div>
           </div>
         )}
 

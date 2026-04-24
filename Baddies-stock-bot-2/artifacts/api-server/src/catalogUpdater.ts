@@ -2,7 +2,7 @@ import fs from "fs";
 import path from "path";
 
 const CATALOG_PATH = path.resolve(process.cwd(), "../../catalog.json");
-const UPDATE_INTERVAL_MS = 4 * 60 * 60 * 1000; // 4 hours
+const UPDATE_INTERVAL_MS = 15 * 60 * 1000; // 15 minutes
 const BLOXTSAR_BASE = "https://bloxtsar.com/api/baddies/catalog";
 const TOTAL_PAGES = 55;
 const PAGE_LIMIT = 40;
@@ -72,6 +72,11 @@ function deduplicateById(items: CatalogItem[]): CatalogItem[] {
     }
   }
   return Array.from(seen.values());
+}
+
+export async function runCatalogUpdateNow(): Promise<{ count: number; updatedAt: string }> {
+  await runUpdate();
+  return { count: catalog.length, updatedAt: new Date().toISOString() };
 }
 
 async function runUpdate(): Promise<void> {
