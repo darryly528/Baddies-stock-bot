@@ -4,6 +4,7 @@ import Home from "./pages/home";
 import ListPage from "./pages/list";
 import ListingsPage from "./pages/listings";
 import MessagesPage from "./pages/messages";
+import CheckoutSuccess from "./pages/checkout-success";
 import { PackagePlus, ShoppingBag, LogOut, LayoutList, Inbox } from "lucide-react";
 import { cn } from "./lib/utils";
 import { AuthProvider, useAuth } from "./contexts/auth-context";
@@ -210,6 +211,7 @@ function AppRouter() {
           <Route path="/listings" component={ListingsPage} />
           <Route path="/list" component={ListPage} />
           <Route path="/messages" component={MessagesPage} />
+          <Route path="/checkout/success" component={CheckoutSuccess} />
           <Route component={NotFound} />
         </Switch>
       </div>
