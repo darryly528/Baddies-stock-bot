@@ -22,6 +22,8 @@ import {
   Check,
   Trash2,
   Box,
+  CreditCard,
+  BadgeDollarSign,
 } from "lucide-react";
 import { cn, formatNumber } from "@/lib/utils";
 
@@ -52,13 +54,14 @@ interface ChatPanelProps {
   sellerName: string;
   sellerAvatar: string | null;
   myId: string;
+  prefill?: string;
   onClose: () => void;
 }
 
-function ChatPanel({ listingId, listingTitle, sellerId, sellerName, sellerAvatar, myId, onClose }: ChatPanelProps) {
+function ChatPanel({ listingId, listingTitle, sellerId, sellerName, sellerAvatar, myId, prefill, onClose }: ChatPanelProps) {
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [draft, setDraft] = useState("");
-  const [firstDraft, setFirstDraft] = useState("");
+  const [firstDraft, setFirstDraft] = useState(prefill ?? "");
   const [started, setStarted] = useState(false);
   const [startError, setStartError] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -344,6 +347,8 @@ function CartDrawer({
   onRemove,
   onClear,
   onMessage,
+  onBuyItem,
+  onCheckout,
   onClose,
   user,
   onLoginPrompt,
@@ -352,6 +357,8 @@ function CartDrawer({
   onRemove: (listingId: string, itemName: string) => void;
   onClear: () => void;
   onMessage: (entry: CartEntry) => void;
+  onBuyItem: (entry: CartEntry) => void;
+  onCheckout: () => void;
   onClose: () => void;
   user: { id: string } | null;
   onLoginPrompt: () => void;
@@ -361,6 +368,9 @@ function CartDrawer({
     acc[e.sellerId].push(e);
     return acc;
   }, {});
+
+  const totalPriced = cart.filter((e) => e.item.price).reduce((sum, e) => sum + parseFloat(e.item.price!), 0);
+  const hasAnyPrice = cart.some((e) => e.item.price);
 
   return (
     <motion.div
@@ -378,6 +388,7 @@ function CartDrawer({
         className="relative h-full w-full max-w-sm glass-panel border-l border-white/10 flex flex-col overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
+        {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-white/10 flex-shrink-0">
           <div className="flex items-center gap-2">
             <ShoppingCart className="w-5 h-5 text-primary" />
@@ -402,6 +413,7 @@ function CartDrawer({
           </div>
         </div>
 
+        {/* Items */}
         <div className="flex-1 overflow-y-auto p-4 space-y-5">
           {cart.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full text-center gap-3 py-16">
@@ -417,50 +429,66 @@ function CartDrawer({
                 : null;
 
               return (
-                <div key={sellerId} className="space-y-3">
-                  <div className="flex items-center justify-between">
+                <div key={sellerId} className="space-y-2">
+                  {/* Seller row */}
+                  <div className="flex items-center justify-between pb-1">
                     <div className="flex items-center gap-2">
                       {avatarUrl ? (
-                        <img src={avatarUrl} alt={first.sellerName} className="w-7 h-7 rounded-full ring-1 ring-white/20" />
+                        <img src={avatarUrl} alt={first.sellerName} className="w-6 h-6 rounded-full ring-1 ring-white/20" />
                       ) : (
-                        <div className="w-7 h-7 rounded-full bg-primary/20 flex items-center justify-center text-xs font-bold text-primary">
+                        <div className="w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center text-[10px] font-bold text-primary">
                           {first.sellerName[0]?.toUpperCase()}
                         </div>
                       )}
-                      <span className="text-sm font-semibold text-white">{first.sellerName}</span>
+                      <span className="text-xs font-semibold text-white/70">{first.sellerName}</span>
                     </div>
                     <button
                       onClick={() => {
                         if (!user) { onLoginPrompt(); return; }
                         onMessage(first);
                       }}
-                      className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg bg-primary/20 text-primary hover:bg-primary/30 border border-primary/30 transition-colors whitespace-nowrap"
+                      className="flex items-center gap-1 text-[11px] font-semibold px-2 py-1 rounded-lg bg-white/5 text-muted-foreground hover:bg-white/10 hover:text-white border border-white/10 transition-colors whitespace-nowrap"
                     >
-                      <MessageCircle className="w-3.5 h-3.5" />
-                      Message
+                      <MessageCircle className="w-3 h-3" />
+                      Message all
                     </button>
                   </div>
 
+                  {/* Item rows */}
                   {entries.map((e) => (
                     <div key={e.item.name} className="flex items-center gap-3 p-3 rounded-xl border border-white/10 bg-black/30">
                       {e.item.imageUrl ? (
-                        <img src={e.item.imageUrl} alt={e.item.name} className="w-10 h-10 object-contain flex-shrink-0" />
+                        <img src={e.item.imageUrl} alt={e.item.name} className="w-9 h-9 object-contain flex-shrink-0" />
                       ) : (
-                        <Box className="w-10 h-10 text-muted-foreground/30 flex-shrink-0" />
+                        <Box className="w-9 h-9 text-muted-foreground/30 flex-shrink-0" />
                       )}
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-semibold text-white truncate">{e.item.name}</p>
-                        <p className="text-xs text-muted-foreground">Qty: {e.item.quantity}</p>
-                        {e.item.price && (
-                          <p className="text-xs text-green-400 font-semibold">${e.item.price}</p>
-                        )}
+                        <div className="flex items-center gap-2 mt-0.5">
+                          <span className="text-[11px] text-muted-foreground">Qty: {e.item.quantity}</span>
+                          {e.item.price && (
+                            <span className="text-[11px] text-green-400 font-bold">${e.item.price}</span>
+                          )}
+                        </div>
                       </div>
-                      <button
-                        onClick={() => onRemove(e.listingId, e.item.name)}
-                        className="p-1.5 rounded-lg text-muted-foreground hover:text-red-400 hover:bg-red-500/10 transition-colors flex-shrink-0"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
+                      <div className="flex items-center gap-1.5 flex-shrink-0">
+                        <button
+                          onClick={() => {
+                            if (!user) { onLoginPrompt(); return; }
+                            onBuyItem(e);
+                          }}
+                          className="flex items-center gap-1 text-[11px] font-bold px-2.5 py-1.5 rounded-lg bg-gradient-to-r from-primary to-secondary text-white hover:opacity-90 transition-opacity whitespace-nowrap shadow-[0_0_10px_rgba(255,0,128,0.3)]"
+                        >
+                          <CreditCard className="w-3 h-3" />
+                          Buy
+                        </button>
+                        <button
+                          onClick={() => onRemove(e.listingId, e.item.name)}
+                          className="p-1.5 rounded-lg text-muted-foreground hover:text-red-400 hover:bg-red-500/10 transition-colors"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -468,6 +496,34 @@ function CartDrawer({
             })
           )}
         </div>
+
+        {/* Sticky checkout footer */}
+        {cart.length > 0 && (
+          <div className="flex-shrink-0 border-t border-white/10 p-4 space-y-3 bg-background/60 backdrop-blur-sm">
+            {hasAnyPrice && (
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-muted-foreground">
+                  {cart.length} item{cart.length !== 1 ? "s" : ""}
+                  {cart.some((e) => !e.item.price) && <span className="text-muted-foreground/60 ml-1">(some TBD)</span>}
+                </span>
+                <span className="font-bold text-green-400">
+                  ${totalPriced.toFixed(2)}
+                  {cart.some((e) => !e.item.price) && <span className="text-muted-foreground/60 text-xs">+</span>}
+                </span>
+              </div>
+            )}
+            <button
+              onClick={() => {
+                if (!user) { onLoginPrompt(); return; }
+                onCheckout();
+              }}
+              className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-gradient-to-r from-primary to-secondary text-white font-bold text-sm shadow-[0_0_20px_rgba(255,0,128,0.35)] hover:opacity-90 active:scale-[0.98] transition-all"
+            >
+              <BadgeDollarSign className="w-4 h-4" />
+              Buy All ({cart.length} item{cart.length !== 1 ? "s" : ""})
+            </button>
+          </div>
+        )}
       </motion.div>
     </motion.div>
   );
@@ -522,14 +578,48 @@ export default function ListingsPage() {
     if (!user) { setLoginPrompt(true); return; }
     const sellerItems = cart.filter((e) => e.sellerId === entry.sellerId);
     const itemList = sellerItems.map((e) => `• ${e.item.name}${e.item.price ? ` ($${e.item.price})` : ""}`).join("\n");
-    const title = `${entry.sellerName}'s Stock`;
     setChatTarget({
       listingId: entry.listingId,
-      listingTitle: title,
+      listingTitle: `${entry.sellerName}'s Stock`,
       sellerId: entry.sellerId,
       sellerName: entry.sellerName,
       sellerAvatar: entry.sellerAvatar,
       prefill: `Hi! I'm interested in buying:\n${itemList}`,
+    });
+    setCartOpen(false);
+  }
+
+  function buyItem(entry: CartEntry) {
+    if (!user) { setLoginPrompt(true); return; }
+    const priceStr = entry.item.price ? ` for $${entry.item.price}` : "";
+    setChatTarget({
+      listingId: entry.listingId,
+      listingTitle: `${entry.sellerName}'s Stock`,
+      sellerId: entry.sellerId,
+      sellerName: entry.sellerName,
+      sellerAvatar: entry.sellerAvatar,
+      prefill: `Hi! I'd like to buy ${entry.item.name}${priceStr}. Is it still available?`,
+    });
+    setCartOpen(false);
+  }
+
+  function checkout() {
+    if (!user) { setLoginPrompt(true); return; }
+    const sellerIds = [...new Set(cart.map((e) => e.sellerId))];
+    const firstSellerId = sellerIds[0];
+    const entries = cart.filter((e) => e.sellerId === firstSellerId);
+    const first = entries[0];
+    const itemList = cart.map((e) => `• ${e.item.name}${e.item.price ? ` ($${e.item.price})` : ""} — ${e.sellerName}`).join("\n");
+    const prefill = sellerIds.length === 1
+      ? `Hi! I'd like to buy all of these:\n${cart.map((e) => `• ${e.item.name}${e.item.price ? ` ($${e.item.price})` : ""}`).join("\n")}`
+      : `Hi! I want to buy:\n${itemList}\n\nAre any of these available?`;
+    setChatTarget({
+      listingId: first.listingId,
+      listingTitle: `${first.sellerName}'s Stock`,
+      sellerId: first.sellerId,
+      sellerName: first.sellerName,
+      sellerAvatar: first.sellerAvatar,
+      prefill,
     });
     setCartOpen(false);
   }
@@ -622,6 +712,8 @@ export default function ListingsPage() {
             onRemove={(lid, name) => setCart((p) => p.filter((e) => !(e.listingId === lid && e.item.name === name)))}
             onClear={() => setCart([])}
             onMessage={openChatFromCart}
+            onBuyItem={buyItem}
+            onCheckout={checkout}
             onClose={() => setCartOpen(false)}
             user={user}
             onLoginPrompt={() => { setCartOpen(false); setLoginPrompt(true); }}
@@ -667,13 +759,14 @@ export default function ListingsPage() {
       <AnimatePresence>
         {chatTarget && user && (
           <ChatPanel
-            key={chatTarget.listingId}
+            key={chatTarget.listingId + (chatTarget.prefill ?? "")}
             listingId={chatTarget.listingId}
             listingTitle={chatTarget.listingTitle}
             sellerId={chatTarget.sellerId}
             sellerName={chatTarget.sellerName}
             sellerAvatar={chatTarget.sellerAvatar}
             myId={user.id}
+            prefill={chatTarget.prefill}
             onClose={() => setChatTarget(null)}
           />
         )}
