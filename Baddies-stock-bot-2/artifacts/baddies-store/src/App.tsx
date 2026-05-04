@@ -30,8 +30,11 @@ function NavBar() {
 
   return (
     <header className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between gap-2 px-3 sm:px-6 py-3 border-b border-white/10 bg-background/80 backdrop-blur-md">
-      <Link href="/" className="font-display font-extrabold text-lg sm:text-xl text-transparent bg-clip-text bg-gradient-to-r from-primary to-secondary text-glow shrink-0">
-        Baddies Store
+      <Link href="/" className="flex items-center gap-2 shrink-0">
+        <img src="/logo.png" alt="Baddies Store" className="h-9 w-9 object-contain drop-shadow-[0_0_8px_rgba(255,0,128,0.6)]" />
+        <span className="font-display font-extrabold text-lg sm:text-xl text-transparent bg-clip-text bg-gradient-to-r from-primary to-secondary text-glow">
+          Baddies Store
+        </span>
       </Link>
 
       {/* Desktop nav: hidden on mobile */}

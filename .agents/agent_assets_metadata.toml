@@ -1,0 +1,8 @@
+uploads = []
+outputs = []
+
+[[generated]]
+id = "WN-_Ws9qdubWC4UUdTRwN"
+uri = "file://Baddies-stock-bot-2/artifacts/baddies-store/public/logo.png"
+type = "image"
+title = "baddies store logo"

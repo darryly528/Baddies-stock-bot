@@ -95,6 +95,12 @@ export default function Home() {
             <Sparkles className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
             <span className="text-[10px] sm:text-sm font-semibold tracking-wide uppercase">Official Stock Explorer</span>
           </div>
+
+          <img
+            src="/logo.png"
+            alt="Baddies Store"
+            className="w-24 h-24 sm:w-32 sm:h-32 object-contain mb-4 sm:mb-6 drop-shadow-[0_0_32px_rgba(255,0,128,0.7)]"
+          />
           
           <h1 className="text-4xl sm:text-5xl md:text-7xl font-display font-extrabold text-transparent bg-clip-text bg-gradient-to-br from-white via-white to-white/40 mb-4 sm:mb-6 drop-shadow-sm">
             Baddies <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-secondary text-glow">Store</span>
