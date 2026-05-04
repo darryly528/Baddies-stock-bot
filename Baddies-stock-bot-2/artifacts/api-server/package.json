@@ -8,11 +8,6 @@
     "build": "tsx ./build.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
-  "pnpm": {
-    "onlyBuiltDependencies": [
-      "esbuild"
-    ]
-  },
   "dependencies": {
     "@types/express-session": "^1.18.2",
     "cookie-parser": "^1.4.7",
