@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { useListings } from "@/hooks/use-listings";
+import { useListings, Listing, ListingItem } from "@/hooks/use-listings";
 import { useConfig } from "@/hooks/use-config";
 import { useAuth } from "@/contexts/auth-context";
 import {
@@ -17,8 +17,13 @@ import {
   X,
   AlertTriangle,
   LogIn,
+  ShoppingCart,
+  Plus,
+  Check,
+  Trash2,
+  Box,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, formatNumber } from "@/lib/utils";
 
 const PAYMENT_EMOJI: Record<string, string> = {
   "PayPal":    "https://cdn.discordapp.com/emojis/1481817468912799814.png",
@@ -26,6 +31,19 @@ const PAYMENT_EMOJI: Record<string, string> = {
   "Cash App":  "https://cdn.discordapp.com/emojis/1481817227975069718.png",
   "Venmo":     "https://cdn.discordapp.com/emojis/1481817470431006883.png",
 };
+
+interface CartEntry {
+  listingId: string;
+  sellerId: string;
+  sellerName: string;
+  sellerAvatar: string | null;
+  item: ListingItem;
+}
+
+interface FlatItem {
+  listing: Listing;
+  item: ListingItem;
+}
 
 interface ChatPanelProps {
   listingId: string;
@@ -217,38 +235,303 @@ function ChatPanel({ listingId, listingTitle, sellerId, sellerName, sellerAvatar
   );
 }
 
+function ListingItemCard({
+  flat,
+  inCart,
+  onToggle,
+  isOwn,
+}: {
+  flat: FlatItem;
+  inCart: boolean;
+  onToggle: () => void;
+  isOwn: boolean;
+}) {
+  const { listing, item } = flat;
+  const avatarUrl = listing.discordUserId && listing.discordAvatar
+    ? `https://cdn.discordapp.com/avatars/${listing.discordUserId}/${listing.discordAvatar}.png?size=64`
+    : null;
+
+  return (
+    <motion.div
+      variants={{
+        hidden: { opacity: 0, y: 20 },
+        show: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 300, damping: 24 } },
+      }}
+      whileHover={{ y: -3, transition: { type: "spring", stiffness: 400, damping: 25 } }}
+      className="group relative flex flex-col overflow-hidden rounded-2xl glass-panel border border-white/10 hover:border-primary/40 hover:shadow-[0_0_20px_rgba(255,0,128,0.15)] transition-all duration-200"
+    >
+      <div className="absolute inset-0 bg-gradient-to-t from-background via-background/20 to-transparent opacity-80 z-10 pointer-events-none" />
+
+      <div className="relative h-32 sm:h-44 w-full p-3 sm:p-5 flex items-center justify-center bg-black/40">
+        {item.imageUrl ? (
+          <img
+            src={item.imageUrl}
+            alt={item.name}
+            className="object-contain w-full h-full drop-shadow-2xl transform group-hover:scale-110 transition-transform duration-500 ease-out relative z-0"
+            loading="lazy"
+          />
+        ) : (
+          <Box className="w-12 h-12 text-muted-foreground/40 relative z-0" />
+        )}
+        <div className="absolute top-2 left-2 z-20">
+          <span className="px-1.5 sm:px-2 py-0.5 text-[9px] sm:text-[10px] font-bold rounded-md uppercase tracking-wider backdrop-blur-md bg-white/10 border border-white/20 text-white/80">
+            {item.itemType}
+          </span>
+        </div>
+        <div className="absolute top-2 right-2 z-20 flex items-center gap-1">
+          <span className="px-1.5 py-0.5 text-[9px] sm:text-[10px] font-semibold rounded-md bg-black/60 text-white/70 backdrop-blur-md border border-white/10">
+            Qty: {item.quantity}
+          </span>
+        </div>
+      </div>
+
+      <div className="relative z-20 p-3 sm:p-4 flex flex-col gap-2 flex-grow">
+        <h3 className="font-display font-bold text-sm sm:text-base text-white leading-tight line-clamp-2 group-hover:text-primary transition-colors">
+          {item.name}
+        </h3>
+
+        <div className="flex items-center gap-2 mt-auto">
+          {avatarUrl ? (
+            <img src={avatarUrl} alt={listing.seller} className="w-5 h-5 rounded-full ring-1 ring-white/20 flex-shrink-0" />
+          ) : (
+            <div className="w-5 h-5 rounded-full bg-primary/20 flex items-center justify-center text-[9px] font-bold text-primary flex-shrink-0">
+              {listing.seller[0]?.toUpperCase()}
+            </div>
+          )}
+          <span className="text-[11px] text-muted-foreground truncate">{listing.seller}</span>
+        </div>
+
+        <div className="flex items-center justify-between gap-2">
+          <div>
+            {item.price ? (
+              <p className="text-sm sm:text-base font-bold text-green-400">${item.price}</p>
+            ) : (
+              <p className="text-xs text-muted-foreground italic">Ask seller</p>
+            )}
+          </div>
+
+          {!isOwn && (
+            <button
+              onClick={onToggle}
+              className={cn(
+                "flex items-center gap-1 text-[11px] sm:text-xs font-semibold px-2.5 py-1.5 rounded-lg border transition-all duration-200 shrink-0",
+                inCart
+                  ? "bg-primary/20 text-primary border-primary/40 hover:bg-red-500/20 hover:text-red-400 hover:border-red-500/40"
+                  : "bg-white/5 text-white/70 border-white/15 hover:bg-primary/20 hover:text-primary hover:border-primary/40"
+              )}
+            >
+              {inCart ? (
+                <>
+                  <Check className="w-3 h-3" />
+                  <span className="hidden sm:inline">In Cart</span>
+                </>
+              ) : (
+                <>
+                  <Plus className="w-3 h-3" />
+                  <span className="hidden sm:inline">Add</span>
+                </>
+              )}
+            </button>
+          )}
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
+function CartDrawer({
+  cart,
+  onRemove,
+  onClear,
+  onMessage,
+  onClose,
+  user,
+  onLoginPrompt,
+}: {
+  cart: CartEntry[];
+  onRemove: (listingId: string, itemName: string) => void;
+  onClear: () => void;
+  onMessage: (entry: CartEntry) => void;
+  onClose: () => void;
+  user: { id: string } | null;
+  onLoginPrompt: () => void;
+}) {
+  const sellerGroups = cart.reduce<Record<string, CartEntry[]>>((acc, e) => {
+    acc[e.sellerId] = acc[e.sellerId] ?? [];
+    acc[e.sellerId].push(e);
+    return acc;
+  }, {});
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-50 flex justify-end bg-black/60 backdrop-blur-sm"
+      onClick={onClose}
+    >
+      <motion.div
+        initial={{ x: "100%" }}
+        animate={{ x: 0 }}
+        exit={{ x: "100%" }}
+        transition={{ type: "spring", stiffness: 320, damping: 32 }}
+        className="relative h-full w-full max-w-sm glass-panel border-l border-white/10 flex flex-col overflow-hidden"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between px-5 py-4 border-b border-white/10 flex-shrink-0">
+          <div className="flex items-center gap-2">
+            <ShoppingCart className="w-5 h-5 text-primary" />
+            <h2 className="font-display font-bold text-lg text-white">Cart</h2>
+            <span className="px-2 py-0.5 rounded-full bg-primary/20 text-primary text-xs font-bold">
+              {cart.length}
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            {cart.length > 0 && (
+              <button
+                onClick={onClear}
+                className="text-xs text-muted-foreground hover:text-red-400 transition-colors flex items-center gap-1"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                Clear
+              </button>
+            )}
+            <button onClick={onClose} className="text-muted-foreground hover:text-white transition-colors p-1">
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+        </div>
+
+        <div className="flex-1 overflow-y-auto p-4 space-y-5">
+          {cart.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-full text-center gap-3 py-16">
+              <ShoppingCart className="w-12 h-12 text-muted-foreground/30" />
+              <p className="text-muted-foreground text-sm">Your cart is empty.</p>
+              <p className="text-muted-foreground/60 text-xs">Click items on the listings page to add them.</p>
+            </div>
+          ) : (
+            Object.entries(sellerGroups).map(([sellerId, entries]) => {
+              const first = entries[0];
+              const avatarUrl = first.sellerAvatar
+                ? `https://cdn.discordapp.com/avatars/${sellerId}/${first.sellerAvatar}.png?size=64`
+                : null;
+
+              return (
+                <div key={sellerId} className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      {avatarUrl ? (
+                        <img src={avatarUrl} alt={first.sellerName} className="w-7 h-7 rounded-full ring-1 ring-white/20" />
+                      ) : (
+                        <div className="w-7 h-7 rounded-full bg-primary/20 flex items-center justify-center text-xs font-bold text-primary">
+                          {first.sellerName[0]?.toUpperCase()}
+                        </div>
+                      )}
+                      <span className="text-sm font-semibold text-white">{first.sellerName}</span>
+                    </div>
+                    <button
+                      onClick={() => {
+                        if (!user) { onLoginPrompt(); return; }
+                        onMessage(first);
+                      }}
+                      className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg bg-primary/20 text-primary hover:bg-primary/30 border border-primary/30 transition-colors whitespace-nowrap"
+                    >
+                      <MessageCircle className="w-3.5 h-3.5" />
+                      Message
+                    </button>
+                  </div>
+
+                  {entries.map((e) => (
+                    <div key={e.item.name} className="flex items-center gap-3 p-3 rounded-xl border border-white/10 bg-black/30">
+                      {e.item.imageUrl ? (
+                        <img src={e.item.imageUrl} alt={e.item.name} className="w-10 h-10 object-contain flex-shrink-0" />
+                      ) : (
+                        <Box className="w-10 h-10 text-muted-foreground/30 flex-shrink-0" />
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-white truncate">{e.item.name}</p>
+                        <p className="text-xs text-muted-foreground">Qty: {e.item.quantity}</p>
+                        {e.item.price && (
+                          <p className="text-xs text-green-400 font-semibold">${e.item.price}</p>
+                        )}
+                      </div>
+                      <button
+                        onClick={() => onRemove(e.listingId, e.item.name)}
+                        className="p-1.5 rounded-lg text-muted-foreground hover:text-red-400 hover:bg-red-500/10 transition-colors flex-shrink-0"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              );
+            })
+          )}
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+}
+
 export default function ListingsPage() {
   const { data: listings = [], isLoading } = useListings();
+  const { data: config } = useConfig();
   const { user } = useAuth();
 
+  const [cart, setCart] = useState<CartEntry[]>([]);
+  const [cartOpen, setCartOpen] = useState(false);
   const [chatTarget, setChatTarget] = useState<{
     listingId: string;
     listingTitle: string;
     sellerId: string;
     sellerName: string;
     sellerAvatar: string | null;
+    prefill?: string;
   } | null>(null);
   const [loginPrompt, setLoginPrompt] = useState(false);
 
-  const activeListings = [...listings]
-    .reverse()
-    .filter((l) => l.items.some((i) => !i.soldOut));
+  const activeListings = [...listings].reverse().filter((l) => l.items.some((i) => !i.soldOut));
 
-  function openChat(listing: typeof activeListings[0]) {
-    if (!user) {
-      setLoginPrompt(true);
-      return;
+  const flatItems: FlatItem[] = activeListings.flatMap((listing) =>
+    listing.items.filter((i) => !i.soldOut).map((item) => ({ listing, item }))
+  );
+
+  function isInCart(listingId: string, itemName: string) {
+    return cart.some((e) => e.listingId === listingId && e.item.name === itemName);
+  }
+
+  function toggleCart(flat: FlatItem) {
+    const { listing, item } = flat;
+    if (isInCart(listing.id, item.name)) {
+      setCart((prev) => prev.filter((e) => !(e.listingId === listing.id && e.item.name === item.name)));
+    } else {
+      setCart((prev) => [
+        ...prev,
+        {
+          listingId: listing.id,
+          sellerId: listing.discordUserId ?? listing.seller,
+          sellerName: listing.seller,
+          sellerAvatar: listing.discordAvatar,
+          item,
+        },
+      ]);
     }
-    if (!listing.discordUserId) return;
-    if (listing.discordUserId === user.id) return;
-    const title = listing.items.filter((i) => !i.soldOut).map((i) => i.name).slice(0, 2).join(", ");
+  }
+
+  function openChatFromCart(entry: CartEntry) {
+    if (!user) { setLoginPrompt(true); return; }
+    const sellerItems = cart.filter((e) => e.sellerId === entry.sellerId);
+    const itemList = sellerItems.map((e) => `• ${e.item.name}${e.item.price ? ` ($${e.item.price})` : ""}`).join("\n");
+    const title = `${entry.sellerName}'s Stock`;
     setChatTarget({
-      listingId: listing.id,
-      listingTitle: `${listing.seller}'s Stock (${title})`,
-      sellerId: listing.discordUserId,
-      sellerName: listing.seller,
-      sellerAvatar: listing.discordAvatar,
+      listingId: entry.listingId,
+      listingTitle: title,
+      sellerId: entry.sellerId,
+      sellerName: entry.sellerName,
+      sellerAvatar: entry.sellerAvatar,
+      prefill: `Hi! I'm interested in buying:\n${itemList}`,
     });
+    setCartOpen(false);
   }
 
   return (
@@ -268,7 +551,7 @@ export default function ListingsPage() {
             Browse <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-secondary text-glow">Listings</span>
           </h1>
           <p className="text-muted-foreground text-sm sm:text-lg max-w-xl mx-auto px-2">
-            Active stock listings from all sellers. Tap "Message Seller" to start a trade.
+            Add items to your cart, then message the seller to start a trade.
           </p>
         </motion.div>
 
@@ -276,104 +559,75 @@ export default function ListingsPage() {
           <div className="flex items-center justify-center py-24">
             <Loader2 className="w-10 h-10 animate-spin text-primary" />
           </div>
-        ) : activeListings.length === 0 ? (
+        ) : flatItems.length === 0 ? (
           <div className="text-center py-24 glass-panel rounded-3xl">
             <LayoutList className="w-12 h-12 text-muted-foreground/30 mx-auto mb-4" />
             <h3 className="text-xl font-bold mb-2">No active listings</h3>
             <p className="text-muted-foreground">Check back soon — sellers will post stock here.</p>
           </div>
         ) : (
-          <div className="space-y-4">
-            {activeListings.map((listing) => {
-              const listingAvatar = listing.discordUserId && listing.discordAvatar
-                ? `https://cdn.discordapp.com/avatars/${listing.discordUserId}/${listing.discordAvatar}.png?size=64`
-                : null;
-              const availableItems = listing.items.filter((i) => !i.soldOut);
-              const isOwnListing = !!user && user.id === listing.discordUserId;
-
+          <motion.div
+            variants={{ hidden: {}, show: { transition: { staggerChildren: 0.04 } } }}
+            initial="hidden"
+            animate="show"
+            className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-5"
+          >
+            {flatItems.map((flat) => {
+              const isOwn = !!user && user.id === flat.listing.discordUserId;
               return (
-                <motion.div
-                  key={listing.id}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="glass-panel rounded-2xl p-4 sm:p-6 border border-white/10"
-                >
-                  <div className="flex items-start justify-between mb-4 flex-wrap gap-3">
-                    <div className="flex items-center gap-3 min-w-0 flex-1">
-                      {listingAvatar ? (
-                        <img src={listingAvatar} alt={listing.seller} className="w-9 h-9 rounded-full ring-2 ring-white/10 flex-shrink-0" />
-                      ) : (
-                        <div className="w-9 h-9 rounded-full bg-primary/20 flex items-center justify-center text-sm font-bold text-primary flex-shrink-0">
-                          {listing.seller[0]?.toUpperCase()}
-                        </div>
-                      )}
-                      <div className="min-w-0">
-                        <h3 className="font-display font-bold text-base sm:text-lg text-white truncate">{listing.seller}</h3>
-                        <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                          <p className="text-muted-foreground text-[11px] sm:text-xs">
-                            {new Date(listing.createdAt).toLocaleDateString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
-                          </p>
-                          {listing.paymentMethods?.length > 0 && (
-                            <div className="flex gap-1 flex-wrap">
-                              {listing.paymentMethods.map((m) => (
-                                <span key={m} className="text-[10px] px-1.5 py-0.5 rounded bg-primary/15 text-primary border border-primary/20 font-medium flex items-center gap-0.5">
-                                  {PAYMENT_EMOJI[m] && (
-                                    <img src={PAYMENT_EMOJI[m]} alt={m} className="w-3 h-3 object-contain" />
-                                  )}
-                                  {m}
-                                </span>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-
-                    {!isOwnListing && (
-                      <button
-                        onClick={() => openChat(listing)}
-                        className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg bg-primary/20 text-primary hover:bg-primary/30 border border-primary/30 transition-colors whitespace-nowrap shrink-0"
-                      >
-                        <MessageCircle className="w-3.5 h-3.5" />
-                        <span className="hidden xs:inline">Message Seller</span>
-                        <span className="xs:hidden">Message</span>
-                      </button>
-                    )}
-                  </div>
-
-                  {listing.customMessage && (
-                    <div className="mb-3 px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-sm text-white/80 italic">
-                      "{listing.customMessage}"
-                    </div>
-                  )}
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                    {availableItems.map((item) => (
-                      <div
-                        key={item.name}
-                        className="flex items-center gap-3 p-3 rounded-xl border border-white/10 bg-black/30"
-                      >
-                        {item.imageUrl ? (
-                          <img src={item.imageUrl} alt={item.name} className="w-10 h-10 object-contain flex-shrink-0" />
-                        ) : (
-                          <ShoppingBag className="w-10 h-10 text-muted-foreground/30 flex-shrink-0" />
-                        )}
-                        <div className="flex-grow min-w-0">
-                          <p className="text-sm font-semibold leading-tight text-white">{item.name}</p>
-                          <p className="text-xs text-muted-foreground mt-0.5">Qty: {item.quantity}</p>
-                          {item.price && (
-                            <p className="text-xs text-green-400 font-semibold mt-0.5">${item.price}</p>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </motion.div>
+                <ListingItemCard
+                  key={`${flat.listing.id}-${flat.item.name}`}
+                  flat={flat}
+                  inCart={isInCart(flat.listing.id, flat.item.name)}
+                  onToggle={() => toggleCart(flat)}
+                  isOwn={isOwn}
+                />
               );
             })}
-          </div>
+          </motion.div>
         )}
       </div>
+
+      {/* Floating cart button */}
+      <AnimatePresence>
+        {flatItems.length > 0 && (
+          <motion.button
+            initial={{ scale: 0, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0, opacity: 0 }}
+            onClick={() => setCartOpen(true)}
+            className="fixed bottom-24 sm:bottom-8 right-4 sm:right-6 z-40 w-14 h-14 rounded-full bg-gradient-to-br from-primary to-secondary text-white shadow-[0_0_24px_rgba(255,0,128,0.4)] flex items-center justify-center"
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.95 }}
+          >
+            <ShoppingCart className="w-6 h-6" />
+            {cart.length > 0 && (
+              <motion.span
+                key={cart.length}
+                initial={{ scale: 1.4 }}
+                animate={{ scale: 1 }}
+                className="absolute -top-1.5 -right-1.5 min-w-[22px] h-[22px] px-1 rounded-full bg-white text-primary text-[11px] font-extrabold flex items-center justify-center shadow"
+              >
+                {cart.length}
+              </motion.span>
+            )}
+          </motion.button>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {cartOpen && (
+          <CartDrawer
+            cart={cart}
+            onRemove={(lid, name) => setCart((p) => p.filter((e) => !(e.listingId === lid && e.item.name === name)))}
+            onClear={() => setCart([])}
+            onMessage={openChatFromCart}
+            onClose={() => setCartOpen(false)}
+            user={user}
+            onLoginPrompt={() => { setCartOpen(false); setLoginPrompt(true); }}
+          />
+        )}
+      </AnimatePresence>
 
       <AnimatePresence>
         {loginPrompt && (
