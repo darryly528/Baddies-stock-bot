@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { motion } from "framer-motion";
 import { Search, Loader2, MessageSquare, FilterX, Sparkles, Box, RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useConfig } from "@/hooks/use-config";
 
 const apiBase = import.meta.env.VITE_API_URL ?? "";
 
@@ -21,6 +22,7 @@ const ITEM_TYPES = [
 
 export default function Home() {
   const queryClient = useQueryClient();
+  const { data: config } = useConfig();
   const [search, setSearch] = useState("");
   const [searchInput, setSearchInput] = useState(""); // Debounced visually
   const [itemType, setItemType] = useState("All");
@@ -110,7 +112,7 @@ export default function Home() {
             Browse our complete catalog of Weapons, Fighting Styles, and exclusive Skins. Find exactly what you need to dominate.
           </p>
 
-          <a href="https://discord.gg/gSBxZ75c2x" target="_blank" rel="noopener noreferrer" className="w-full sm:w-auto">
+          <a href={config?.discordInviteUrl ?? "https://discord.gg/eB6ksCQPWP"} target="_blank" rel="noopener noreferrer" className="w-full sm:w-auto">
             <Button variant="discord" size="lg" className="group w-full sm:w-auto">
               <MessageSquare className="w-5 h-5 mr-2 group-hover:animate-bounce" />
               <span className="text-sm sm:text-base">Join Discord for Middle Man service</span>
