@@ -6,6 +6,7 @@ import authRouter from "./auth";
 import controlRouter from "./control";
 import messagesRouter from "./messages";
 import adminRouter from "./admin";
+import ticketsRouter from "./tickets";
 
 const router: IRouter = Router();
 
@@ -16,5 +17,6 @@ router.use(listingsRouter);
 router.use(controlRouter);
 router.use(messagesRouter);
 router.use(adminRouter);
+router.use(ticketsRouter);
 
 export default router;

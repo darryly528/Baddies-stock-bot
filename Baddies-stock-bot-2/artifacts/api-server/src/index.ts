@@ -12,7 +12,7 @@ if (Number.isNaN(port) || port <= 0) {
 
 startCatalogUpdater();
 
-app.listen(port, () => {
+app.listen(port, "0.0.0.0", () => {
   console.log(`Server listening on port ${port}`);
 });
 

@@ -24,6 +24,8 @@ import {
   Box,
   CreditCard,
   BadgeDollarSign,
+  ExternalLink,
+  CheckCircle2,
 } from "lucide-react";
 import { cn, formatNumber } from "@/lib/utils";
 
@@ -544,6 +546,8 @@ export default function ListingsPage() {
     sellerAvatar: string | null;
     prefill?: string;
   } | null>(null);
+  const [ticketSuccess, setTicketSuccess] = useState<{ inviteUrl: string } | null>(null);
+  const [ticketPending, setTicketPending] = useState(false);
   const [loginPrompt, setLoginPrompt] = useState(false);
 
   const activeListings = [...listings].reverse().filter((l) => l.items.some((i) => !i.soldOut));
@@ -589,37 +593,40 @@ export default function ListingsPage() {
     setCartOpen(false);
   }
 
-  function buyItem(entry: CartEntry) {
+  async function openTicket(entries: CartEntry[]) {
     if (!user) { setLoginPrompt(true); return; }
-    const priceStr = entry.item.price ? ` for $${entry.item.price}` : "";
-    setChatTarget({
-      listingId: entry.listingId,
-      listingTitle: `${entry.sellerName}'s Stock`,
-      sellerId: entry.sellerId,
-      sellerName: entry.sellerName,
-      sellerAvatar: entry.sellerAvatar,
-      prefill: `Hi! I'd like to buy ${entry.item.name}${priceStr}. Is it still available?`,
-    });
     setCartOpen(false);
+    setTicketPending(true);
+    try {
+      const res = await fetch("/api/tickets", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          items: entries.map((e) => ({
+            name: e.item.name,
+            price: e.item.price,
+            quantity: typeof e.item.quantity === "number" ? e.item.quantity : 1,
+            sellerName: e.sellerName,
+            sellerId: e.sellerId,
+          })),
+        }),
+      });
+      const data = await res.json();
+      setTicketSuccess({ inviteUrl: data.inviteUrl ?? "https://discord.gg/eB6ksCQPWP" });
+      window.open(data.inviteUrl ?? "https://discord.gg/eB6ksCQPWP", "_blank");
+    } catch {
+      window.open("https://discord.gg/eB6ksCQPWP", "_blank");
+    } finally {
+      setTicketPending(false);
+    }
+  }
+
+  function buyItem(entry: CartEntry) {
+    openTicket([entry]);
   }
 
   function checkout() {
-    if (!user) { setLoginPrompt(true); return; }
-    const sellerIds = [...new Set(cart.map((e) => e.sellerId))];
-    const first = cart.find((e) => e.sellerId === sellerIds[0])!;
-    const itemList = cart.map((e) => `• ${e.item.name}${e.item.price ? ` ($${e.item.price})` : ""} — ${e.sellerName}`).join("\n");
-    const prefill = sellerIds.length === 1
-      ? `Hi! I'd like to buy all of these:\n${cart.map((e) => `• ${e.item.name}${e.item.price ? ` ($${e.item.price})` : ""}`).join("\n")}`
-      : `Hi! I want to buy:\n${itemList}\n\nAre any of these available?`;
-    setChatTarget({
-      listingId: first.listingId,
-      listingTitle: `${first.sellerName}'s Stock`,
-      sellerId: first.sellerId,
-      sellerName: first.sellerName,
-      sellerAvatar: first.sellerAvatar,
-      prefill,
-    });
-    setCartOpen(false);
+    openTicket(cart);
   }
 
   return (
@@ -639,7 +646,7 @@ export default function ListingsPage() {
             Browse <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-secondary text-glow">Listings</span>
           </h1>
           <p className="text-muted-foreground text-sm sm:text-lg max-w-xl mx-auto px-2">
-            Add items to your cart, then message the seller to start a trade.
+            Add items to your cart and hit Buy — a Discord ticket will be opened for your trade.
           </p>
         </motion.div>
 
@@ -767,6 +774,77 @@ export default function ListingsPage() {
             prefill={chatTarget.prefill}
             onClose={() => setChatTarget(null)}
           />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {ticketPending && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm"
+          >
+            <div className="flex flex-col items-center gap-4">
+              <Loader2 className="w-10 h-10 text-primary animate-spin" />
+              <p className="text-white font-semibold">Opening your ticket…</p>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {ticketSuccess && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm"
+            onClick={() => setTicketSuccess(null)}
+          >
+            <motion.div
+              initial={{ scale: 0.92, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.92, opacity: 0 }}
+              className="glass-panel rounded-2xl p-8 max-w-sm w-full text-center border border-white/15 shadow-2xl space-y-5"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <motion.div
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                transition={{ type: "spring", stiffness: 300, damping: 18, delay: 0.1 }}
+                className="w-16 h-16 rounded-full bg-green-500/20 border border-green-500/40 flex items-center justify-center mx-auto shadow-[0_0_24px_rgba(34,197,94,0.25)]"
+              >
+                <CheckCircle2 className="w-8 h-8 text-green-400" />
+              </motion.div>
+              <div className="space-y-2">
+                <h3 className="font-display font-bold text-xl text-white">Ticket Created!</h3>
+                <p className="text-muted-foreground text-sm leading-relaxed">
+                  Your purchase ticket has been opened in our Discord. Join the server to complete your trade with the seller.
+                </p>
+              </div>
+              <div className="flex flex-col gap-2">
+                <a
+                  href={ticketSuccess.inviteUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-[#5865F2] hover:bg-[#4752C4] text-white font-bold text-sm transition-colors"
+                >
+                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057c.002.022.015.042.031.054a19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994a.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03z"/>
+                  </svg>
+                  Open Discord Server
+                  <ExternalLink className="w-3.5 h-3.5" />
+                </a>
+                <button
+                  onClick={() => setTicketSuccess(null)}
+                  className="py-2.5 px-4 rounded-xl border border-white/10 text-muted-foreground hover:text-white hover:bg-white/5 text-sm font-semibold transition-colors"
+                >
+                  Close
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
         )}
       </AnimatePresence>
     </div>
