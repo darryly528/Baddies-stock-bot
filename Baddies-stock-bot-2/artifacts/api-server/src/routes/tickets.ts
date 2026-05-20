@@ -1,5 +1,12 @@
 import { Router } from "express";
-import { ChannelType, EmbedBuilder, PermissionFlagsBits, ButtonBuilder, ButtonStyle, ActionRowBuilder } from "discord.js";
+import {
+  ChannelType,
+  EmbedBuilder,
+  PermissionFlagsBits,
+  ButtonBuilder,
+  ButtonStyle,
+  ActionRowBuilder,
+} from "discord.js";
 import { getBotClient } from "../bot";
 
 const router = Router();
@@ -15,29 +22,54 @@ type TicketItem = {
   sellerId?: string;
 };
 
-router.post("/tickets", async (req, res) => {
-  const { items } = req.body as { items: TicketItem[] };
+router.get("/guild/member-check", async (req, res) => {
+  const sessionUser = req.session?.discordUser ?? null;
+  if (!sessionUser) {
+    res.json({ inGuild: false, inviteUrl: DISCORD_INVITE_URL });
+    return;
+  }
+  const bot = getBotClient();
+  const guild = bot?.guilds.cache.first() ?? null;
+  if (!guild) {
+    res.json({ inGuild: false, inviteUrl: DISCORD_INVITE_URL });
+    return;
+  }
+  const member = await guild.members.fetch({ user: sessionUser.id, force: true }).catch(() => null);
+  res.json({ inGuild: !!member, inviteUrl: DISCORD_INVITE_URL });
+});
 
+router.post("/tickets", async (req, res) => {
+  const sessionUser = req.session?.discordUser ?? null;
+  if (!sessionUser) {
+    res.status(401).json({ error: "Not logged in" });
+    return;
+  }
+
+  const { items } = req.body as { items: TicketItem[] };
   if (!Array.isArray(items) || items.length === 0) {
     res.status(400).json({ error: "No items provided" });
     return;
   }
 
-  const buyer = req.session?.discordUser ?? null;
   const bot = getBotClient();
-
   if (!bot) {
-    res.json({ ok: false, inviteUrl: DISCORD_INVITE_URL, reason: "Bot offline — join Discord and open a ticket manually." });
+    res.status(503).json({ ok: false, inviteUrl: DISCORD_INVITE_URL, reason: "Bot offline." });
     return;
   }
 
   const guild = bot.guilds.cache.first();
   if (!guild) {
-    res.json({ ok: false, inviteUrl: DISCORD_INVITE_URL, reason: "Bot not in any guild." });
+    res.status(503).json({ ok: false, inviteUrl: DISCORD_INVITE_URL, reason: "Bot not in any guild." });
     return;
   }
 
-  const buyerTag = buyer ? `${buyer.username}` : "Guest";
+  const buyer = await guild.members.fetch({ user: sessionUser.id, force: true }).catch(() => null);
+  if (!buyer) {
+    res.status(403).json({ error: "notInGuild", inviteUrl: DISCORD_INVITE_URL });
+    return;
+  }
+
+  const buyerTag = sessionUser.username;
   const channelName = `ticket-${buyerTag.toLowerCase().replace(/[^a-z0-9]/g, "")}-${Date.now().toString(36)}`;
 
   const sellerName = items[0].sellerName;
@@ -50,30 +82,20 @@ router.post("/tickets", async (req, res) => {
   try {
     const permissionOverwrites: any[] = [
       { id: guild.roles.everyone.id, deny: [PermissionFlagsBits.ViewChannel] },
+      {
+        id: sessionUser.id,
+        allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory],
+      },
     ];
 
-    if (buyer) {
-      try {
-        const member = await guild.members.fetch(buyer.id).catch(() => null);
-        if (member) {
-          permissionOverwrites.push({
-            id: buyer.id,
-            allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory],
-          });
-        }
-      } catch {}
-    }
-
     if (sellerId) {
-      try {
-        const sellerMember = await guild.members.fetch(sellerId).catch(() => null);
-        if (sellerMember) {
-          permissionOverwrites.push({
-            id: sellerId,
-            allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory],
-          });
-        }
-      } catch {}
+      const sellerMember = await guild.members.fetch(sellerId).catch(() => null);
+      if (sellerMember) {
+        permissionOverwrites.push({
+          id: sellerId,
+          allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory],
+        });
+      }
     }
 
     const ticketChannel = await guild.channels.create({
@@ -84,11 +106,11 @@ router.post("/tickets", async (req, res) => {
       reason: `Web buy — ${buyerTag}`,
     });
 
-    const buyerMention = buyer ? `<@${buyer.id}>` : `**${buyerTag}**`;
+    const buyerMention = `<@${sessionUser.id}>`;
     const sellerMention = sellerId ? `<@${sellerId}>` : `**${sellerName}**`;
 
     const cancelBtn = new ButtonBuilder()
-      .setCustomId(`tc_cancel:${sellerId ?? "0"}:${buyer?.id ?? "0"}`)
+      .setCustomId(`tc_cancel:${sellerId ?? "0"}:${sessionUser.id}`)
       .setLabel("❌ Cancel")
       .setStyle(ButtonStyle.Danger);
 
@@ -108,7 +130,7 @@ router.post("/tickets", async (req, res) => {
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     console.error("[tickets] Failed to create ticket channel:", msg);
-    res.json({ ok: false, inviteUrl: DISCORD_INVITE_URL, reason: msg });
+    res.status(500).json({ ok: false, inviteUrl: DISCORD_INVITE_URL, reason: msg });
   }
 });
 

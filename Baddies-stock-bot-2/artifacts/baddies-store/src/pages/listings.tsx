@@ -548,6 +548,9 @@ export default function ListingsPage() {
   } | null>(null);
   const [ticketSuccess, setTicketSuccess] = useState<{ inviteUrl: string } | null>(null);
   const [ticketPending, setTicketPending] = useState(false);
+  const [joinGuildModal, setJoinGuildModal] = useState<{ inviteUrl: string; pendingEntries: CartEntry[] } | null>(null);
+  const [joinCheckPending, setJoinCheckPending] = useState(false);
+  const [joinCheckFailed, setJoinCheckFailed] = useState(false);
   const [loginPrompt, setLoginPrompt] = useState(false);
 
   const activeListings = [...listings].reverse().filter((l) => l.items.some((i) => !i.soldOut));
@@ -593,9 +596,7 @@ export default function ListingsPage() {
     setCartOpen(false);
   }
 
-  async function openTicket(entries: CartEntry[]) {
-    if (!user) { setLoginPrompt(true); return; }
-    setCartOpen(false);
+  async function createTicket(entries: CartEntry[]) {
     setTicketPending(true);
     try {
       const res = await fetch("/api/tickets", {
@@ -612,12 +613,54 @@ export default function ListingsPage() {
         }),
       });
       const data = await res.json();
+      if (data.error === "notInGuild") {
+        setJoinGuildModal({ inviteUrl: data.inviteUrl, pendingEntries: entries });
+        return;
+      }
       setTicketSuccess({ inviteUrl: data.inviteUrl ?? "https://discord.gg/eB6ksCQPWP" });
-      window.open(data.inviteUrl ?? "https://discord.gg/eB6ksCQPWP", "_blank");
     } catch {
-      window.open("https://discord.gg/eB6ksCQPWP", "_blank");
+      setTicketSuccess({ inviteUrl: config?.discordInviteUrl ?? "https://discord.gg/eB6ksCQPWP" });
     } finally {
       setTicketPending(false);
+    }
+  }
+
+  async function openTicket(entries: CartEntry[]) {
+    if (!user) { setLoginPrompt(true); return; }
+    setCartOpen(false);
+    setTicketPending(true);
+    try {
+      const check = await fetch("/api/guild/member-check").then((r) => r.json()) as { inGuild: boolean; inviteUrl: string };
+      if (!check.inGuild) {
+        setJoinGuildModal({ inviteUrl: check.inviteUrl, pendingEntries: entries });
+        setTicketPending(false);
+        return;
+      }
+    } catch {
+      setTicketPending(false);
+      return;
+    }
+    setTicketPending(false);
+    await createTicket(entries);
+  }
+
+  async function handleIveJoined() {
+    if (!joinGuildModal) return;
+    setJoinCheckPending(true);
+    setJoinCheckFailed(false);
+    try {
+      const check = await fetch("/api/guild/member-check").then((r) => r.json()) as { inGuild: boolean; inviteUrl: string };
+      if (check.inGuild) {
+        const entries = joinGuildModal.pendingEntries;
+        setJoinGuildModal(null);
+        await createTicket(entries);
+      } else {
+        setJoinCheckFailed(true);
+      }
+    } catch {
+      setJoinCheckFailed(true);
+    } finally {
+      setJoinCheckPending(false);
     }
   }
 
@@ -778,7 +821,7 @@ export default function ListingsPage() {
       </AnimatePresence>
 
       <AnimatePresence>
-        {ticketPending && (
+        {(ticketPending) && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -787,8 +830,84 @@ export default function ListingsPage() {
           >
             <div className="flex flex-col items-center gap-4">
               <Loader2 className="w-10 h-10 text-primary animate-spin" />
-              <p className="text-white font-semibold">Opening your ticket…</p>
+              <p className="text-white font-semibold">
+                {joinCheckPending ? "Verifying membership…" : "Checking server…"}
+              </p>
             </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {joinGuildModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm"
+          >
+            <motion.div
+              initial={{ scale: 0.92, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.92, opacity: 0 }}
+              className="glass-panel rounded-2xl p-8 max-w-sm w-full text-center border border-white/15 shadow-2xl space-y-5"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="w-16 h-16 rounded-2xl bg-[#5865F2]/20 border border-[#5865F2]/40 flex items-center justify-center mx-auto shadow-[0_0_24px_rgba(88,101,242,0.3)]">
+                <svg className="w-8 h-8 text-[#5865F2]" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057c.002.022.015.042.031.054a19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994a.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03z"/>
+                </svg>
+              </div>
+
+              <div className="space-y-2">
+                <h3 className="font-display font-bold text-xl text-white">Join the Server First</h3>
+                <p className="text-muted-foreground text-sm leading-relaxed">
+                  You need to be a member of our Discord server to open a trade ticket. Join below, then come back and confirm.
+                </p>
+              </div>
+
+              {joinCheckFailed && (
+                <motion.p
+                  initial={{ opacity: 0, y: -6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="text-xs text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2"
+                >
+                  You don't appear to be in the server yet. Make sure you joined with the same Discord account you're logged in with, then try again.
+                </motion.p>
+              )}
+
+              <div className="flex flex-col gap-2">
+                <a
+                  href={joinGuildModal.inviteUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-[#5865F2] hover:bg-[#4752C4] text-white font-bold text-sm transition-colors"
+                >
+                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057c.002.022.015.042.031.054a19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994a.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03z"/>
+                  </svg>
+                  Join Discord Server
+                  <ExternalLink className="w-3.5 h-3.5" />
+                </a>
+                <button
+                  onClick={handleIveJoined}
+                  disabled={joinCheckPending}
+                  className="flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-primary/10 hover:bg-primary/20 border border-primary/30 text-primary font-bold text-sm transition-colors disabled:opacity-60"
+                >
+                  {joinCheckPending ? (
+                    <><Loader2 className="w-4 h-4 animate-spin" /> Verifying…</>
+                  ) : (
+                    <><Check className="w-4 h-4" /> I've Joined — Continue</>
+                  )}
+                </button>
+                <button
+                  onClick={() => { setJoinGuildModal(null); setJoinCheckFailed(false); }}
+                  className="py-2 px-4 rounded-xl border border-white/10 text-muted-foreground hover:text-white hover:bg-white/5 text-sm font-semibold transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
+            </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
