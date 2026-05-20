@@ -124,5 +124,51 @@
     "readBy": [
       "916248084697190440"
     ]
+  },
+  {
+    "id": "77f759d6-7b12-49d1-b380-0dc26b26a8b0",
+    "listingId": "841c2167-e685-4cb2-94b8-0d120960ff7d",
+    "listingTitle": "disgust_tf's Stock",
+    "buyerId": "901325654543462400",
+    "buyerName": "resdfvsf4357",
+    "buyerAvatar": null,
+    "sellerId": "916248084697190440",
+    "sellerName": "disgust_tf",
+    "sellerAvatar": "f14e3b4947ec4704ece95a921e7e79a4",
+    "messages": [
+      {
+        "id": "c6558319-7be5-48c4-bb72-29771a25b550",
+        "senderId": "901325654543462400",
+        "senderName": "resdfvsf4357",
+        "senderAvatar": null,
+        "content": "Hi! I'm interested in buying:\n• Sakura Blade ($18)",
+        "timestamp": "2026-05-04T16:18:45.592Z",
+        "filtered": false
+      },
+      {
+        "id": "9345d964-ac3f-4b5d-b2b2-c57f31355378",
+        "senderId": "916248084697190440",
+        "senderName": "disgust_tf",
+        "senderAvatar": "f14e3b4947ec4704ece95a921e7e79a4",
+        "content": "hi",
+        "timestamp": "2026-05-04T16:22:47.286Z",
+        "filtered": false
+      },
+      {
+        "id": "a0bc0553-8a51-4bf3-aea5-5c84bc95d92f",
+        "senderId": "901325654543462400",
+        "senderName": "resdfvsf4357",
+        "senderAvatar": null,
+        "content": "###",
+        "timestamp": "2026-05-04T16:22:58.988Z",
+        "filtered": true
+      }
+    ],
+    "createdAt": "2026-05-04T16:18:45.592Z",
+    "updatedAt": "2026-05-04T16:22:58.988Z",
+    "readBy": [
+      "901325654543462400",
+      "916248084697190440"
+    ]
   }
 ]

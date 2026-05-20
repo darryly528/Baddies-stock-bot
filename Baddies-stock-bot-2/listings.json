@@ -21,7 +21,7 @@
     "createdAt": "2026-04-02T10:09:32.642Z"
   },
   {
-    "id": "841c2167-e685-4cb2-94b8-0d120960ff7d",
+    "id": "4582ac31-880d-4714-9605-2252a02c6dad",
     "seller": "disgust_tf",
     "discordUserId": "916248084697190440",
     "discordAvatar": "f14e3b4947ec4704ece95a921e7e79a4",
@@ -31,51 +31,11 @@
     ],
     "items": [
       {
-        "name": "Slasher Claws",
-        "itemType": "Weapon",
-        "imageUrl": "https://cdn.meowia.com/baddies/slasher-claws.png",
+        "name": "Goth Style",
+        "itemType": "Fighting Style",
+        "imageUrl": "https://cdn.meowia.com/baddies/fighting-style/goth-style.png",
         "quantity": 1,
         "price": "14",
-        "soldOut": false
-      },
-      {
-        "name": "Gravity Gun",
-        "itemType": "Weapon",
-        "imageUrl": "https://cdn.meowia.com/baddies/gravity-gun.png",
-        "quantity": 1,
-        "price": "37",
-        "soldOut": false
-      },
-      {
-        "name": "Sakura Blade",
-        "itemType": "Weapon",
-        "imageUrl": "https://cdn.meowia.com/baddies/sakura-blade.png",
-        "quantity": 1,
-        "price": "18",
-        "soldOut": false
-      },
-      {
-        "name": "Blast Bow",
-        "itemType": "Weapon",
-        "imageUrl": "https://cdn.meowia.com/baddies/blast-bow.png",
-        "quantity": 1,
-        "price": "17",
-        "soldOut": false
-      },
-      {
-        "name": "Brass Knuckles",
-        "itemType": "Weapon",
-        "imageUrl": "https://cdn.meowia.com/baddies/brass-knuckles.png",
-        "quantity": 1,
-        "price": "17",
-        "soldOut": false
-      },
-      {
-        "name": "Loveboard",
-        "itemType": "Weapon",
-        "imageUrl": "https://cdn.meowia.com/baddies/loveboard.png",
-        "quantity": 1,
-        "price": "26",
         "soldOut": false
       },
       {
@@ -83,10 +43,18 @@
         "itemType": "Skin",
         "imageUrl": "https://cdn.meowia.com/baddies/sakura-blade/fantasy-sakura-blade.png",
         "quantity": 1,
-        "price": "17",
+        "price": "20",
+        "soldOut": false
+      },
+      {
+        "name": "Killer Bunny Finisher",
+        "itemType": "Finisher",
+        "imageUrl": "https://cdn.meowia.com/baddies/finisher/killer-bunny-finisher.png",
+        "quantity": 1,
+        "price": "12",
         "soldOut": false
       }
     ],
-    "createdAt": "2026-05-04T00:28:15.747Z"
+    "createdAt": "2026-05-20T01:23:42.192Z"
   }
 ]
