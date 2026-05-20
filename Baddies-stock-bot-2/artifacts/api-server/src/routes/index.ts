@@ -5,7 +5,7 @@ import listingsRouter from "./listings";
 import authRouter from "./auth";
 import controlRouter from "./control";
 import messagesRouter from "./messages";
-import checkoutRouter from "./checkout";
+import adminRouter from "./admin";
 
 const router: IRouter = Router();
 
@@ -15,6 +15,6 @@ router.use(catalogRouter);
 router.use(listingsRouter);
 router.use(controlRouter);
 router.use(messagesRouter);
-router.use(checkoutRouter);
+router.use(adminRouter);
 
 export default router;

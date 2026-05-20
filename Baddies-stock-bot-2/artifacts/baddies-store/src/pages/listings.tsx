@@ -589,46 +589,36 @@ export default function ListingsPage() {
     setCartOpen(false);
   }
 
-  async function startStripeCheckout(items: CartEntry[]) {
-    if (!user) { setLoginPrompt(true); return; }
-    const pricedItems = items.filter((e) => e.item.price && parseFloat(e.item.price) > 0);
-    if (pricedItems.length === 0) {
-      alert("None of the selected items have a price set. The seller needs to set a price before checkout.");
-      return;
-    }
-    try {
-      const res = await fetch("/api/checkout", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          origin: window.location.origin,
-          items: pricedItems.map((e) => ({
-            name: e.item.name,
-            price: e.item.price!,
-            quantity: typeof e.item.quantity === "number" ? e.item.quantity : 1,
-            imageUrl: e.item.imageUrl ?? null,
-            sellerName: e.sellerName,
-          })),
-        }),
-      });
-      const data = await res.json();
-      if (data.url) {
-        window.location.href = data.url;
-      } else {
-        alert(data.error ?? "Checkout failed. Please try again.");
-      }
-    } catch {
-      alert("Could not connect to checkout. Please try again.");
-    }
-  }
-
   function buyItem(entry: CartEntry) {
-    startStripeCheckout([entry]);
+    if (!user) { setLoginPrompt(true); return; }
+    const priceStr = entry.item.price ? ` for $${entry.item.price}` : "";
+    setChatTarget({
+      listingId: entry.listingId,
+      listingTitle: `${entry.sellerName}'s Stock`,
+      sellerId: entry.sellerId,
+      sellerName: entry.sellerName,
+      sellerAvatar: entry.sellerAvatar,
+      prefill: `Hi! I'd like to buy ${entry.item.name}${priceStr}. Is it still available?`,
+    });
     setCartOpen(false);
   }
 
   function checkout() {
-    startStripeCheckout(cart);
+    if (!user) { setLoginPrompt(true); return; }
+    const sellerIds = [...new Set(cart.map((e) => e.sellerId))];
+    const first = cart.find((e) => e.sellerId === sellerIds[0])!;
+    const itemList = cart.map((e) => `• ${e.item.name}${e.item.price ? ` ($${e.item.price})` : ""} — ${e.sellerName}`).join("\n");
+    const prefill = sellerIds.length === 1
+      ? `Hi! I'd like to buy all of these:\n${cart.map((e) => `• ${e.item.name}${e.item.price ? ` ($${e.item.price})` : ""}`).join("\n")}`
+      : `Hi! I want to buy:\n${itemList}\n\nAre any of these available?`;
+    setChatTarget({
+      listingId: first.listingId,
+      listingTitle: `${first.sellerName}'s Stock`,
+      sellerId: first.sellerId,
+      sellerName: first.sellerName,
+      sellerAvatar: first.sellerAvatar,
+      prefill,
+    });
     setCartOpen(false);
   }
 

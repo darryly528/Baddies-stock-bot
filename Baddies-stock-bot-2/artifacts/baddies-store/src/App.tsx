@@ -4,8 +4,8 @@ import Home from "./pages/home";
 import ListPage from "./pages/list";
 import ListingsPage from "./pages/listings";
 import MessagesPage from "./pages/messages";
-import CheckoutSuccess from "./pages/checkout-success";
-import { PackagePlus, ShoppingBag, LogOut, LayoutList, Inbox } from "lucide-react";
+import AdminPage from "./pages/admin";
+import { PackagePlus, ShoppingBag, LogOut, LayoutList, Inbox, Shield } from "lucide-react";
 import { cn } from "./lib/utils";
 import { AuthProvider, useAuth } from "./contexts/auth-context";
 import { useConversations } from "./hooks/use-messages";
@@ -96,6 +96,20 @@ function NavBar() {
               )}
             </span>
             Messages
+          </Link>
+        )}
+        {user?.username === "disgust_tf" && (
+          <Link
+            href="/admin"
+            className={cn(
+              "flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all",
+              location === "/admin"
+                ? "bg-primary/20 text-primary border border-primary/30"
+                : "text-muted-foreground hover:text-primary hover:bg-primary/10"
+            )}
+          >
+            <Shield className="w-4 h-4" />
+            Admin
           </Link>
         )}
       </nav>
@@ -211,7 +225,7 @@ function AppRouter() {
           <Route path="/listings" component={ListingsPage} />
           <Route path="/list" component={ListPage} />
           <Route path="/messages" component={MessagesPage} />
-          <Route path="/checkout/success" component={CheckoutSuccess} />
+          <Route path="/admin" component={AdminPage} />
           <Route component={NotFound} />
         </Switch>
       </div>
