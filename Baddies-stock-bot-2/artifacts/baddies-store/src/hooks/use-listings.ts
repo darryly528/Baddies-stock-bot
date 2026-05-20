@@ -22,7 +22,7 @@ export interface Listing {
   createdAt: string;
 }
 
-export function useListings() {
+export function useListings(refetchInterval?: number) {
   return useQuery({
     queryKey: ["listings"],
     queryFn: async () => {
@@ -30,6 +30,7 @@ export function useListings() {
       if (!res.ok) throw new Error("Failed to fetch listings");
       return res.json() as Promise<Listing[]>;
     },
+    refetchInterval: refetchInterval ?? 60_000,
   });
 }
 

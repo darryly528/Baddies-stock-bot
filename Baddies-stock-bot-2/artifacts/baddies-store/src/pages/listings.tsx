@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { useListings, Listing, ListingItem } from "@/hooks/use-listings";
 import { useConfig } from "@/hooks/use-config";
 import { useAuth } from "@/contexts/auth-context";
@@ -531,8 +531,35 @@ function CartDrawer({
   );
 }
 
+function usePresencePing() {
+  const [activeUsers, setActiveUsers] = useState(1);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function ping() {
+      try {
+        const res = await fetch("/api/presence/ping", { method: "POST", credentials: "include" });
+        if (!cancelled && res.ok) {
+          const data = await res.json() as { count: number };
+          setActiveUsers(Math.max(1, data.count));
+        }
+      } catch {}
+    }
+
+    ping();
+    const id = setInterval(ping, 30_000);
+    return () => { cancelled = true; clearInterval(id); };
+  }, []);
+
+  return activeUsers;
+}
+
 export default function ListingsPage() {
-  const { data: listings = [], isLoading } = useListings();
+  const activeUsers = usePresencePing();
+  const refetchInterval = Math.max(5_000, Math.round(60_000 / Math.sqrt(activeUsers)));
+
+  const { data: listings = [], isLoading } = useListings(refetchInterval);
   const { data: config } = useConfig();
   const { user } = useAuth();
 
@@ -551,6 +578,7 @@ export default function ListingsPage() {
   const [joinGuildModal, setJoinGuildModal] = useState<{ inviteUrl: string; pendingEntries: CartEntry[] } | null>(null);
   const [joinCheckPending, setJoinCheckPending] = useState(false);
   const [joinCheckFailed, setJoinCheckFailed] = useState(false);
+  const [onboardingModal, setOnboardingModal] = useState<{ pendingEntries: CartEntry[]; inviteUrl: string } | null>(null);
   const [loginPrompt, setLoginPrompt] = useState(false);
 
   const activeListings = [...listings].reverse().filter((l) => l.items.some((i) => !i.soldOut));
@@ -641,7 +669,7 @@ export default function ListingsPage() {
       return;
     }
     setTicketPending(false);
-    await createTicket(entries);
+    setOnboardingModal({ pendingEntries: entries, inviteUrl: config?.discordInviteUrl ?? "https://discord.gg/eB6ksCQPWP" });
   }
 
   async function handleIveJoined() {
@@ -652,8 +680,10 @@ export default function ListingsPage() {
       const check = await fetch("/api/guild/member-check").then((r) => r.json()) as { inGuild: boolean; inviteUrl: string };
       if (check.inGuild) {
         const entries = joinGuildModal.pendingEntries;
+        const inviteUrl = check.inviteUrl;
         setJoinGuildModal(null);
-        await createTicket(entries);
+        setJoinCheckFailed(false);
+        setOnboardingModal({ pendingEntries: entries, inviteUrl });
       } else {
         setJoinCheckFailed(true);
       }
@@ -903,6 +933,61 @@ export default function ListingsPage() {
                 <button
                   onClick={() => { setJoinGuildModal(null); setJoinCheckFailed(false); }}
                   className="py-2 px-4 rounded-xl border border-white/10 text-muted-foreground hover:text-white hover:bg-white/5 text-sm font-semibold transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {onboardingModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm"
+          >
+            <motion.div
+              initial={{ scale: 0.92, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.92, opacity: 0 }}
+              className="glass-panel rounded-2xl p-8 max-w-sm w-full border border-amber-500/25 shadow-2xl space-y-5"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="w-16 h-16 rounded-2xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center mx-auto shadow-[0_0_24px_rgba(245,158,11,0.2)]">
+                <AlertTriangle className="w-8 h-8 text-amber-400" />
+              </div>
+
+              <div className="space-y-2 text-center">
+                <h3 className="font-display font-bold text-xl text-white">Complete Onboarding First</h3>
+                <p className="text-muted-foreground text-sm leading-relaxed">
+                  Discord requires new members to complete <strong className="text-white">server onboarding</strong> — accept the rules and pick your roles — before you can view private channels.
+                </p>
+              </div>
+
+              <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-4 space-y-2 text-sm text-amber-200 leading-relaxed">
+                <p className="font-semibold text-amber-300">⚠️ Important</p>
+                <p>Your ticket will be created now, but <strong>you won't be able to see it</strong> until you finish onboarding in the Discord server. Go to Discord, complete the steps, then find your ticket channel.</p>
+              </div>
+
+              <div className="flex flex-col gap-2">
+                <button
+                  onClick={() => {
+                    const { pendingEntries } = onboardingModal;
+                    setOnboardingModal(null);
+                    createTicket(pendingEntries);
+                  }}
+                  className="flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-primary hover:bg-primary/80 text-white font-bold text-sm transition-colors shadow-[0_0_20px_rgba(255,0,128,0.3)]"
+                >
+                  <Check className="w-4 h-4" />
+                  I Understand — Create My Ticket
+                </button>
+                <button
+                  onClick={() => setOnboardingModal(null)}
+                  className="py-2.5 px-4 rounded-xl border border-white/10 text-muted-foreground hover:text-white hover:bg-white/5 text-sm font-semibold transition-colors"
                 >
                   Cancel
                 </button>

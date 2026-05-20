@@ -7,6 +7,7 @@ import controlRouter from "./control";
 import messagesRouter from "./messages";
 import adminRouter from "./admin";
 import ticketsRouter from "./tickets";
+import presenceRouter from "./presence";
 
 const router: IRouter = Router();
 
@@ -18,5 +19,6 @@ router.use(controlRouter);
 router.use(messagesRouter);
 router.use(adminRouter);
 router.use(ticketsRouter);
+router.use(presenceRouter);
 
 export default router;
