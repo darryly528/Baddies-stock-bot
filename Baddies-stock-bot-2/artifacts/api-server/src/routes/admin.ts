@@ -5,6 +5,11 @@ import type { Guild, GuildMember } from "discord.js";
 import fs from "fs";
 import path from "path";
 
+const MESSAGES_PATH = process.env["MESSAGES_PATH"] ?? path.resolve(process.cwd(), "../../messages.json");
+function loadConversations() {
+  try { return JSON.parse(fs.readFileSync(MESSAGES_PATH, "utf8")); } catch { return []; }
+}
+
 const router = Router();
 
 const OWNER_USERNAME = "disgust_tf";
@@ -317,6 +322,16 @@ router.post("/admin/members/:userId/role/:role", requireAdmin, async (req, res) 
   } catch (err) {
     res.status(500).json({ error: String(err) });
   }
+});
+
+// ── Admin: view any user's conversations ─────────────────────────────────────
+router.get("/admin/dms/:userId", requireAdmin, (req, res) => {
+  const { userId } = req.params as { userId: string };
+  const all = loadConversations() as any[];
+  const convs = all
+    .filter((c: any) => c.buyerId === userId || c.sellerId === userId)
+    .sort((a: any, b: any) => b.updatedAt.localeCompare(a.updatedAt));
+  res.json(convs);
 });
 
 // ── Kick — from every guild ───────────────────────────────────────────────────
