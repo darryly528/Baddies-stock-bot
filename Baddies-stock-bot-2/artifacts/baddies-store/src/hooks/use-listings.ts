@@ -11,6 +11,15 @@ export interface ListingItem {
   soldOut: boolean;
 }
 
+export interface Bid {
+  id: string;
+  userId: string;
+  username: string;
+  avatar: string | null;
+  amount: number;
+  placedAt: string;
+}
+
 export interface Listing {
   id: string;
   seller: string;
@@ -20,6 +29,10 @@ export interface Listing {
   items: ListingItem[];
   customMessage?: string;
   createdAt: string;
+  listingType?: "fixed" | "auction";
+  auctionEndsAt?: string;
+  startingBid?: number;
+  bids?: Bid[];
 }
 
 export function useListings(refetchInterval?: number) {
@@ -42,6 +55,9 @@ export function useCreateListing() {
       items: { name: string; itemType: string; imageUrl: string | null; quantity: number | string; price?: string }[];
       paymentMethods: string[];
       customMessage?: string;
+      listingType?: "fixed" | "auction";
+      auctionDays?: number;
+      startingBid?: number;
     }) => {
       const res = await fetch(`${apiBase}/api/listings`, {
         method: "POST",
@@ -93,6 +109,39 @@ export function useDeleteListing() {
         credentials: "include",
       });
       if (!res.ok) throw new Error("Failed to delete listing");
+      return res.json();
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["listings"] }),
+  });
+}
+
+export function usePlaceBid() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ listingId, amount }: { listingId: string; amount: number }) => {
+      const res = await fetch(`${apiBase}/api/listings/${listingId}/bids`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ amount }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Failed to place bid");
+      return data as Bid;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["listings"] }),
+  });
+}
+
+export function useRetractBid() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ listingId, bidId }: { listingId: string; bidId: string }) => {
+      const res = await fetch(`${apiBase}/api/listings/${listingId}/bids/${bidId}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+      if (!res.ok) throw new Error("Failed to retract bid");
       return res.json();
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["listings"] }),

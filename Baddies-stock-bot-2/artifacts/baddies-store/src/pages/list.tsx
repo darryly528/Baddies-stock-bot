@@ -25,6 +25,9 @@ import {
   ServerIcon,
   AlertTriangle,
   Inbox,
+  Gavel,
+  Clock,
+  Tag,
 } from "lucide-react";
 import { cn, formatNumber } from "@/lib/utils";
 
@@ -60,6 +63,9 @@ export default function ListPage() {
   const [selected, setSelected] = useState<SelectedItem[]>([]);
   const [paymentMethods, setPaymentMethods] = useState<string[]>([]);
   const [customMessage, setCustomMessage] = useState("");
+  const [listingType, setListingType] = useState<"fixed" | "auction">("fixed");
+  const [auctionDays, setAuctionDays] = useState(3);
+  const [startingBid, setStartingBid] = useState("");
   const [soldDialogItem, setSoldDialogItem] = useState<{ listingId: string; item: ListingItem } | null>(null);
   const [soldQtyInput, setSoldQtyInput] = useState("");
   const [postedListingId, setPostedListingId] = useState<string | null>(null);
@@ -156,14 +162,28 @@ export default function ListPage() {
     if (!user || selected.length === 0) return;
     const result = await createListing.mutateAsync({
       seller: user.username,
-      items: selected.map((s) => ({ name: s.name, itemType: s.itemType, imageUrl: s.imageUrl, quantity: s.quantity, price: s.price || undefined })),
+      items: selected.map((s) => ({
+        name: s.name,
+        itemType: s.itemType,
+        imageUrl: s.imageUrl,
+        quantity: s.quantity,
+        price: listingType === "auction" ? undefined : (s.price || undefined),
+      })),
       paymentMethods,
       customMessage: customMessage.trim() || undefined,
+      listingType,
+      ...(listingType === "auction" && {
+        auctionDays,
+        startingBid: startingBid ? parseFloat(startingBid) : undefined,
+      }),
     });
     setPostedListingId(result.id);
     setSelected([]);
     setPaymentMethods([]);
     setCustomMessage("");
+    setListingType("fixed");
+    setAuctionDays(3);
+    setStartingBid("");
   }
 
   async function loadGuilds() {
@@ -352,6 +372,94 @@ export default function ListPage() {
                   </div>
                 </div>
 
+                {/* Listing type toggle */}
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground mb-3">Listing type</p>
+                  <div className="flex gap-2 p-1 glass-panel rounded-xl max-w-xs">
+                    <button
+                      onClick={() => setListingType("fixed")}
+                      className={cn(
+                        "flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-lg text-sm font-semibold transition-all",
+                        listingType === "fixed"
+                          ? "bg-gradient-to-r from-primary to-secondary text-white shadow"
+                          : "text-muted-foreground hover:text-white"
+                      )}
+                    >
+                      <Tag className="w-3.5 h-3.5" />
+                      Fixed Price
+                    </button>
+                    <button
+                      onClick={() => setListingType("auction")}
+                      className={cn(
+                        "flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-lg text-sm font-semibold transition-all",
+                        listingType === "auction"
+                          ? "bg-gradient-to-r from-amber-500 to-amber-600 text-white shadow"
+                          : "text-muted-foreground hover:text-white"
+                      )}
+                    >
+                      <Gavel className="w-3.5 h-3.5" />
+                      Auction
+                    </button>
+                  </div>
+
+                  <AnimatePresence>
+                    {listingType === "auction" && (
+                      <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: "auto" }}
+                        exit={{ opacity: 0, height: 0 }}
+                        className="overflow-hidden"
+                      >
+                        <div className="mt-4 space-y-4 p-4 rounded-xl bg-amber-500/5 border border-amber-500/20">
+                          <div className="flex items-center gap-2 text-amber-300">
+                            <Clock className="w-4 h-4" />
+                            <span className="text-sm font-semibold">Auction settings (max 7 days)</span>
+                          </div>
+
+                          <div>
+                            <p className="text-xs text-muted-foreground mb-2">Duration</p>
+                            <div className="flex gap-1.5 flex-wrap">
+                              {[1, 2, 3, 4, 5, 6, 7].map((d) => (
+                                <button
+                                  key={d}
+                                  onClick={() => setAuctionDays(d)}
+                                  className={cn(
+                                    "w-9 h-9 rounded-lg text-sm font-bold border transition-all",
+                                    auctionDays === d
+                                      ? "bg-amber-500/25 border-amber-500/60 text-amber-300"
+                                      : "bg-white/5 border-white/10 text-muted-foreground hover:text-white hover:border-white/20"
+                                  )}
+                                >
+                                  {d}d
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+
+                          <div>
+                            <p className="text-xs text-muted-foreground mb-2">Starting bid (optional)</p>
+                            <div className="flex items-center gap-1.5 max-w-[140px]">
+                              <span className="text-muted-foreground text-sm">$</span>
+                              <input
+                                type="number"
+                                value={startingBid}
+                                onChange={(e) => setStartingBid(e.target.value)}
+                                placeholder="0.00"
+                                min="0"
+                                step="0.01"
+                                className="flex-1 bg-black/30 border border-amber-500/20 focus:border-amber-500/50 rounded-lg px-2.5 py-1.5 text-sm text-white outline-none placeholder:text-muted-foreground/50"
+                              />
+                            </div>
+                            <p className="text-[10px] text-muted-foreground/60 mt-1">
+                              Price per item is set by bids
+                            </p>
+                          </div>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+
                 {/* Middleman notice */}
                 {user.discordInviteUrl && (
                   <div className="flex items-start gap-3 p-4 rounded-xl bg-[#5865F2]/10 border border-[#5865F2]/20">
@@ -408,16 +516,18 @@ export default function ListPage() {
                               <Plus className="w-3 h-3" />
                             </button>
                           </div>
-                          <div className="flex items-center gap-1">
-                            <span className="text-muted-foreground text-xs">$</span>
-                            <input
-                              type="text"
-                              value={s.price}
-                              onChange={(e) => setPrice(s.name, e.target.value)}
-                              placeholder="Price"
-                              className="w-20 bg-black/30 border border-white/10 rounded-md px-2 py-1 text-sm text-white outline-none focus:border-primary/50 placeholder:text-muted-foreground/50"
-                            />
-                          </div>
+                          {listingType === "fixed" && (
+                            <div className="flex items-center gap-1">
+                              <span className="text-muted-foreground text-xs">$</span>
+                              <input
+                                type="text"
+                                value={s.price}
+                                onChange={(e) => setPrice(s.name, e.target.value)}
+                                placeholder="Price"
+                                className="w-20 bg-black/30 border border-white/10 rounded-md px-2 py-1 text-sm text-white outline-none focus:border-primary/50 placeholder:text-muted-foreground/50"
+                              />
+                            </div>
+                          )}
                           <button
                             onClick={() => toggleItem(s)}
                             className="text-muted-foreground hover:text-red-400 transition-colors"

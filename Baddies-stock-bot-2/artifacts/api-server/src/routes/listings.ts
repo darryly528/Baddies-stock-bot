@@ -17,6 +17,15 @@ export type ListingItem = {
   soldOut: boolean;
 };
 
+export type Bid = {
+  id: string;
+  userId: string;
+  username: string;
+  avatar: string | null;
+  amount: number;
+  placedAt: string;
+};
+
 export type Listing = {
   id: string;
   seller: string;
@@ -26,6 +35,10 @@ export type Listing = {
   items: ListingItem[];
   customMessage?: string;
   createdAt: string;
+  listingType?: "fixed" | "auction";
+  auctionEndsAt?: string;
+  startingBid?: number;
+  bids?: Bid[];
 };
 
 export function loadListings(): Listing[] {
@@ -45,12 +58,17 @@ router.get("/listings", (_req, res) => {
   res.json(listings);
 });
 
+const MAX_AUCTION_DAYS = 7;
+
 router.post("/listings", (req, res) => {
-  const { seller, items, paymentMethods, customMessage } = req.body as {
+  const { seller, items, paymentMethods, customMessage, listingType, auctionDays, startingBid } = req.body as {
     seller: string;
     items: { name: string; itemType: string; imageUrl: string | null; quantity: number | string; price?: string }[];
     paymentMethods?: string[];
     customMessage?: string;
+    listingType?: "fixed" | "auction";
+    auctionDays?: number;
+    startingBid?: number;
   };
 
   if (!seller || !Array.isArray(items) || items.length === 0) {
@@ -59,6 +77,15 @@ router.post("/listings", (req, res) => {
   }
 
   const sessionUser = req.session?.discordUser ?? null;
+  const isAuction = listingType === "auction";
+
+  let auctionEndsAt: string | undefined;
+  if (isAuction) {
+    const days = Math.max(1, Math.min(MAX_AUCTION_DAYS, Math.round(auctionDays ?? 3)));
+    const end = new Date();
+    end.setDate(end.getDate() + days);
+    auctionEndsAt = end.toISOString();
+  }
 
   const listing: Listing = {
     id: randomUUID(),
@@ -71,11 +98,17 @@ router.post("/listings", (req, res) => {
       itemType: i.itemType,
       imageUrl: i.imageUrl ?? null,
       quantity: i.quantity,
-      price: i.price?.trim() || undefined,
+      price: isAuction ? undefined : (i.price?.trim() || undefined),
       soldOut: false,
     })),
     customMessage: customMessage?.trim() || undefined,
     createdAt: new Date().toISOString(),
+    listingType: isAuction ? "auction" : "fixed",
+    ...(isAuction && {
+      auctionEndsAt,
+      startingBid: typeof startingBid === "number" && startingBid > 0 ? startingBid : 0,
+      bids: [],
+    }),
   };
 
   const listings = loadListings();
@@ -83,6 +116,103 @@ router.post("/listings", (req, res) => {
   saveListings(listings);
 
   res.status(201).json(listing);
+});
+
+router.post("/listings/:id/bids", (req, res) => {
+  const { id } = req.params as { id: string };
+  const { amount } = req.body as { amount: number };
+  const sessionUser = req.session?.discordUser ?? null;
+
+  if (!sessionUser) {
+    res.status(401).json({ error: "You must be logged in to place a bid" });
+    return;
+  }
+
+  if (typeof amount !== "number" || amount <= 0 || !isFinite(amount)) {
+    res.status(400).json({ error: "Invalid bid amount" });
+    return;
+  }
+
+  const listings = loadListings();
+  const listing = listings.find((l) => l.id === id);
+
+  if (!listing) {
+    res.status(404).json({ error: "Listing not found" });
+    return;
+  }
+
+  if (listing.listingType !== "auction") {
+    res.status(400).json({ error: "This listing is not an auction" });
+    return;
+  }
+
+  if (!listing.auctionEndsAt || new Date(listing.auctionEndsAt) < new Date()) {
+    res.status(400).json({ error: "This auction has ended" });
+    return;
+  }
+
+  if (listing.discordUserId === sessionUser.id) {
+    res.status(400).json({ error: "You cannot bid on your own listing" });
+    return;
+  }
+
+  const bids = listing.bids ?? [];
+  const highestBid = bids.length > 0 ? Math.max(...bids.map((b) => b.amount)) : (listing.startingBid ?? 0);
+
+  if (amount <= highestBid) {
+    res.status(400).json({ error: `Bid must be higher than $${highestBid.toFixed(2)}` });
+    return;
+  }
+
+  const bid: Bid = {
+    id: randomUUID(),
+    userId: sessionUser.id,
+    username: sessionUser.username,
+    avatar: sessionUser.avatar ?? null,
+    amount,
+    placedAt: new Date().toISOString(),
+  };
+
+  listing.bids = [...bids, bid];
+  saveListings(listings);
+
+  res.status(201).json(bid);
+});
+
+router.delete("/listings/:id/bids/:bidId", (req, res) => {
+  const { id, bidId } = req.params as { id: string; bidId: string };
+  const sessionUser = req.session?.discordUser ?? null;
+
+  if (!sessionUser) {
+    res.status(401).json({ error: "You must be logged in" });
+    return;
+  }
+
+  const listings = loadListings();
+  const listing = listings.find((l) => l.id === id);
+
+  if (!listing) {
+    res.status(404).json({ error: "Listing not found" });
+    return;
+  }
+
+  const bids = listing.bids ?? [];
+  const bid = bids.find((b) => b.id === bidId);
+
+  if (!bid) {
+    res.status(404).json({ error: "Bid not found" });
+    return;
+  }
+
+  if (bid.userId !== sessionUser.id) {
+    res.status(403).json({ error: "You can only retract your own bids" });
+    return;
+  }
+
+  listing.bids = bids.filter((b) => b.id !== bidId);
+  saveListings(listings);
+
+  res.json({ ok: true });
 });
 
 router.patch("/listings/:id/items/:itemName/sold", (req, res) => {
