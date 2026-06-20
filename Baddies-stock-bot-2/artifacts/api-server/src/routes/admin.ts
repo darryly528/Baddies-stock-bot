@@ -1,6 +1,10 @@
 import { Router, type Request, type Response } from "express";
 import { loadListings } from "./listings";
 import { getBotClient } from "../bot";
+import {
+  getRole, hasMinRole, getStaff,
+  OWNER_USERNAME, type AnyRole,
+} from "../permissions";
 import type { Guild, GuildMember } from "discord.js";
 import fs from "fs";
 import path from "path";
@@ -12,13 +16,28 @@ function loadConversations() {
 
 const router = Router();
 
-const OWNER_USERNAME = "disgust_tf";
-const VERIFIED_SELLER_ROLE_ID = process.env["LISTING_ROLE_ID"] ?? "";
-const MOD_ROLE_ID_ENV = process.env["MOD_ROLE_ID"] ?? "";
-
 export const suspendedUsers = new Set<string>();
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
+// ── Permission helpers ────────────────────────────────────────────────────────
+
+function sessionRole(req: Request): AnyRole | null {
+  const u = req.session?.discordUser;
+  if (!u) return null;
+  return getRole(u.id, u.username);
+}
+
+function requireMinRole(minRole: AnyRole) {
+  return (req: Request, res: Response, next: () => void) => {
+    const role = sessionRole(req);
+    if (!hasMinRole(role, minRole)) {
+      res.status(403).json({ error: "Forbidden" });
+      return;
+    }
+    next();
+  };
+}
+
+// ── Guild helpers ─────────────────────────────────────────────────────────────
 
 function getAllGuilds(): Guild[] {
   const bot = getBotClient();
@@ -26,7 +45,6 @@ function getAllGuilds(): Guild[] {
   return [...bot.guilds.cache.values()];
 }
 
-/** Fetch a member from the first guild that has them. Returns [member, guild]. */
 async function findMemberInAnyGuild(userId: string): Promise<[GuildMember, Guild] | null> {
   for (const guild of getAllGuilds()) {
     const m = await guild.members.fetch({ user: userId, force: false }).catch(() => null);
@@ -35,36 +53,18 @@ async function findMemberInAnyGuild(userId: string): Promise<[GuildMember, Guild
   return null;
 }
 
-function requireOwner(req: Request, res: Response, next: () => void) {
-  const user = req.session?.discordUser;
-  if (!user || user.username !== OWNER_USERNAME) {
-    res.status(403).json({ error: "Forbidden — owner only" });
-    return;
-  }
-  next();
-}
+// ── Admin identity ────────────────────────────────────────────────────────────
 
-async function isAdminUser(req: Request): Promise<boolean> {
-  const user = req.session?.discordUser;
-  if (!user) return false;
-  if (user.username === OWNER_USERNAME) return true;
-  if (!MOD_ROLE_ID_ENV) return false;
-  for (const guild of getAllGuilds()) {
-    const member = await guild.members.fetch({ user: user.id, force: false }).catch(() => null);
-    if (member?.roles.cache.has(MOD_ROLE_ID_ENV)) return true;
-  }
-  return false;
-}
-
-function requireAdmin(req: Request, res: Response, next: () => void) {
-  isAdminUser(req).then((ok) => {
-    if (ok) next();
-    else res.status(403).json({ error: "Forbidden" });
-  });
-}
+router.get("/admin/me", (req, res) => {
+  const u = req.session?.discordUser;
+  if (!u) { res.json({ role: "none" }); return; }
+  const role = getRole(u.id, u.username) ?? "none";
+  res.json({ role });
+});
 
 // ── Store stats ───────────────────────────────────────────────────────────────
-router.get("/admin/stats", requireAdmin, (req, res) => {
+
+router.get("/admin/stats", requireMinRole("admin"), (_req, res) => {
   const listings = loadListings();
   const totalItems = listings.reduce((sum, l) => sum + l.items.length, 0);
   const activeItems = listings.reduce((sum, l) => sum + l.items.filter((i) => !i.soldOut).length, 0);
@@ -79,9 +79,10 @@ router.get("/admin/stats", requireAdmin, (req, res) => {
 });
 
 // ── Listings management ───────────────────────────────────────────────────────
-router.get("/admin/listings", requireAdmin, (_req, res) => res.json(loadListings()));
 
-router.delete("/admin/listings/:id", requireAdmin, (req, res) => {
+router.get("/admin/listings", requireMinRole("admin"), (_req, res) => res.json(loadListings()));
+
+router.delete("/admin/listings/:id", requireMinRole("admin"), (req, res) => {
   const { id } = req.params as { id: string };
   const LISTINGS_PATH = process.env["LISTINGS_PATH"] ?? path.resolve(process.cwd(), "../../listings.json");
   let listings = loadListings();
@@ -92,13 +93,13 @@ router.delete("/admin/listings/:id", requireAdmin, (req, res) => {
   res.json({ ok: true });
 });
 
-router.delete("/admin/listings", requireAdmin, (_req, res) => {
+router.delete("/admin/listings", requireMinRole("admin"), (_req, res) => {
   const LISTINGS_PATH = process.env["LISTINGS_PATH"] ?? path.resolve(process.cwd(), "../../listings.json");
   fs.writeFileSync(LISTINGS_PATH, "[]", "utf8");
   res.json({ ok: true });
 });
 
-router.delete("/admin/listings/sold-out", requireAdmin, (_req, res) => {
+router.delete("/admin/listings/sold-out", requireMinRole("admin"), (_req, res) => {
   const LISTINGS_PATH = process.env["LISTINGS_PATH"] ?? path.resolve(process.cwd(), "../../listings.json");
   let listings = loadListings();
   listings = listings.map((l) => ({ ...l, items: l.items.filter((i) => !i.soldOut) })).filter((l) => l.items.length > 0);
@@ -106,77 +107,59 @@ router.delete("/admin/listings/sold-out", requireAdmin, (_req, res) => {
   res.json({ ok: true, remaining: listings.length });
 });
 
-// ── Admin identity ────────────────────────────────────────────────────────────
-router.get("/admin/me", async (req, res) => {
-  const user = req.session?.discordUser;
-  if (!user) { res.json({ role: "none" }); return; }
-  if (user.username === OWNER_USERNAME) { res.json({ role: "owner" }); return; }
-  const ok = await isAdminUser(req);
-  res.json({ role: ok ? "admin" : "none" });
-});
+// ── Members list ──────────────────────────────────────────────────────────────
 
-// ── Members list — aggregated across ALL guilds ───────────────────────────────
-router.get("/admin/members", requireAdmin, async (_req, res) => {
+router.get("/admin/members", requireMinRole("admin"), async (_req, res) => {
   const guilds = getAllGuilds();
-  if (guilds.length === 0) { res.status(503).json({ error: "Bot offline or not in any guild" }); return; }
+  const staff = getStaff();
+  const staffMap = new Map(staff.map((s) => [s.userId, s]));
+
+  if (guilds.length === 0) {
+    // Return only staff members when bot is offline
+    const list = staff.map((s) => ({
+      id: s.userId, username: s.username, displayName: null,
+      avatar: `https://cdn.discordapp.com/embed/avatars/0.png`,
+      guilds: [], isOwner: false, isSuspended: suspendedUsers.has(s.userId),
+      timedOutUntil: null, joinedAt: null,
+      siteRole: s.role as AnyRole,
+    }));
+    res.json(list);
+    return;
+  }
 
   try {
-    // Use the bot's in-memory cache — works without the privileged GuildMembers intent.
-    // The cache is populated from slash command interactions, message events, and
-    // individual member fetches (e.g. when a listing is created).
     const merged = new Map<string, {
-      id: string;
-      username: string;
-      displayName: string | null;
-      avatar: string;
+      id: string; username: string; displayName: string | null; avatar: string;
       guilds: { id: string; name: string; icon: string | null }[];
-      isVerifiedSeller: boolean;
-      isMod: boolean;
-      isSuspended: boolean;
-      isOwner: boolean;
-      timedOutUntil: string | null;
-      joinedAt: string | null;
+      isSuspended: boolean; isOwner: boolean; timedOutUntil: string | null;
+      joinedAt: string | null; siteRole: AnyRole | null;
     }>();
 
     for (const guild of guilds) {
       for (const [, m] of guild.members.cache) {
         if (m.user.bot) continue;
-
         const avatarUrl = m.user.avatar
           ? `https://cdn.discordapp.com/avatars/${m.id}/${m.user.avatar}.png?size=64`
           : `https://cdn.discordapp.com/embed/avatars/${Number(BigInt(m.id) >> 22n) % 6}.png`;
-
-        const guildEntry = {
-          id: guild.id,
-          name: guild.name,
-          icon: guild.iconURL({ size: 32 }),
-        };
-
-        const isVerified = VERIFIED_SELLER_ROLE_ID ? m.roles.cache.has(VERIFIED_SELLER_ROLE_ID) : false;
-        const isMod = MOD_ROLE_ID_ENV ? m.roles.cache.has(MOD_ROLE_ID_ENV) : false;
+        const guildEntry = { id: guild.id, name: guild.name, icon: guild.iconURL({ size: 32 }) };
         const timedOut = m.communicationDisabledUntilTimestamp && m.communicationDisabledUntilTimestamp > Date.now()
-          ? new Date(m.communicationDisabledUntilTimestamp).toISOString()
-          : null;
+          ? new Date(m.communicationDisabledUntilTimestamp).toISOString() : null;
+        const siteRole: AnyRole | null = m.user.username === OWNER_USERNAME ? "owner"
+          : (staffMap.get(m.id)?.role as AnyRole) ?? null;
 
         if (merged.has(m.id)) {
-          const existing = merged.get(m.id)!;
-          existing.guilds.push(guildEntry);
-          existing.isVerifiedSeller = existing.isVerifiedSeller || isVerified;
-          existing.isMod = existing.isMod || isMod;
-          if (timedOut && !existing.timedOutUntil) existing.timedOutUntil = timedOut;
+          const ex = merged.get(m.id)!;
+          ex.guilds.push(guildEntry);
+          if (timedOut && !ex.timedOutUntil) ex.timedOutUntil = timedOut;
         } else {
           merged.set(m.id, {
-            id: m.id,
-            username: m.user.username,
+            id: m.id, username: m.user.username,
             displayName: m.displayName !== m.user.username ? m.displayName : null,
-            avatar: avatarUrl,
-            guilds: [guildEntry],
-            isVerifiedSeller: isVerified,
-            isMod,
+            avatar: avatarUrl, guilds: [guildEntry],
             isSuspended: suspendedUsers.has(m.id),
             isOwner: m.user.username === OWNER_USERNAME,
-            timedOutUntil: timedOut,
-            joinedAt: m.joinedAt?.toISOString() ?? null,
+            timedOutUntil: timedOut, joinedAt: m.joinedAt?.toISOString() ?? null,
+            siteRole,
           });
         }
       }
@@ -187,10 +170,9 @@ router.get("/admin/members", requireAdmin, async (_req, res) => {
     }
 
     const list = [...merged.values()].sort((a, b) => {
-      if (a.isOwner) return -1;
-      if (b.isOwner) return 1;
-      if (a.isMod !== b.isMod) return a.isMod ? -1 : 1;
-      if (a.isVerifiedSeller !== b.isVerifiedSeller) return a.isVerifiedSeller ? -1 : 1;
+      const ra = a.siteRole ? ["owner","co-owner","admin","mod","verified_reseller"].indexOf(a.siteRole) : 99;
+      const rb = b.siteRole ? ["owner","co-owner","admin","mod","verified_reseller"].indexOf(b.siteRole) : 99;
+      if (ra !== rb) return ra - rb;
       return a.username.localeCompare(b.username);
     });
 
@@ -200,87 +182,71 @@ router.get("/admin/members", requireAdmin, async (_req, res) => {
   }
 });
 
-// ── Member search — uses Discord's search API, no privileged intent needed ───
-router.get("/admin/members/search", requireAdmin, async (req, res) => {
+// ── Member search ─────────────────────────────────────────────────────────────
+
+router.get("/admin/members/search", requireMinRole("admin"), async (req, res) => {
   const q = ((req.query as Record<string, string>).q ?? "").trim();
   if (!q) { res.json([]); return; }
-
   const guilds = getAllGuilds();
+  const staff = getStaff();
+  const staffMap = new Map(staff.map((s) => [s.userId, s]));
+
   if (guilds.length === 0) { res.status(503).json({ error: "Bot offline" }); return; }
 
   try {
     const merged = new Map<string, object>();
+    await Promise.all(guilds.map(async (guild) => {
+      const results = await guild.members.search({ query: q, limit: 25 }).catch(() => null);
+      if (!results) return;
+      for (const [, m] of results) {
+        if (m.user.bot) continue;
+        const avatarUrl = m.user.avatar
+          ? `https://cdn.discordapp.com/avatars/${m.id}/${m.user.avatar}.png?size=64`
+          : `https://cdn.discordapp.com/embed/avatars/${Number(BigInt(m.id) >> 22n) % 6}.png`;
+        const timedOut = m.communicationDisabledUntilTimestamp && m.communicationDisabledUntilTimestamp > Date.now()
+          ? new Date(m.communicationDisabledUntilTimestamp).toISOString() : null;
+        const siteRole: AnyRole | null = m.user.username === OWNER_USERNAME ? "owner"
+          : (staffMap.get(m.id)?.role as AnyRole) ?? null;
+        const guildEntry = { id: guild.id, name: guild.name, icon: guild.iconURL({ size: 32 }) };
 
-    await Promise.all(
-      guilds.map(async (guild) => {
-        const results = await guild.members.search({ query: q, limit: 25 }).catch(() => null);
-        if (!results) return;
-        for (const [, m] of results) {
-          if (m.user.bot) continue;
-          const avatarUrl = m.user.avatar
-            ? `https://cdn.discordapp.com/avatars/${m.id}/${m.user.avatar}.png?size=64`
-            : `https://cdn.discordapp.com/embed/avatars/${Number(BigInt(m.id) >> 22n) % 6}.png`;
-          const guildEntry = { id: guild.id, name: guild.name, icon: guild.iconURL({ size: 32 }) };
-          const isVerified = VERIFIED_SELLER_ROLE_ID ? m.roles.cache.has(VERIFIED_SELLER_ROLE_ID) : false;
-          const isMod = MOD_ROLE_ID_ENV ? m.roles.cache.has(MOD_ROLE_ID_ENV) : false;
-          const timedOut = m.communicationDisabledUntilTimestamp && m.communicationDisabledUntilTimestamp > Date.now()
-            ? new Date(m.communicationDisabledUntilTimestamp).toISOString()
-            : null;
-          if (merged.has(m.id)) {
-            const existing = merged.get(m.id) as Record<string, unknown>;
-            (existing.guilds as unknown[]).push(guildEntry);
-            existing.isVerifiedSeller = existing.isVerifiedSeller || isVerified;
-            existing.isMod = existing.isMod || isMod;
-          } else {
-            merged.set(m.id, {
-              id: m.id,
-              username: m.user.username,
-              displayName: m.displayName !== m.user.username ? m.displayName : null,
-              avatar: avatarUrl,
-              guilds: [guildEntry],
-              isVerifiedSeller: isVerified,
-              isMod,
-              isSuspended: suspendedUsers.has(m.id),
-              isOwner: m.user.username === OWNER_USERNAME,
-              timedOutUntil: timedOut,
-              joinedAt: m.joinedAt?.toISOString() ?? null,
-            });
-          }
+        if (merged.has(m.id)) {
+          (merged.get(m.id) as Record<string, unknown[]>).guilds.push(guildEntry);
+        } else {
+          merged.set(m.id, {
+            id: m.id, username: m.user.username,
+            displayName: m.displayName !== m.user.username ? m.displayName : null,
+            avatar: avatarUrl, guilds: [guildEntry],
+            isSuspended: suspendedUsers.has(m.id),
+            isOwner: m.user.username === OWNER_USERNAME,
+            timedOutUntil: timedOut, joinedAt: m.joinedAt?.toISOString() ?? null,
+            siteRole,
+          });
         }
-      })
-    );
-
-    const list = [...merged.values()].sort((a: Record<string, unknown>, b: Record<string, unknown>) => {
-      if (a.isOwner) return -1;
-      if (b.isOwner) return 1;
-      if (a.isMod !== b.isMod) return a.isMod ? -1 : 1;
-      return (a.username as string).localeCompare(b.username as string);
-    });
-
-    res.json(list);
+      }
+    }));
+    res.json([...merged.values()]);
   } catch (err) {
     res.status(500).json({ error: String(err) });
   }
 });
 
-// ── Guilds list (for info display) ───────────────────────────────────────────
-router.get("/admin/guilds", requireAdmin, (_req, res) => {
+// ── Guilds ────────────────────────────────────────────────────────────────────
+
+router.get("/admin/guilds", requireMinRole("admin"), (_req, res) => {
   const guilds = getAllGuilds().map((g) => ({
-    id: g.id,
-    name: g.name,
-    icon: g.iconURL({ size: 64 }),
-    memberCount: g.memberCount,
+    id: g.id, name: g.name, icon: g.iconURL({ size: 64 }), memberCount: g.memberCount,
   }));
   res.json(guilds);
 });
 
-// ── Ban — from every guild ────────────────────────────────────────────────────
-router.post("/admin/members/:userId/ban", requireOwner, async (req, res) => {
+// ── Ban ───────────────────────────────────────────────────────────────────────
+
+router.post("/admin/members/:userId/ban", requireMinRole("admin"), async (req, res) => {
   const { userId } = req.params as { userId: string };
   const { reason } = req.body as { reason?: string };
   const guilds = getAllGuilds();
   if (guilds.length === 0) { res.status(503).json({ error: "Bot offline" }); return; }
-  const msg = reason ?? "Banned by owner via admin panel";
+  const msg = reason ?? "Banned via admin panel";
   try {
     await Promise.all(guilds.map((g) => g.members.ban(userId, { reason: msg }).catch(() => null)));
     res.json({ ok: true });
@@ -289,20 +255,21 @@ router.post("/admin/members/:userId/ban", requireOwner, async (req, res) => {
   }
 });
 
-router.delete("/admin/members/:userId/ban", requireOwner, async (req, res) => {
+router.delete("/admin/members/:userId/ban", requireMinRole("admin"), async (req, res) => {
   const { userId } = req.params as { userId: string };
   const guilds = getAllGuilds();
   if (guilds.length === 0) { res.status(503).json({ error: "Bot offline" }); return; }
   try {
-    await Promise.all(guilds.map((g) => g.bans.remove(userId, "Unbanned by owner via admin panel").catch(() => null)));
+    await Promise.all(guilds.map((g) => g.bans.remove(userId, "Unbanned via admin panel").catch(() => null)));
     res.json({ ok: true });
   } catch (err) {
     res.status(500).json({ error: String(err) });
   }
 });
 
-// ── Timeout — in every guild they're a member of ──────────────────────────────
-router.post("/admin/members/:userId/timeout", requireAdmin, async (req, res) => {
+// ── Timeout ───────────────────────────────────────────────────────────────────
+
+router.post("/admin/members/:userId/timeout", requireMinRole("admin"), async (req, res) => {
   const { userId } = req.params as { userId: string };
   const { minutes } = req.body as { minutes: number };
   if (!minutes || minutes <= 0) { res.status(400).json({ error: "Invalid duration" }); return; }
@@ -321,7 +288,7 @@ router.post("/admin/members/:userId/timeout", requireAdmin, async (req, res) => 
   }
 });
 
-router.delete("/admin/members/:userId/timeout", requireAdmin, async (req, res) => {
+router.delete("/admin/members/:userId/timeout", requireMinRole("admin"), async (req, res) => {
   const { userId } = req.params as { userId: string };
   const guilds = getAllGuilds();
   if (guilds.length === 0) { res.status(503).json({ error: "Bot offline" }); return; }
@@ -336,61 +303,21 @@ router.delete("/admin/members/:userId/timeout", requireAdmin, async (req, res) =
   }
 });
 
-// ── Suspend (site-level) ──────────────────────────────────────────────────────
-router.post("/admin/members/:userId/suspend", requireAdmin, (req, res) => {
+// ── Suspend ───────────────────────────────────────────────────────────────────
+
+router.post("/admin/members/:userId/suspend", requireMinRole("admin"), (req, res) => {
   suspendedUsers.add((req.params as { userId: string }).userId);
   res.json({ ok: true });
 });
 
-router.delete("/admin/members/:userId/suspend", requireAdmin, (req, res) => {
+router.delete("/admin/members/:userId/suspend", requireMinRole("admin"), (req, res) => {
   suspendedUsers.delete((req.params as { userId: string }).userId);
   res.json({ ok: true });
 });
 
-// ── Roles — apply in every guild where the role exists ───────────────────────
-router.post("/admin/members/:userId/role/:role", requireAdmin, async (req, res) => {
-  const { userId, role } = req.params as { userId: string; role: string };
-  const { add } = req.body as { add: boolean };
+// ── Kick ──────────────────────────────────────────────────────────────────────
 
-  const roleId = role === "verified_seller" ? VERIFIED_SELLER_ROLE_ID : role === "mod" ? MOD_ROLE_ID_ENV : null;
-  if (!roleId) { res.status(400).json({ error: `Role '${role}' not configured` }); return; }
-
-  if (role === "mod" && req.session?.discordUser?.username !== OWNER_USERNAME) {
-    res.status(403).json({ error: "Only owner can assign mod role" });
-    return;
-  }
-
-  const guilds = getAllGuilds();
-  if (guilds.length === 0) { res.status(503).json({ error: "Bot offline" }); return; }
-
-  try {
-    let applied = 0;
-    await Promise.all(guilds.map(async (guild) => {
-      if (!guild.roles.cache.has(roleId)) return; // role doesn't exist in this guild
-      const m = await guild.members.fetch({ user: userId, force: false }).catch(() => null);
-      if (!m) return;
-      if (add) await m.roles.add(roleId, "Role assigned via admin panel");
-      else await m.roles.remove(roleId, "Role removed via admin panel");
-      applied++;
-    }));
-    res.json({ ok: true, applied });
-  } catch (err) {
-    res.status(500).json({ error: String(err) });
-  }
-});
-
-// ── Admin: view any user's conversations ─────────────────────────────────────
-router.get("/admin/dms/:userId", requireAdmin, (req, res) => {
-  const { userId } = req.params as { userId: string };
-  const all = loadConversations() as any[];
-  const convs = all
-    .filter((c: any) => c.buyerId === userId || c.sellerId === userId)
-    .sort((a: any, b: any) => b.updatedAt.localeCompare(a.updatedAt));
-  res.json(convs);
-});
-
-// ── Kick — from every guild ───────────────────────────────────────────────────
-router.post("/admin/members/:userId/kick", requireOwner, async (req, res) => {
+router.post("/admin/members/:userId/kick", requireMinRole("co-owner"), async (req, res) => {
   const { userId } = req.params as { userId: string };
   const guilds = getAllGuilds();
   if (guilds.length === 0) { res.status(503).json({ error: "Bot offline" }); return; }
@@ -400,6 +327,17 @@ router.post("/admin/members/:userId/kick", requireOwner, async (req, res) => {
   } catch (err) {
     res.status(500).json({ error: String(err) });
   }
+});
+
+// ── DM viewer — co-owner+ only ────────────────────────────────────────────────
+
+router.get("/admin/dms/:userId", requireMinRole("co-owner"), (req, res) => {
+  const { userId } = req.params as { userId: string };
+  const all = loadConversations() as Record<string, unknown>[];
+  const convs = all
+    .filter((c) => c["buyerId"] === userId || c["sellerId"] === userId)
+    .sort((a, b) => String(b["updatedAt"]).localeCompare(String(a["updatedAt"])));
+  res.json(convs);
 });
 
 export default router;

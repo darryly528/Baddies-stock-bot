@@ -33,6 +33,7 @@ export interface Listing {
   auctionEndsAt?: string;
   startingBid?: number;
   bids?: Bid[];
+  isVerifiedReseller?: boolean;
 }
 
 export function useListings(refetchInterval?: number) {

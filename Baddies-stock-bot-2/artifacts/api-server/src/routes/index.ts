@@ -6,6 +6,7 @@ import authRouter from "./auth";
 import controlRouter from "./control";
 import messagesRouter from "./messages";
 import adminRouter from "./admin";
+import staffRouter from "./staff";
 import ticketsRouter from "./tickets";
 import presenceRouter from "./presence";
 
@@ -18,6 +19,7 @@ router.use(listingsRouter);
 router.use(controlRouter);
 router.use(messagesRouter);
 router.use(adminRouter);
+router.use(staffRouter);
 router.use(ticketsRouter);
 router.use(presenceRouter);
 

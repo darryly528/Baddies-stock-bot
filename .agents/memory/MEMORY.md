@@ -1,0 +1,1 @@
+- [Site Permission System](site-permissions.md) — role store replaced Discord role checks; all auth now via permissions.json + /api/admin/me

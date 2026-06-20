@@ -3,6 +3,7 @@ import fs from "fs";
 import path from "path";
 import { randomUUID } from "crypto";
 import { getBotClient } from "../bot";
+import { getRole } from "../permissions";
 
 const router: IRouter = Router();
 
@@ -82,13 +83,17 @@ function saveListings(listings: Listing[]) {
 
 router.get("/listings", (req, res) => {
   const listings = loadListings();
+  const enriched = listings.map((l) => ({
+    ...l,
+    isVerifiedReseller: l.discordUserId ? getRole(l.discordUserId) === "verified_reseller" : false,
+  }));
   res.setHeader("Cache-Control", "public, max-age=5, stale-while-revalidate=10");
   res.setHeader("ETag", _cacheEtag);
   if (req.headers["if-none-match"] === _cacheEtag) {
     res.status(304).end();
     return;
   }
-  res.json(listings);
+  res.json(enriched);
 });
 
 const MAX_AUCTION_DAYS = 7;

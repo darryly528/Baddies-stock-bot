@@ -380,6 +380,11 @@ function BidModal({
                   <img src={sellerAvatarUrl} alt={listing.seller} className="w-4 h-4 rounded-full" />
                 ) : null}
                 <span className="text-xs text-muted-foreground">{listing.seller}</span>
+                {listing.isVerifiedReseller && (
+                  <span title="Verified Reseller" className="text-[9px] px-1.5 py-0.5 rounded-full bg-green-500/15 border border-green-500/30 text-green-400 font-bold flex items-center gap-0.5">
+                    <CheckCircle2 className="w-2.5 h-2.5" />VERIFIED
+                  </span>
+                )}
               </div>
               {listing.auctionEndsAt && (
                 <div className="flex items-center gap-1.5 mt-1.5">
@@ -607,6 +612,11 @@ function AuctionCard({
             </div>
           )}
           <span className="text-[11px] text-muted-foreground truncate">{listing.seller}</span>
+          {listing.isVerifiedReseller && (
+            <span title="Verified Reseller" className="flex-shrink-0 text-[9px] px-1 py-0.5 rounded-full bg-green-500/15 border border-green-500/30 text-green-400 font-bold flex items-center gap-0.5">
+              <CheckCircle2 className="w-2.5 h-2.5" />
+            </span>
+          )}
         </div>
 
         {/* Timer */}
@@ -715,6 +725,11 @@ function ListingItemCard({
             </div>
           )}
           <span className="text-[11px] text-muted-foreground truncate">{listing.seller}</span>
+          {listing.isVerifiedReseller && (
+            <span title="Verified Reseller" className="flex-shrink-0 text-[9px] px-1 py-0.5 rounded-full bg-green-500/15 border border-green-500/30 text-green-400 font-bold flex items-center gap-0.5">
+              <CheckCircle2 className="w-2.5 h-2.5" />
+            </span>
+          )}
         </div>
 
         <div className="flex items-center justify-between gap-2">
