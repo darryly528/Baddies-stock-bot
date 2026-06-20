@@ -6,6 +6,7 @@ import ListPage from "./pages/list";
 import ListingsPage from "./pages/listings";
 import MessagesPage from "./pages/messages";
 import AdminPage from "./pages/admin";
+import TosPage from "./pages/tos";
 import ProfilePage from "./pages/profile";
 import CommunityPage from "./pages/community";
 import { PackagePlus, ShoppingBag, LogOut, LayoutList, Inbox, Shield, UserCircle2, Heart } from "lucide-react";
@@ -329,6 +330,7 @@ function AppRouter() {
             <Route path="/admin" component={AdminPage} />
             <Route path="/profile/:userId" component={ProfilePage} />
             <Route path="/community" component={CommunityPage} />
+            <Route path="/tos" component={TosPage} />
             <Route component={NotFound} />
           </Switch>
         </motion.div>

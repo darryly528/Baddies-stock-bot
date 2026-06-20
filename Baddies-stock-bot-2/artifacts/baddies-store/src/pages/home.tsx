@@ -7,7 +7,7 @@ import type { CatalogItem } from "@/hooks/use-catalog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { motion } from "framer-motion";
-import { Search, Loader2, MessageSquare, FilterX, Sparkles, Box, RefreshCw } from "lucide-react";
+import { Search, Loader2, MessageSquare, FilterX, Sparkles, Box, RefreshCw, Scale } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useConfig } from "@/hooks/use-config";
 
@@ -299,6 +299,16 @@ export default function Home() {
       {selectedItem && (
         <ItemDetailModal item={selectedItem} onClose={() => setSelectedItem(null)} />
       )}
+
+      <footer className="mt-16 pb-8 text-center">
+        <a
+          href="/tos"
+          className="inline-flex items-center gap-1.5 text-xs text-muted-foreground/60 hover:text-muted-foreground transition-colors"
+        >
+          <Scale className="w-3 h-3" />
+          Terms of Service
+        </a>
+      </footer>
     </div>
   );
 }
