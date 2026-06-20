@@ -1412,32 +1412,53 @@ function ShopsView({ listings, onMessage, user, onLoginPrompt, approvedShops, my
   const [expanded, setExpanded] = useState<string | null>(null);
   const approvedIds = new Set(approvedShops.map((s) => s.userId));
 
-  const shops = Object.values(
-    listings.reduce<Record<string, SellerShop>>((acc, listing) => {
-      const key = listing.discordUserId ?? listing.seller;
-      if (!acc[key]) {
-        acc[key] = {
-          sellerId: listing.discordUserId ?? listing.seller,
-          sellerName: listing.seller,
-          sellerAvatar: listing.discordAvatar,
-          listings: [],
-          itemCount: 0,
-          paymentMethods: [],
-          accentColor: listing.sellerAccentColor ?? "#ff0080",
-          sampleImages: [],
-        };
-      }
-      acc[key].listings.push(listing);
-      listing.items.filter((i) => !i.soldOut).forEach((item) => {
-        acc[key].itemCount++;
-        if (acc[key].sampleImages.length < 4) acc[key].sampleImages.push(item.imageUrl ?? null);
-      });
-      listing.paymentMethods.forEach((m) => {
-        if (!acc[key].paymentMethods.includes(m)) acc[key].paymentMethods.push(m);
-      });
-      return acc;
-    }, {})
-  ).sort((a, b) => b.itemCount - a.itemCount);
+  const shopMap = listings.reduce<Record<string, SellerShop>>((acc, listing) => {
+    const key = listing.discordUserId ?? listing.seller;
+    if (!acc[key]) {
+      acc[key] = {
+        sellerId: listing.discordUserId ?? listing.seller,
+        sellerName: listing.seller,
+        sellerAvatar: listing.discordAvatar,
+        listings: [],
+        itemCount: 0,
+        paymentMethods: [],
+        accentColor: listing.sellerAccentColor ?? "#ff0080",
+        sampleImages: [],
+      };
+    }
+    acc[key].listings.push(listing);
+    listing.items.filter((i) => !i.soldOut).forEach((item) => {
+      acc[key].itemCount++;
+      if (acc[key].sampleImages.length < 8) acc[key].sampleImages.push(item.imageUrl ?? null);
+    });
+    listing.paymentMethods.forEach((m) => {
+      if (!acc[key].paymentMethods.includes(m)) acc[key].paymentMethods.push(m);
+    });
+    return acc;
+  }, {});
+
+  // Every approved shop always appears — even if they have no active listings yet
+  approvedShops.forEach((s) => {
+    if (!shopMap[s.userId]) {
+      shopMap[s.userId] = {
+        sellerId: s.userId,
+        sellerName: s.username,
+        sellerAvatar: null,
+        listings: [],
+        itemCount: 0,
+        paymentMethods: [],
+        accentColor: s.accentColor ?? "#ff0080",
+        sampleImages: [],
+      };
+    }
+  });
+
+  const shops = Object.values(shopMap).sort((a, b) => {
+    const aVerified = approvedIds.has(a.sellerId) ? 1 : 0;
+    const bVerified = approvedIds.has(b.sellerId) ? 1 : 0;
+    if (bVerified !== aVerified) return bVerified - aVerified;
+    return b.itemCount - a.itemCount;
+  });
 
   const ctaSection = (
     <div className="mt-6">
