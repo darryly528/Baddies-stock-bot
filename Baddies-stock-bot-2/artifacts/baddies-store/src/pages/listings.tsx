@@ -31,7 +31,10 @@ import {
   TrendingUp,
   ChevronUp,
   HandCoins,
+  Flag,
+  Image as ImageIcon,
 } from "lucide-react";
+import { ReportModal, type ReportTarget } from "@/components/report-modal";
 import { cn, formatNumber } from "@/lib/utils";
 
 const PAYMENT_EMOJI: Record<string, string> = {
@@ -666,12 +669,14 @@ function ListingItemCard({
   onToggle,
   isOwn,
   onOffer,
+  onReport,
 }: {
   flat: FlatItem;
   inCart: boolean;
   onToggle: () => void;
   isOwn: boolean;
   onOffer: () => void;
+  onReport?: () => void;
 }) {
   const { listing, item } = flat;
   const avatarUrl = listing.discordUserId && listing.discordAvatar
@@ -744,6 +749,17 @@ function ListingItemCard({
 
           {!isOwn && (
             <div className="flex items-center gap-1.5 flex-shrink-0">
+              {/* Report button */}
+              {onReport && (
+                <button
+                  onClick={onReport}
+                  className="flex items-center gap-1 text-[11px] sm:text-xs font-semibold px-2 py-1.5 rounded-lg border transition-all duration-200 bg-white/5 text-red-400/60 border-white/15 hover:bg-red-500/20 hover:text-red-400 hover:border-red-500/40"
+                  title="Report listing"
+                >
+                  <Flag className="w-3 h-3" />
+                </button>
+              )}
+
               {/* Offer button */}
               <button
                 onClick={onOffer}
@@ -1000,6 +1016,7 @@ export default function ListingsPage() {
 
   const [cart, setCart] = useState<CartEntry[]>([]);
   const [cartOpen, setCartOpen] = useState(false);
+  const [reportTarget, setReportTarget] = useState<ReportTarget | null>(null);
   const [activeFilter, setActiveFilter] = useState<"all" | "auctions" | "fixed">("all");
   const [chatTarget, setChatTarget] = useState<{
     listingId: string;
@@ -1262,6 +1279,7 @@ export default function ListingsPage() {
                   onToggle={() => toggleCart(flat)}
                   isOwn={isOwn}
                   onOffer={() => openOffer(flat)}
+                  onReport={user ? () => setReportTarget({ type: "listing", id: flat.listing.id, name: flat.listing.items[0]?.name ?? flat.listing.id }) : undefined}
                 />
               );
             })}
@@ -1546,6 +1564,13 @@ export default function ListingsPage() {
                   Your purchase ticket has been opened in our Discord. Join the server to complete your trade.
                 </p>
               </div>
+              <div className="px-3 py-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-xs text-amber-200 text-left space-y-1">
+                <p className="font-semibold text-amber-300 flex items-center gap-1.5">
+                  <ImageIcon className="w-3 h-3" />
+                  Screenshot your payment!
+                </p>
+                <p className="text-amber-200/80">Take a screenshot of your payment confirmation before completing the trade. This protects you in case of any disputes.</p>
+              </div>
               <div className="flex flex-col gap-2">
                 <a
                   href={ticketSuccess.inviteUrl}
@@ -1568,6 +1593,13 @@ export default function ListingsPage() {
               </div>
             </motion.div>
           </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Report modal */}
+      <AnimatePresence>
+        {reportTarget && (
+          <ReportModal target={reportTarget} onClose={() => setReportTarget(null)} />
         )}
       </AnimatePresence>
     </div>

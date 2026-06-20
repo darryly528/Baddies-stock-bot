@@ -2,8 +2,9 @@ import { useState, useEffect, useRef } from "react";
 import { useConversations, useConversation, useSendMessage } from "@/hooks/use-messages";
 import { useAuth } from "@/contexts/auth-context";
 import { motion, AnimatePresence } from "framer-motion";
-import { Inbox, X, Send, AlertTriangle, Loader2, MessageCircle } from "lucide-react";
+import { Inbox, X, Send, AlertTriangle, Loader2, MessageCircle, ImageIcon, Flag } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { ReportModal, type ReportTarget } from "@/components/report-modal";
 
 export default function MessagesPage() {
   const { user, loading: authLoading } = useAuth();
@@ -12,7 +13,26 @@ export default function MessagesPage() {
   const { data: openConv } = useConversation(openConvId);
   const sendMsg = useSendMessage(openConvId);
   const [replyDraft, setReplyDraft] = useState("");
+  const [imageUploading, setImageUploading] = useState(false);
+  const [reportTarget, setReportTarget] = useState<ReportTarget | null>(null);
   const convBottomRef = useRef<HTMLDivElement>(null);
+  const imgInputRef = useRef<HTMLInputElement>(null);
+
+  async function uploadAndSendImage(file: File) {
+    if (!openConvId) return;
+    setImageUploading(true);
+    try {
+      const form = new FormData();
+      form.append("image", file);
+      const res = await fetch("/api/uploads/dm-image", { method: "POST", body: form });
+      if (!res.ok) throw new Error("Upload failed");
+      const { url } = await res.json() as { url: string };
+      sendMsg.mutate({ content: "", imageUrl: url });
+    } catch {
+    } finally {
+      setImageUploading(false);
+    }
+  }
 
   useEffect(() => {
     convBottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -159,6 +179,17 @@ export default function MessagesPage() {
                   </p>
                   <p className="text-xs text-muted-foreground truncate">{openConv.listingTitle}</p>
                 </div>
+                <button
+                  onClick={() => {
+                    const otherId = user?.id === openConv.sellerId ? openConv.buyerId : openConv.sellerId;
+                    const otherName = user?.id === openConv.sellerId ? openConv.buyerName : openConv.sellerName;
+                    setReportTarget({ type: "user", id: otherId, name: otherName });
+                  }}
+                  className="p-1.5 rounded-lg text-muted-foreground hover:text-red-400 hover:bg-red-500/10 transition-colors flex-shrink-0"
+                  title="Report user"
+                >
+                  <Flag className="w-3.5 h-3.5" />
+                </button>
               </div>
               <div className="flex-1 overflow-y-auto p-4 space-y-3">
                 {openConv.messages.map((msg) => {
@@ -181,6 +212,13 @@ export default function MessagesPage() {
                             <AlertTriangle className="w-3 h-3" />
                             <span className="italic text-xs">Message filtered</span>
                           </div>
+                        ) : msg.imageUrl ? (
+                          <img
+                            src={msg.imageUrl}
+                            alt="Shared image"
+                            className="rounded-2xl max-h-60 max-w-xs object-cover cursor-pointer hover:opacity-90 transition-opacity"
+                            onClick={() => window.open(msg.imageUrl, "_blank")}
+                          />
                         ) : (
                           <div className={cn("px-3 py-2 rounded-2xl text-sm break-words", isMe ? "bg-gradient-to-br from-primary to-secondary text-white rounded-br-sm" : "bg-white/10 text-white rounded-bl-sm")}>
                             {msg.content}
@@ -196,6 +234,25 @@ export default function MessagesPage() {
                 <div ref={convBottomRef} />
               </div>
               <div className="flex-shrink-0 border-t border-white/10 p-3 flex gap-2">
+                <input
+                  ref={imgInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) uploadAndSendImage(file);
+                    e.target.value = "";
+                  }}
+                />
+                <button
+                  onClick={() => imgInputRef.current?.click()}
+                  disabled={imageUploading || sendMsg.isPending}
+                  className="p-2 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 disabled:opacity-40 transition-colors flex-shrink-0"
+                  title="Send image"
+                >
+                  {imageUploading ? <Loader2 className="w-4 h-4 animate-spin text-white" /> : <ImageIcon className="w-4 h-4 text-muted-foreground" />}
+                </button>
                 <input
                   value={replyDraft}
                   onChange={(e) => setReplyDraft(e.target.value)}
@@ -228,6 +285,11 @@ export default function MessagesPage() {
           )}
         </AnimatePresence>
       </div>
+      <AnimatePresence>
+        {reportTarget && (
+          <ReportModal target={reportTarget} onClose={() => setReportTarget(null)} />
+        )}
+      </AnimatePresence>
     </div>
   );
 }

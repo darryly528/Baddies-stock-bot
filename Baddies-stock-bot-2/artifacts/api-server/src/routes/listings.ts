@@ -33,6 +33,7 @@ export type Listing = {
   discordUserId: string | null;
   discordAvatar: string | null;
   paymentMethods: string[];
+  paymentDetails?: Record<string, string>;
   items: ListingItem[];
   customMessage?: string;
   createdAt: string;
@@ -99,10 +100,11 @@ router.get("/listings", (req, res) => {
 const MAX_AUCTION_DAYS = 7;
 
 router.post("/listings", (req, res) => {
-  const { seller, items, paymentMethods, customMessage, listingType, auctionDays, startingBid } = req.body as {
+  const { seller, items, paymentMethods, paymentDetails, customMessage, listingType, auctionDays, startingBid } = req.body as {
     seller: string;
     items: { name: string; itemType: string; imageUrl: string | null; quantity: number | string; price?: string }[];
     paymentMethods?: string[];
+    paymentDetails?: Record<string, string>;
     customMessage?: string;
     listingType?: "fixed" | "auction";
     auctionDays?: number;
@@ -131,6 +133,7 @@ router.post("/listings", (req, res) => {
     discordUserId: sessionUser?.id ?? null,
     discordAvatar: sessionUser?.avatar ?? null,
     paymentMethods: Array.isArray(paymentMethods) ? paymentMethods : [],
+    paymentDetails: paymentDetails && typeof paymentDetails === "object" ? paymentDetails : undefined,
     items: items.map((i) => ({
       name: i.name,
       itemType: i.itemType,

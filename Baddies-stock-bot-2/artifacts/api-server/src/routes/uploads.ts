@@ -7,7 +7,8 @@ import OpenAI from "openai";
 const UPLOADS_DIR = path.resolve(process.cwd(), "../../uploads");
 const AVATAR_DIR = path.join(UPLOADS_DIR, "avatars");
 const BANNER_DIR = path.join(UPLOADS_DIR, "banners");
-[UPLOADS_DIR, AVATAR_DIR, BANNER_DIR].forEach((d) => { if (!fs.existsSync(d)) fs.mkdirSync(d, { recursive: true }); });
+const DM_DIR = path.join(UPLOADS_DIR, "dms");
+[UPLOADS_DIR, AVATAR_DIR, BANNER_DIR, DM_DIR].forEach((d) => { if (!fs.existsSync(d)) fs.mkdirSync(d, { recursive: true }); });
 
 const PROFILES_PATH = process.env["PROFILES_PATH"] ?? path.resolve(process.cwd(), "../../profiles.json");
 function loadProfiles(): Record<string, Record<string, unknown>> {
@@ -119,6 +120,24 @@ router.post("/uploads/profile-image", upload.single("image"), async (req: Reques
   saveProfiles(profiles);
 
   res.json({ ok: true, url });
+});
+
+// ── Upload DM image ───────────────────────────────────────────────────────────
+
+router.post("/uploads/dm-image", upload.single("image"), (req: Request, res: Response) => {
+  const user = req.session?.discordUser;
+  if (!user) { res.status(401).json({ error: "Not authenticated" }); return; }
+  if (!req.file) { res.status(400).json({ error: "No image uploaded or invalid file type" }); return; }
+
+  const extMap: Record<string, string> = {
+    "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp", "image/gif": "gif",
+  };
+  const ext = extMap[req.file.mimetype] ?? "jpg";
+  const filename = `${user.id}_${Date.now()}.${ext}`;
+  const filePath = path.join(DM_DIR, filename);
+  fs.writeFileSync(filePath, req.file.buffer);
+
+  res.json({ ok: true, url: `/api/uploads/dms/${filename}` });
 });
 
 // ── Remove profile image ──────────────────────────────────────────────────────

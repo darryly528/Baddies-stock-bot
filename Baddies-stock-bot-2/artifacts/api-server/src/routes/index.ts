@@ -12,6 +12,7 @@ import ticketsRouter from "./tickets";
 import presenceRouter from "./presence";
 import uploadsRouter from "./uploads";
 import vouchesRouter from "./vouches";
+import reportsRouter from "./reports";
 
 const router: IRouter = Router();
 
@@ -28,5 +29,6 @@ router.use(ticketsRouter);
 router.use(presenceRouter);
 router.use(uploadsRouter);
 router.use(vouchesRouter);
+router.use(reportsRouter);
 
 export default router;

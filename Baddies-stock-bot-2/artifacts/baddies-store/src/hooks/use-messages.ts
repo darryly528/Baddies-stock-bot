@@ -8,6 +8,7 @@ export interface Message {
   senderName: string;
   senderAvatar: string | null;
   content: string;
+  imageUrl?: string;
   timestamp: string;
   filtered: boolean;
 }
@@ -99,12 +100,13 @@ export function useStartConversation() {
 export function useSendMessage(conversationId: string | null) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (content: string) => {
+    mutationFn: async (payload: string | { content: string; imageUrl?: string }) => {
+      const body = typeof payload === "string" ? { content: payload } : payload;
       const res = await fetch(`${apiBase}/api/messages/${conversationId}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ content }),
+        body: JSON.stringify(body),
       });
       if (!res.ok) {
         const err = (await res.json().catch(() => ({}))) as { error?: string };

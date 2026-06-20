@@ -26,6 +26,7 @@ export interface Listing {
   discordUserId: string | null;
   discordAvatar: string | null;
   paymentMethods: string[];
+  paymentDetails?: Record<string, string>;
   items: ListingItem[];
   customMessage?: string;
   createdAt: string;
@@ -58,6 +59,7 @@ export function useCreateListing() {
       seller: string;
       items: { name: string; itemType: string; imageUrl: string | null; quantity: number | string; price?: string }[];
       paymentMethods: string[];
+      paymentDetails?: Record<string, string>;
       customMessage?: string;
       listingType?: "fixed" | "auction";
       auctionDays?: number;

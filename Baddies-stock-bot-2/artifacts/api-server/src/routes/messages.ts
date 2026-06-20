@@ -15,6 +15,7 @@ export interface Message {
   senderName: string;
   senderAvatar: string | null;
   content: string;
+  imageUrl?: string;
   timestamp: string;
   filtered: boolean;
 }
@@ -172,14 +173,15 @@ router.get("/messages/:conversationId", requireSession, (req: any, res: any) => 
 
 router.post("/messages/:conversationId", requireSession, async (req: any, res: any) => {
   const userId = req.session.discordUser.id;
-  const { content } = req.body as { content: string };
+  const { content, imageUrl } = req.body as { content?: string; imageUrl?: string };
 
-  if (!content?.trim()) {
+  if (!content?.trim() && !imageUrl) {
     res.status(400).json({ error: "Message cannot be empty." });
     return;
   }
 
-  const filter = filterContent(content.trim());
+  const rawContent = content?.trim() ?? "";
+  const filter = rawContent ? filterContent(rawContent) : { filtered: "", clean: true };
 
   const convs = loadConversations();
   const idx = convs.findIndex((c) => c.id === req.params.conversationId);
@@ -200,6 +202,7 @@ router.post("/messages/:conversationId", requireSession, async (req: any, res: a
     senderName: sender.username,
     senderAvatar: sender.avatar ?? null,
     content: filter.filtered,
+    ...(imageUrl ? { imageUrl } : {}),
     timestamp: new Date().toISOString(),
     filtered: !filter.clean,
   };

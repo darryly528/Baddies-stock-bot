@@ -5,8 +5,9 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Pencil, Check, X, Plus, Trash2, Search, Loader2, Box,
   ArrowLeft, ShoppingBag, LayoutList, Sparkles, BadgeCheck,
-  ExternalLink, AlertTriangle, Upload, Heart,
+  ExternalLink, AlertTriangle, Upload, Heart, Flag,
 } from "lucide-react";
+import { ReportModal, type ReportTarget } from "@/components/report-modal";
 import { useAuth } from "@/contexts/auth-context";
 import {
   useProfile, useOwnProfile, useUpdateProfile,
@@ -586,7 +587,7 @@ function ProfileVouchModal({
 
 // ── Profile view ──────────────────────────────────────────────────────────────
 
-function ProfileView({ profile, isOwn, onEdit, onVouch }: { profile: Profile; isOwn: boolean; onEdit: () => void; onVouch?: () => void }) {
+function ProfileView({ profile, isOwn, onEdit, onVouch, onReport }: { profile: Profile; isOwn: boolean; onEdit: () => void; onVouch?: () => void; onReport?: () => void }) {
   const discordAvatarUrl = profile.avatarHash
     ? `https://cdn.discordapp.com/avatars/${profile.userId}/${profile.avatarHash}.png?size=128`
     : null;
@@ -634,6 +635,13 @@ function ProfileView({ profile, isOwn, onEdit, onVouch }: { profile: Profile; is
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-black/50 border border-primary/30 backdrop-blur-sm text-xs font-semibold text-primary hover:bg-primary/20 transition-colors">
               <Heart className="w-3 h-3" />
               Vouch
+            </button>
+          )}
+          {!isOwn && onReport && (
+            <button onClick={onReport}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-black/50 border border-red-500/30 backdrop-blur-sm text-xs font-semibold text-red-400 hover:bg-red-500/20 transition-colors">
+              <Flag className="w-3 h-3" />
+              Report
             </button>
           )}
           {isOwn && (
@@ -786,6 +794,7 @@ export default function ProfilePage() {
 
   const [editing, setEditing] = useState(false);
   const [vouchOpen, setVouchOpen] = useState(false);
+  const [reportTarget, setReportTarget] = useState<ReportTarget | null>(null);
 
   // Auto-open editor when own profile is fresh/empty
   useEffect(() => {
@@ -863,6 +872,7 @@ export default function ProfilePage() {
             isOwn={isOwn}
             onEdit={() => setEditing(true)}
             onVouch={!isOwn && !!user ? () => setVouchOpen(true) : undefined}
+            onReport={!isOwn && !!user ? () => setReportTarget({ type: "user", id: profile.userId, name: profile.username }) : undefined}
           />
         </div>
 
@@ -883,6 +893,13 @@ export default function ProfilePage() {
             seller={{ userId: profile.userId, username: profile.username, avatarHash: profile.avatarHash ?? null, customAvatarUrl: profile.customAvatarUrl }}
             onClose={() => setVouchOpen(false)}
           />
+        )}
+      </AnimatePresence>
+
+      {/* Report modal */}
+      <AnimatePresence>
+        {reportTarget && (
+          <ReportModal target={reportTarget} onClose={() => setReportTarget(null)} />
         )}
       </AnimatePresence>
     </div>

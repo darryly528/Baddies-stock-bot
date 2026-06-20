@@ -63,6 +63,7 @@ export default function ListPage() {
   const [itemType, setItemType] = useState("All");
   const [selected, setSelected] = useState<SelectedItem[]>([]);
   const [paymentMethods, setPaymentMethods] = useState<string[]>([]);
+  const [paymentDetails, setPaymentDetails] = useState<Record<string, { info: string; useMiddleMan: boolean; robuxAmount: string; gampassLink: string }>>({});
   const [customMessage, setCustomMessage] = useState("");
   const [listingType, setListingType] = useState<"fixed" | "auction">("fixed");
   const [auctionDays, setAuctionDays] = useState(3);
@@ -139,9 +140,37 @@ export default function ListPage() {
   }
 
   function togglePayment(label: string) {
-    setPaymentMethods((prev) =>
-      prev.includes(label) ? prev.filter((m) => m !== label) : [...prev, label]
-    );
+    setPaymentMethods((prev) => {
+      if (prev.includes(label)) {
+        setPaymentDetails((pd) => { const { [label]: _, ...rest } = pd; return rest; });
+        return prev.filter((m) => m !== label);
+      }
+      return [...prev, label];
+    });
+  }
+
+  function updatePaymentDetail(method: string, field: string, value: string | boolean) {
+    setPaymentDetails((prev) => ({
+      ...prev,
+      [method]: { info: "", useMiddleMan: false, robuxAmount: "", gampassLink: "", ...(prev[method] ?? {}), [field]: value },
+    }));
+  }
+
+  function serializePaymentDetails(): Record<string, string> {
+    const result: Record<string, string> = {};
+    for (const method of paymentMethods) {
+      const d = paymentDetails[method];
+      if (!d) continue;
+      if (method === "Robux") {
+        const parts = [d.robuxAmount, d.gampassLink].filter(Boolean).join("|");
+        if (parts) result[method] = parts;
+      } else if (method === "Venmo" || method === "Apple Pay") {
+        result[method] = d.useMiddleMan ? "MIDDLEMAN" : d.info;
+      } else {
+        if (d.info) result[method] = d.info;
+      }
+    }
+    return result;
   }
 
   async function handleBuyViaDiscord(listingId: string, inviteUrl: string) {
@@ -171,6 +200,7 @@ export default function ListPage() {
         price: listingType === "auction" ? undefined : (s.price || undefined),
       })),
       paymentMethods,
+      paymentDetails: serializePaymentDetails(),
       customMessage: customMessage.trim() || undefined,
       listingType,
       ...(listingType === "auction" && {
@@ -181,6 +211,7 @@ export default function ListPage() {
     setPostedListingId(result.id);
     setSelected([]);
     setPaymentMethods([]);
+    setPaymentDetails({});
     setCustomMessage("");
     setListingType("fixed");
     setAuctionDays(3);
@@ -372,6 +403,86 @@ export default function ListPage() {
                     })}
                   </div>
                 </div>
+
+                {/* Payment method details */}
+                {paymentMethods.length > 0 && (
+                  <div className="space-y-2.5">
+                    {paymentMethods.map((method) => {
+                      const d = paymentDetails[method] ?? { info: "", useMiddleMan: false, robuxAmount: "", gampassLink: "" };
+                      if (method === "Robux") {
+                        return (
+                          <div key={method} className="p-3 rounded-xl bg-white/5 border border-white/10 space-y-2">
+                            <p className="text-xs font-semibold text-white/80 flex items-center gap-1.5">
+                              {PAYMENT_EMOJI[method] && <img src={PAYMENT_EMOJI[method]} alt="" className="w-3.5 h-3.5 object-contain" />}
+                              Robux details
+                            </p>
+                            <input
+                              value={d.robuxAmount}
+                              onChange={(e) => updatePaymentDetail(method, "robuxAmount", e.target.value)}
+                              placeholder="Amount (e.g. 5000)"
+                              className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-1.5 text-sm text-white placeholder:text-muted-foreground/60 outline-none focus:border-primary/50 transition"
+                            />
+                            <input
+                              value={d.gampassLink}
+                              onChange={(e) => updatePaymentDetail(method, "gampassLink", e.target.value)}
+                              placeholder="Gamepass link (optional)"
+                              className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-1.5 text-sm text-white placeholder:text-muted-foreground/60 outline-none focus:border-primary/50 transition"
+                            />
+                          </div>
+                        );
+                      }
+                      if (method === "Venmo" || method === "Apple Pay") {
+                        return (
+                          <div key={method} className="p-3 rounded-xl bg-white/5 border border-white/10 space-y-2">
+                            <p className="text-xs font-semibold text-white/80 flex items-center gap-1.5">
+                              {PAYMENT_EMOJI[method] && <img src={PAYMENT_EMOJI[method]} alt="" className="w-3.5 h-3.5 object-contain" />}
+                              {method} details
+                            </p>
+                            {!d.useMiddleMan && (
+                              <input
+                                value={d.info}
+                                onChange={(e) => updatePaymentDetail(method, "info", e.target.value)}
+                                placeholder="Phone number or username"
+                                className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-1.5 text-sm text-white placeholder:text-muted-foreground/60 outline-none focus:border-primary/50 transition"
+                              />
+                            )}
+                            {d.useMiddleMan && (
+                              <div className="px-3 py-2 rounded-lg bg-amber-500/10 border border-amber-500/20 text-xs text-amber-300">
+                                Buyers will use a middle man for this payment method.
+                              </div>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => updatePaymentDetail(method, "useMiddleMan", !d.useMiddleMan)}
+                              className={cn(
+                                "text-xs px-2.5 py-1 rounded-lg border transition-colors font-medium",
+                                d.useMiddleMan
+                                  ? "bg-amber-500/20 border-amber-500/40 text-amber-300 hover:bg-amber-500/30"
+                                  : "bg-white/5 border-white/10 text-muted-foreground hover:text-white hover:border-white/20"
+                              )}
+                            >
+                              {d.useMiddleMan ? "✓ Use Middle Man" : "Use Middle Man"}
+                            </button>
+                          </div>
+                        );
+                      }
+                      return (
+                        <div key={method} className="p-3 rounded-xl bg-white/5 border border-white/10 space-y-2">
+                          <p className="text-xs font-semibold text-white/80 flex items-center gap-1.5">
+                            {PAYMENT_EMOJI[method] && <img src={PAYMENT_EMOJI[method]} alt="" className="w-3.5 h-3.5 object-contain" />}
+                            {method} details
+                          </p>
+                          <input
+                            value={d.info}
+                            onChange={(e) => updatePaymentDetail(method, "info", e.target.value)}
+                            placeholder={method === "PayPal" ? "PayPal link or username (e.g. paypal.me/you)" : "Cash App cashtag (e.g. $name)"}
+                            className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-1.5 text-sm text-white placeholder:text-muted-foreground/60 outline-none focus:border-primary/50 transition"
+                          />
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
 
                 {/* Listing type toggle */}
                 <div>
