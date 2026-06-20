@@ -3,8 +3,9 @@ import fs from "fs";
 import path from "path";
 import { randomUUID } from "crypto";
 import { filterContent } from "../contentFilter";
-import { getBotClient } from "../bot";
+import { getBotClient, createMiddlemanTicket } from "../bot";
 import { linkPendingToMessage } from "../imageReview";
+import { getRole, hasMinRole } from "../permissions";
 
 const router: IRouter = Router();
 
@@ -18,6 +19,7 @@ export interface Message {
   content: string;
   imageUrl?: string;
   imagePending?: boolean;
+  isAdmin?: boolean;
   timestamp: string;
   filtered: boolean;
 }
@@ -74,8 +76,10 @@ async function notifySellerDM(sellerId: string, buyerName: string, listingTitle:
 
 router.get("/messages", requireSession, (req: any, res: any) => {
   const userId = req.session.discordUser.id;
+  const userRole = getRole(userId, req.session.discordUser.username);
+  const isStaff = hasMinRole(userRole, "mod");
   const convs = loadConversations().filter(
-    (c) => c.buyerId === userId || c.sellerId === userId
+    (c) => isStaff || c.buyerId === userId || c.sellerId === userId
   );
   const withUnread = convs.map((c) => ({
     ...c,
@@ -161,7 +165,8 @@ router.get("/messages/:conversationId", requireSession, (req: any, res: any) => 
     return;
   }
   const conv = convs[idx]!;
-  if (conv.buyerId !== userId && conv.sellerId !== userId) {
+  const viewRole = getRole(userId, req.session.discordUser.username);
+  if (conv.buyerId !== userId && conv.sellerId !== userId && !hasMinRole(viewRole, "mod")) {
     res.status(403).json({ error: "Access denied." });
     return;
   }
@@ -198,13 +203,16 @@ router.post("/messages/:conversationId", requireSession, async (req: any, res: a
   }
 
   const sender = req.session.discordUser;
+  const senderRole = getRole(userId, sender.username);
+  const isAdminSender = hasMinRole(senderRole, "mod");
   const msg: Message = {
     id: randomUUID(),
     senderId: userId,
-    senderName: sender.username,
-    senderAvatar: sender.avatar ?? null,
+    senderName: isAdminSender ? "Admin" : sender.username,
+    senderAvatar: isAdminSender ? null : sender.avatar ?? null,
     content: filter.filtered,
     ...(imageUrl ? { imageUrl, imagePending: !!pendingId } : {}),
+    ...(isAdminSender ? { isAdmin: true } : {}),
     timestamp: new Date().toISOString(),
     filtered: !filter.clean,
   };
@@ -225,6 +233,31 @@ router.post("/messages/:conversationId", requireSession, async (req: any, res: a
   notifySellerDM(recipientId, sender.username, conv.listingTitle, filter.filtered);
 
   res.status(201).json(msg);
+});
+
+router.post("/messages/:conversationId/middleman", requireSession, async (req: any, res: any) => {
+  const userId = req.session.discordUser.id;
+  const convs = loadConversations();
+  const conv = convs.find((c: Conversation) => c.id === req.params.conversationId);
+  if (!conv) { res.status(404).json({ error: "Conversation not found." }); return; }
+  const userRole = getRole(userId, req.session.discordUser.username);
+  if (conv.buyerId !== userId && conv.sellerId !== userId && !hasMinRole(userRole, "mod")) {
+    res.status(403).json({ error: "Access denied." });
+    return;
+  }
+  const result = await createMiddlemanTicket({
+    buyerId: conv.buyerId,
+    buyerName: conv.buyerName,
+    sellerId: conv.sellerId,
+    sellerName: conv.sellerName,
+    listingTitle: conv.listingTitle,
+    conversationId: conv.id,
+  });
+  if (!result.ok) {
+    res.status(500).json({ error: result.error ?? "Failed to create middleman ticket" });
+    return;
+  }
+  res.json({ ok: true, channelId: result.channelId });
 });
 
 export default router;

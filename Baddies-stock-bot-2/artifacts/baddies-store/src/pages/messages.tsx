@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef } from "react";
-import { useConversations, useConversation, useSendMessage } from "@/hooks/use-messages";
+import { useConversations, useConversation, useSendMessage, useIsMod, useMiddleman } from "@/hooks/use-messages";
 import { useAuth } from "@/contexts/auth-context";
 import { motion, AnimatePresence } from "framer-motion";
-import { Inbox, X, Send, AlertTriangle, Loader2, MessageCircle, ImageIcon, Flag } from "lucide-react";
+import { Inbox, X, Send, AlertTriangle, Loader2, MessageCircle, ImageIcon, Flag, Shield } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ReportModal, type ReportTarget } from "@/components/report-modal";
 
@@ -12,9 +12,13 @@ export default function MessagesPage() {
   const [openConvId, setOpenConvId] = useState<string | null>(null);
   const { data: openConv } = useConversation(openConvId);
   const sendMsg = useSendMessage(openConvId);
+  const mmTicket = useMiddleman(openConvId);
+  const { data: modData } = useIsMod();
+  const isMod = modData?.isMod ?? false;
   const [replyDraft, setReplyDraft] = useState("");
   const [imageUploading, setImageUploading] = useState(false);
   const [reportTarget, setReportTarget] = useState<ReportTarget | null>(null);
+  const [mmStatus, setMmStatus] = useState<string | null>(null);
   const convBottomRef = useRef<HTMLDivElement>(null);
   const imgInputRef = useRef<HTMLInputElement>(null);
 
@@ -179,17 +183,41 @@ export default function MessagesPage() {
                   </p>
                   <p className="text-xs text-muted-foreground truncate">{openConv.listingTitle}</p>
                 </div>
-                <button
-                  onClick={() => {
-                    const otherId = user?.id === openConv.sellerId ? openConv.buyerId : openConv.sellerId;
-                    const otherName = user?.id === openConv.sellerId ? openConv.buyerName : openConv.sellerName;
-                    setReportTarget({ type: "user", id: otherId, name: otherName });
-                  }}
-                  className="p-1.5 rounded-lg text-muted-foreground hover:text-red-400 hover:bg-red-500/10 transition-colors flex-shrink-0"
-                  title="Report user"
-                >
-                  <Flag className="w-3.5 h-3.5" />
-                </button>
+                <div className="flex items-center gap-1.5 flex-shrink-0">
+                  {mmStatus && (
+                    <span className="text-[10px] text-primary font-medium px-2 py-1 bg-primary/10 rounded-lg">{mmStatus}</span>
+                  )}
+                  <button
+                    onClick={async () => {
+                      setMmStatus(null);
+                      try {
+                        await mmTicket.mutateAsync();
+                        setMmStatus("Ticket created in Discord!");
+                        setTimeout(() => setMmStatus(null), 4000);
+                      } catch {
+                        setMmStatus("Failed — bot may be offline");
+                        setTimeout(() => setMmStatus(null), 4000);
+                      }
+                    }}
+                    disabled={mmTicket.isPending}
+                    className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium text-primary/80 bg-primary/10 hover:bg-primary/20 disabled:opacity-40 transition-colors"
+                    title="Request a middleman"
+                  >
+                    {mmTicket.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Shield className="w-3 h-3" />}
+                    <span>Middle Man</span>
+                  </button>
+                  <button
+                    onClick={() => {
+                      const otherId = user?.id === openConv.sellerId ? openConv.buyerId : openConv.sellerId;
+                      const otherName = user?.id === openConv.sellerId ? openConv.buyerName : openConv.sellerName;
+                      setReportTarget({ type: "user", id: otherId, name: otherName });
+                    }}
+                    className="p-1.5 rounded-lg text-muted-foreground hover:text-red-400 hover:bg-red-500/10 transition-colors"
+                    title="Report user"
+                  >
+                    <Flag className="w-3.5 h-3.5" />
+                  </button>
+                </div>
               </div>
               <div className="flex-1 overflow-y-auto p-4 space-y-3">
                 {openConv.messages.map((msg) => {
@@ -199,14 +227,21 @@ export default function MessagesPage() {
                     : null;
                   return (
                     <div key={msg.id} className={cn("flex gap-2 items-end", isMe ? "flex-row-reverse" : "flex-row")}>
-                      {!isMe && (avatarUrl ? (
-                        <img src={avatarUrl} alt={msg.senderName} className="w-6 h-6 rounded-full flex-shrink-0" />
-                      ) : (
-                        <div className="w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center text-[10px] font-bold text-primary flex-shrink-0">
-                          {msg.senderName[0]?.toUpperCase()}
-                        </div>
-                      ))}
-                      <div className={cn("max-w-[75%]", isMe ? "items-end" : "items-start")}>
+                      {!isMe && (
+                        msg.isAdmin ? (
+                          <img src="/admin-avatar.jpg" alt="Admin" className="w-6 h-6 rounded-full flex-shrink-0 object-cover" />
+                        ) : avatarUrl ? (
+                          <img src={avatarUrl} alt={msg.senderName} className="w-6 h-6 rounded-full flex-shrink-0" />
+                        ) : (
+                          <div className="w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center text-[10px] font-bold text-primary flex-shrink-0">
+                            {msg.senderName[0]?.toUpperCase()}
+                          </div>
+                        )
+                      )}
+                      <div className={cn("max-w-[75%] flex flex-col", isMe ? "items-end" : "items-start")}>
+                        {!isMe && msg.isAdmin && (
+                          <span className="text-[10px] font-bold text-primary px-1 mb-0.5">Admin</span>
+                        )}
                         {msg.filtered ? (
                           <div className={cn("flex items-center gap-1.5 px-3 py-2 rounded-2xl text-sm", isMe ? "bg-primary/20 text-primary/60 rounded-br-sm" : "bg-white/10 text-muted-foreground rounded-bl-sm")}>
                             <AlertTriangle className="w-3 h-3" />
@@ -227,7 +262,11 @@ export default function MessagesPage() {
                             />
                           )
                         ) : (
-                          <div className={cn("px-3 py-2 rounded-2xl text-sm break-words", isMe ? "bg-gradient-to-br from-primary to-secondary text-white rounded-br-sm" : "bg-white/10 text-white rounded-bl-sm")}>
+                          <div className={cn("px-3 py-2 rounded-2xl text-sm break-words",
+                            msg.isAdmin
+                              ? (isMe ? "bg-gradient-to-br from-violet-600 to-purple-700 text-white rounded-br-sm" : "bg-violet-600/20 border border-violet-500/30 text-white rounded-bl-sm")
+                              : (isMe ? "bg-gradient-to-br from-primary to-secondary text-white rounded-br-sm" : "bg-white/10 text-white rounded-bl-sm")
+                          )}>
                             {msg.content}
                           </div>
                         )}
@@ -260,18 +299,29 @@ export default function MessagesPage() {
                 >
                   {imageUploading ? <Loader2 className="w-4 h-4 animate-spin text-white" /> : <ImageIcon className="w-4 h-4 text-muted-foreground" />}
                 </button>
-                <input
-                  value={replyDraft}
-                  onChange={(e) => setReplyDraft(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" && !e.shiftKey && replyDraft.trim()) {
-                      e.preventDefault();
-                      sendMsg.mutate(replyDraft.trim(), { onSuccess: () => setReplyDraft("") });
-                    }
-                  }}
-                  placeholder="Type a message…"
-                  className="flex-1 bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm text-white placeholder:text-muted-foreground focus:outline-none focus:border-primary/40"
-                />
+                <div className="flex-1 flex flex-col gap-1">
+                  {isMod && (
+                    <div className="flex items-center gap-1.5 px-1">
+                      <img src="/admin-avatar.jpg" alt="Admin" className="w-3.5 h-3.5 rounded-full object-cover" />
+                      <span className="text-[10px] text-primary font-semibold">Sending as Admin</span>
+                    </div>
+                  )}
+                  <input
+                    value={replyDraft}
+                    onChange={(e) => setReplyDraft(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && !e.shiftKey && replyDraft.trim()) {
+                        e.preventDefault();
+                        sendMsg.mutate(replyDraft.trim(), { onSuccess: () => setReplyDraft("") });
+                      }
+                    }}
+                    placeholder={isMod ? "Type as Admin…" : "Type a message…"}
+                    className={cn(
+                      "flex-1 bg-white/5 border rounded-xl px-3 py-2 text-sm text-white placeholder:text-muted-foreground focus:outline-none transition-colors",
+                      isMod ? "border-primary/30 focus:border-primary/60" : "border-white/10 focus:border-primary/40"
+                    )}
+                  />
+                </div>
                 <button
                   onClick={() => {
                     if (replyDraft.trim()) {

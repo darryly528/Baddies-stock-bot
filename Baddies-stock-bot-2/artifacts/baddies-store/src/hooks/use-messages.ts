@@ -10,6 +10,7 @@ export interface Message {
   content: string;
   imageUrl?: string;
   imagePending?: boolean;
+  isAdmin?: boolean;
   timestamp: string;
   filtered: boolean;
 }
@@ -95,6 +96,22 @@ export function useStartConversation() {
       return res.json() as Promise<{ conversationId: string; exists: boolean }>;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["conversations"] }),
+  });
+}
+
+export function useMiddleman(conversationId: string | null) {
+  return useMutation({
+    mutationFn: async () => {
+      const res = await fetch(`${apiBase}/api/messages/${conversationId}/middleman`, {
+        method: "POST",
+        credentials: "include",
+      });
+      if (!res.ok) {
+        const err = (await res.json().catch(() => ({}))) as { error?: string };
+        throw new Error(err.error ?? "Failed to create middleman ticket");
+      }
+      return res.json() as Promise<{ ok: boolean; channelId?: string }>;
+    },
   });
 }
 

@@ -304,6 +304,81 @@ export function getBotClient(): Client | null {
   return _client;
 }
 
+// ── Middleman ticket ──────────────────────────────────────────────────────────
+
+export async function createMiddlemanTicket(data: {
+  buyerId: string;
+  buyerName: string;
+  sellerId: string;
+  sellerName: string;
+  listingTitle: string;
+  conversationId: string;
+}): Promise<{ ok: boolean; channelId?: string; error?: string }> {
+  try {
+    const bot = _client;
+    if (!bot) return { ok: false, error: "Bot not online" };
+
+    const guild = bot.guilds.cache.first();
+    if (!guild) return { ok: false, error: "Bot is not in any guild" };
+
+    const { buyerId, buyerName, sellerId, sellerName, listingTitle } = data;
+
+    const safe = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 12);
+    const channelName = `mm-${safe(buyerName)}-${safe(sellerName)}`.slice(0, 100);
+
+    const modRoleId = process.env["TICKET_MOD_ROLE_ID"];
+    const categoryId = process.env["TICKET_CATEGORY_ID"] ?? TICKET_CATEGORY_ID;
+
+    const perms: { id: string; allow?: bigint[]; deny?: bigint[] }[] = [
+      { id: guild.roles.everyone.id, deny: [PermissionFlagsBits.ViewChannel] },
+      {
+        id: buyerId,
+        allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory],
+      },
+      {
+        id: sellerId,
+        allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory],
+      },
+    ];
+    if (modRoleId) {
+      perms.push({
+        id: modRoleId,
+        allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory],
+      });
+    }
+
+    const ticketChannel = await guild.channels.create({
+      name: channelName,
+      type: ChannelType.GuildText,
+      parent: categoryId,
+      permissionOverwrites: perms,
+      reason: `Middleman ticket — ${buyerName} ↔ ${sellerName}`,
+    });
+
+    const closeBtn = new ButtonBuilder()
+      .setCustomId(`tc_cancel:${sellerId}:${buyerId}`)
+      .setLabel("❌ Close Ticket")
+      .setStyle(ButtonStyle.Danger);
+
+    await ticketChannel.send({
+      content: [
+        `🛡️ **Middleman Requested**`,
+        `**Buyer:** <@${buyerId}> (${buyerName})`,
+        `**Seller:** <@${sellerId}> (${sellerName})`,
+        `**Listing:** ${listingTitle}`,
+        ``,
+        `A staff member will be here shortly to help facilitate this trade safely.`,
+      ].join("\n"),
+      components: [new ActionRowBuilder<ButtonBuilder>().addComponents(closeBtn)],
+    });
+
+    return { ok: true, channelId: ticketChannel.id };
+  } catch (err) {
+    console.error("[middleman] Failed to create ticket:", err);
+    return { ok: false, error: String(err) };
+  }
+}
+
 export async function startBot() {
   const token = process.env["DISCORD_BOT_TOKEN"];
   if (!token) {
