@@ -121,15 +121,9 @@ router.get("/admin/members", requireAdmin, async (_req, res) => {
   if (guilds.length === 0) { res.status(503).json({ error: "Bot offline or not in any guild" }); return; }
 
   try {
-    // Fetch all members from every guild in parallel
-    const guildMemberSets = await Promise.all(
-      guilds.map(async (guild) => {
-        const members = await guild.members.fetch().catch(() => null);
-        return { guild, members };
-      })
-    );
-
-    // Deduplicate by user ID — merge guild presence and role flags
+    // Use the bot's in-memory cache — works without the privileged GuildMembers intent.
+    // The cache is populated from slash command interactions, message events, and
+    // individual member fetches (e.g. when a listing is created).
     const merged = new Map<string, {
       id: string;
       username: string;
@@ -144,9 +138,8 @@ router.get("/admin/members", requireAdmin, async (_req, res) => {
       joinedAt: string | null;
     }>();
 
-    for (const { guild, members } of guildMemberSets) {
-      if (!members) continue;
-      for (const [, m] of members) {
+    for (const guild of guilds) {
+      for (const [, m] of guild.members.cache) {
         if (m.user.bot) continue;
 
         const avatarUrl = m.user.avatar
@@ -189,7 +182,6 @@ router.get("/admin/members", requireAdmin, async (_req, res) => {
       }
     }
 
-    // Update isSuspended from current set (since it can change between guild fetches)
     for (const entry of merged.values()) {
       entry.isSuspended = suspendedUsers.has(entry.id);
     }

@@ -855,6 +855,16 @@ export default function AdminPage() {
               </p>
             </div>
 
+            {/* Info banner — only show when not searching and list is sparse */}
+            {!isSearching && (
+              <div className="flex items-start gap-2.5 px-3.5 py-2.5 rounded-xl bg-primary/5 border border-primary/20 text-xs text-muted-foreground">
+                <Users className="w-3.5 h-3.5 text-primary flex-shrink-0 mt-0.5" />
+                <span>
+                  Showing members the bot has seen from interactions. Use the search box to find <strong className="text-white">any</strong> server member by username.
+                </span>
+              </div>
+            )}
+
             {membersLoading && !isSearching ? (
               <div className="space-y-2">{Array.from({ length: 6 }).map((_, i) => <div key={i} className="glass-panel border border-white/10 rounded-xl h-16 animate-pulse bg-white/5" />)}</div>
             ) : isSearching && searchFetching && filteredMembers.length === 0 ? (
@@ -864,8 +874,10 @@ export default function AdminPage() {
                 Type at least 2 characters to search…
               </div>
             ) : !isSearching && members.length === 0 ? (
-              <div className="glass-panel border border-white/10 rounded-2xl p-12 text-center text-muted-foreground">
-                No members found — make sure the bot is online.
+              <div className="glass-panel border border-white/10 rounded-2xl p-10 text-center space-y-2">
+                <Users className="w-10 h-10 text-muted-foreground/20 mx-auto" />
+                <p className="text-muted-foreground text-sm">No cached members yet.</p>
+                <p className="text-muted-foreground/60 text-xs">Use the search box above to find any server member by name.</p>
               </div>
             ) : filteredMembers.length === 0 && isSearching ? (
               <div className="glass-panel border border-white/10 rounded-2xl p-8 text-center text-muted-foreground text-sm">
