@@ -39,6 +39,7 @@ const PAYMENT_EMOJI: Record<string, string> = {
   "Apple Pay": "https://cdn.discordapp.com/emojis/1481817467813888212.png",
   "Cash App":  "https://cdn.discordapp.com/emojis/1481817227975069718.png",
   "Venmo":     "https://cdn.discordapp.com/emojis/1481817470431006883.png",
+  "Robux":     "/robux-logo.png",
 };
 
 interface CartEntry {

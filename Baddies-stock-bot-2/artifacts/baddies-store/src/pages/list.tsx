@@ -31,12 +31,13 @@ import {
 } from "lucide-react";
 import { cn, formatNumber } from "@/lib/utils";
 
-const PAYMENT_LABELS = ["PayPal", "Apple Pay", "Cash App", "Venmo"] as const;
+const PAYMENT_LABELS = ["PayPal", "Apple Pay", "Cash App", "Venmo", "Robux"] as const;
 const PAYMENT_EMOJI: Record<string, string> = {
   "PayPal":    "https://cdn.discordapp.com/emojis/1481817468912799814.png",
   "Apple Pay": "https://cdn.discordapp.com/emojis/1481817467813888212.png",
   "Cash App":  "https://cdn.discordapp.com/emojis/1481817227975069718.png",
   "Venmo":     "https://cdn.discordapp.com/emojis/1481817470431006883.png",
+  "Robux":     "/robux-logo.png",
 };
 
 interface SelectedItem {
