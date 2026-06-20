@@ -829,6 +829,8 @@ export default function AdminPage() {
     queryKey: ["admin-me"],
     queryFn: () => fetch("/api/admin/me", { credentials: "include" }).then((r) => r.json()),
     enabled: !!user,
+    refetchInterval: 8_000,
+    staleTime: 5_000,
   });
 
   const callerRole: AnyRole | null = (adminMe?.role && adminMe.role !== "none") ? adminMe.role as AnyRole : null;

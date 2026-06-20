@@ -67,6 +67,12 @@ export function useStaff() {
   });
 }
 
+function invalidateStaffRelated(qc: ReturnType<typeof useQueryClient>) {
+  qc.invalidateQueries({ queryKey: ["admin-staff"] });
+  qc.invalidateQueries({ queryKey: ["admin-members"] });
+  qc.invalidateQueries({ queryKey: ["admin-me"] });
+}
+
 export function useAddStaff() {
   const qc = useQueryClient();
   return useMutation({
@@ -81,7 +87,7 @@ export function useAddStaff() {
         if (!r.ok) throw new Error(d.error ?? "Failed");
         return d;
       }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["admin-staff"] }),
+    onSuccess: () => invalidateStaffRelated(qc),
   });
 }
 
@@ -99,7 +105,7 @@ export function useChangeRole() {
         if (!r.ok) throw new Error(d.error ?? "Failed");
         return d;
       }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["admin-staff"] }),
+    onSuccess: () => invalidateStaffRelated(qc),
   });
 }
 
@@ -115,7 +121,7 @@ export function useRemoveStaff() {
         if (!r.ok) throw new Error(d.error ?? "Failed");
         return d;
       }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["admin-staff"] }),
+    onSuccess: () => invalidateStaffRelated(qc),
   });
 }
 
