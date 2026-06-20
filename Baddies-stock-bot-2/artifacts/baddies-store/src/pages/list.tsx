@@ -517,7 +517,7 @@ export default function ListPage() {
                       )}
                     >
                       <Tag className="w-3.5 h-3.5" />
-                      Fixed Price
+                      Buy
                     </button>
                     <button
                       onClick={() => setListingType("auction")}

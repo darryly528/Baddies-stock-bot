@@ -171,7 +171,7 @@ function MiniListingCard({ listing }: { listing: Listing }) {
           {listing.items.map((i) => i.name).join(", ")}
         </p>
         <p className="text-[11px] text-muted-foreground">
-          {active.length} active · {listing.listingType === "auction" ? "🔨 Auction" : "Fixed"}
+          {active.length} active · {listing.listingType === "auction" ? "🔨 Auction" : "Buy"}
         </p>
       </div>
       {first?.price && (

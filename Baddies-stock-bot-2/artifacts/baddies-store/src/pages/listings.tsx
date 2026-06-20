@@ -1326,7 +1326,7 @@ export default function ListingsPage() {
           {([
             { key: "all", label: "All" },
             { key: "auctions", label: `Auctions${auctionCount > 0 ? ` (${auctionCount})` : ""}` },
-            { key: "fixed", label: "Fixed" },
+            { key: "fixed", label: "Buy" },
           ] as const).map(({ key, label }) => (
             <motion.button
               key={key}
