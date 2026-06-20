@@ -128,19 +128,25 @@ export default function Home() {
           {/* Main Type Toggles */}
           <div className="flex w-full lg:w-auto p-1 bg-black/40 rounded-xl overflow-x-auto hide-scrollbar">
             {ITEM_TYPES.map((type) => (
-              <button
+              <motion.button
                 key={type.value}
                 onClick={() => handleTypeChange(type.value)}
+                whileTap={{ scale: 0.95 }}
                 className={cn(
-                  "flex-1 md:flex-none flex items-center justify-center gap-2 px-5 py-3 rounded-lg text-sm font-medium transition-all whitespace-nowrap",
-                  itemType === type.value 
-                    ? "bg-gradient-to-r from-primary to-secondary text-white shadow-lg" 
-                    : "text-muted-foreground hover:text-white hover:bg-white/5"
+                  "relative flex-1 md:flex-none flex items-center justify-center gap-2 px-5 py-3 rounded-lg text-sm font-medium transition-colors whitespace-nowrap",
+                  itemType === type.value ? "text-white" : "text-muted-foreground hover:text-white"
                 )}
               >
-                <span>{type.emoji}</span>
-                <span className="hidden sm:inline">{type.label}</span>
-              </button>
+                {itemType === type.value && (
+                  <motion.span
+                    layoutId="catalog-type-pill"
+                    className="absolute inset-0 rounded-lg bg-gradient-to-r from-primary to-secondary shadow-lg shadow-primary/20"
+                    transition={{ type: "spring", bounce: 0.2, duration: 0.38 }}
+                  />
+                )}
+                <span className="relative z-10">{type.emoji}</span>
+                <span className="relative z-10 hidden sm:inline">{type.label}</span>
+              </motion.button>
             ))}
           </div>
 

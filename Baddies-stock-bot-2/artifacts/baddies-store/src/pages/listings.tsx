@@ -1181,27 +1181,38 @@ export default function ListingsPage() {
         </motion.div>
 
         {/* Filter tabs */}
-        <div className="flex gap-2 mb-6 glass-panel rounded-2xl p-1.5 max-w-xs mx-auto">
+        <div className="flex gap-1 mb-6 glass-panel rounded-2xl p-1.5 max-w-xs mx-auto">
           {([
             { key: "all", label: "All" },
             { key: "auctions", label: `Auctions${auctionCount > 0 ? ` (${auctionCount})` : ""}` },
             { key: "fixed", label: "Fixed" },
           ] as const).map(({ key, label }) => (
-            <button
+            <motion.button
               key={key}
               onClick={() => setActiveFilter(key)}
+              whileTap={{ scale: 0.95 }}
               className={cn(
-                "flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-semibold transition-all",
-                activeFilter === key
-                  ? key === "auctions"
-                    ? "bg-gradient-to-r from-amber-500 to-amber-600 text-white shadow"
-                    : "bg-gradient-to-r from-primary to-secondary text-white shadow"
-                  : "text-muted-foreground hover:text-white"
+                "relative flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-semibold transition-colors",
+                activeFilter === key ? "text-white" : "text-muted-foreground hover:text-white"
               )}
             >
-              {key === "auctions" && <Gavel className="w-3 h-3" />}
-              {label}
-            </button>
+              {activeFilter === key && (
+                <motion.span
+                  layoutId="listings-filter-pill"
+                  className={cn(
+                    "absolute inset-0 rounded-xl",
+                    key === "auctions"
+                      ? "bg-gradient-to-r from-amber-500 to-amber-600"
+                      : "bg-gradient-to-r from-primary to-secondary"
+                  )}
+                  transition={{ type: "spring", bounce: 0.2, duration: 0.35 }}
+                />
+              )}
+              <span className="relative z-10 flex items-center gap-1.5">
+                {key === "auctions" && <Gavel className="w-3 h-3" />}
+                {label}
+              </span>
+            </motion.button>
           ))}
         </div>
 
