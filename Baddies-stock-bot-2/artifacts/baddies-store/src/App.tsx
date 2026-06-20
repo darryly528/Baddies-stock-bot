@@ -1,5 +1,5 @@
 import { Switch, Route, Router as WouterRouter, Link, useLocation } from "wouter";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClient, QueryClientProvider, useQuery } from "@tanstack/react-query";
 import { motion, AnimatePresence, LayoutGroup } from "framer-motion";
 import Home from "./pages/home";
 import ListPage from "./pages/list";
@@ -36,6 +36,15 @@ function NavBar() {
   const { user, loading, logout } = useAuth();
   const { data: conversations = [] } = useConversations();
   const unreadCount = conversations.filter((c) => c.unread).length;
+
+  const { data: adminMe } = useQuery<{ role: string }>({
+    queryKey: ["admin-me"],
+    queryFn: () => fetch("/api/admin/me", { credentials: "include" }).then((r) => r.json()),
+    enabled: !!user,
+    staleTime: 5_000,
+    refetchInterval: 8_000,
+  });
+  const isStaff = !!adminMe && adminMe.role !== "none";
 
   const avatarUrl = user?.avatar
     ? `https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png?size=64`
@@ -106,7 +115,7 @@ function NavBar() {
             </Link>
           )}
 
-          {user?.username === "disgust_tf" && (
+          {isStaff && (
             <Link
               href="/admin"
               className={cn(
@@ -183,6 +192,15 @@ function MobileBottomNav() {
   const { data: conversations = [] } = useConversations();
   const unreadCount = conversations.filter((c) => c.unread).length;
 
+  const { data: adminMe } = useQuery<{ role: string }>({
+    queryKey: ["admin-me"],
+    queryFn: () => fetch("/api/admin/me", { credentials: "include" }).then((r) => r.json()),
+    enabled: !!user,
+    staleTime: 5_000,
+    refetchInterval: 8_000,
+  });
+  const isStaff = !!adminMe && adminMe.role !== "none";
+
   const avatarUrl = user?.avatar
     ? `https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png?size=64`
     : null;
@@ -193,6 +211,7 @@ function MobileBottomNav() {
     { href: "/list", label: "List", icon: PackagePlus },
     { href: "/community", label: "Community", icon: Heart },
     ...(user ? [{ href: "/messages", label: "Inbox", icon: Inbox, badge: unreadCount }] : []),
+    ...(isStaff ? [{ href: "/admin", label: "Admin", icon: Shield }] : []),
   ];
 
   return (
