@@ -5,7 +5,8 @@ import ListPage from "./pages/list";
 import ListingsPage from "./pages/listings";
 import MessagesPage from "./pages/messages";
 import AdminPage from "./pages/admin";
-import { PackagePlus, ShoppingBag, LogOut, LayoutList, Inbox, Shield } from "lucide-react";
+import ProfilePage from "./pages/profile";
+import { PackagePlus, ShoppingBag, LogOut, LayoutList, Inbox, Shield, UserCircle2 } from "lucide-react";
 import { cn } from "./lib/utils";
 import { AuthProvider, useAuth } from "./contexts/auth-context";
 import { useConversations } from "./hooks/use-messages";
@@ -38,55 +39,27 @@ function NavBar() {
         </span>
       </Link>
 
-      {/* Desktop nav: hidden on mobile */}
+      {/* Desktop nav */}
       <nav className="hidden md:flex items-center gap-1">
-        <Link
-          href="/"
-          className={cn(
-            "flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all",
-            location === "/"
-              ? "bg-white/10 text-white"
-              : "text-muted-foreground hover:text-white hover:bg-white/5"
-          )}
-        >
-          <ShoppingBag className="w-4 h-4" />
-          Catalog
+        <Link href="/"
+          className={cn("flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all",
+            location === "/" ? "bg-white/10 text-white" : "text-muted-foreground hover:text-white hover:bg-white/5")}>
+          <ShoppingBag className="w-4 h-4" />Catalog
         </Link>
-        <Link
-          href="/listings"
-          className={cn(
-            "flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all",
-            location === "/listings"
-              ? "bg-white/10 text-white"
-              : "text-muted-foreground hover:text-white hover:bg-white/5"
-          )}
-        >
-          <LayoutList className="w-4 h-4" />
-          Listings
+        <Link href="/listings"
+          className={cn("flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all",
+            location === "/listings" ? "bg-white/10 text-white" : "text-muted-foreground hover:text-white hover:bg-white/5")}>
+          <LayoutList className="w-4 h-4" />Listings
         </Link>
-        <Link
-          href="/list"
-          className={cn(
-            "flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all",
-            location === "/list"
-              ? "bg-white/10 text-white"
-              : "text-muted-foreground hover:text-white hover:bg-white/5"
-          )}
-        >
-          <PackagePlus className="w-4 h-4" />
-          List Items
+        <Link href="/list"
+          className={cn("flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all",
+            location === "/list" ? "bg-white/10 text-white" : "text-muted-foreground hover:text-white hover:bg-white/5")}>
+          <PackagePlus className="w-4 h-4" />List Items
         </Link>
-
         {user && (
-          <Link
-            href="/messages"
-            className={cn(
-              "flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all relative",
-              location === "/messages"
-                ? "bg-white/10 text-white"
-                : "text-muted-foreground hover:text-white hover:bg-white/5"
-            )}
-          >
+          <Link href="/messages"
+            className={cn("flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all relative",
+              location === "/messages" ? "bg-white/10 text-white" : "text-muted-foreground hover:text-white hover:bg-white/5")}>
             <span className="relative">
               <Inbox className="w-4 h-4" />
               {unreadCount > 0 && (
@@ -99,33 +72,33 @@ function NavBar() {
           </Link>
         )}
         {user?.username === "disgust_tf" && (
-          <Link
-            href="/admin"
-            className={cn(
-              "flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all",
-              location === "/admin"
-                ? "bg-primary/20 text-primary border border-primary/30"
-                : "text-muted-foreground hover:text-primary hover:bg-primary/10"
-            )}
-          >
-            <Shield className="w-4 h-4" />
-            Admin
+          <Link href="/admin"
+            className={cn("flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all",
+              location === "/admin" ? "bg-primary/20 text-primary border border-primary/30" : "text-muted-foreground hover:text-primary hover:bg-primary/10")}>
+            <Shield className="w-4 h-4" />Admin
           </Link>
         )}
       </nav>
 
-      {/* Auth area — visible on all sizes */}
+      {/* Auth area */}
       {!loading && (
         user ? (
           <div className="flex items-center gap-2 md:ml-2 md:pl-2 md:border-l md:border-white/10 shrink-0">
-            {avatarUrl ? (
-              <img src={avatarUrl} alt={user.username} className="w-7 h-7 rounded-full ring-2 ring-primary/40" />
-            ) : (
-              <div className="w-7 h-7 rounded-full bg-primary/30 flex items-center justify-center text-xs font-bold">
-                {user.username[0]?.toUpperCase()}
-              </div>
-            )}
-            <span className="text-sm font-medium text-white hidden lg:block max-w-[120px] truncate">{user.username}</span>
+            <Link href={`/profile/${user.id}`}
+              className="flex items-center gap-2 rounded-xl hover:bg-white/5 p-1 transition-colors group"
+              title="My Profile">
+              {avatarUrl ? (
+                <img src={avatarUrl} alt={user.username}
+                  className="w-7 h-7 rounded-full ring-2 ring-primary/40 group-hover:ring-primary/70 transition-all" />
+              ) : (
+                <div className="w-7 h-7 rounded-full bg-primary/30 flex items-center justify-center text-xs font-bold group-hover:bg-primary/50 transition-colors">
+                  {user.username[0]?.toUpperCase()}
+                </div>
+              )}
+              <span className="text-sm font-medium text-white hidden lg:block max-w-[120px] truncate group-hover:text-primary/80 transition-colors">
+                {user.username}
+              </span>
+            </Link>
             <button
               onClick={logout}
               className="p-1.5 rounded-lg text-muted-foreground hover:text-red-400 hover:bg-white/5 transition-colors"
@@ -157,6 +130,10 @@ function MobileBottomNav() {
   const { data: conversations = [] } = useConversations();
   const unreadCount = conversations.filter((c) => c.unread).length;
 
+  const avatarUrl = user?.avatar
+    ? `https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png?size=64`
+    : null;
+
   const items = [
     { href: "/", label: "Catalog", icon: ShoppingBag },
     { href: "/listings", label: "Listings", icon: LayoutList },
@@ -174,14 +151,9 @@ function MobileBottomNav() {
         const active = location === item.href;
         const badge = (item as any).badge as number | undefined;
         return (
-          <Link
-            key={item.href}
-            href={item.href}
-            className={cn(
-              "flex-1 flex flex-col items-center justify-center gap-0.5 py-2.5 text-[10px] font-medium transition-colors relative",
-              active ? "text-primary" : "text-muted-foreground hover:text-white"
-            )}
-          >
+          <Link key={item.href} href={item.href}
+            className={cn("flex-1 flex flex-col items-center justify-center gap-0.5 py-2.5 text-[10px] font-medium transition-colors relative",
+              active ? "text-primary" : "text-muted-foreground hover:text-white")}>
             <span className="relative">
               <Icon className="w-5 h-5" />
               {badge !== undefined && badge > 0 && (
@@ -197,6 +169,25 @@ function MobileBottomNav() {
           </Link>
         );
       })}
+
+      {/* Profile tab */}
+      {user && (
+        <Link href={`/profile/${user.id}`}
+          className={cn("flex-1 flex flex-col items-center justify-center gap-0.5 py-2.5 text-[10px] font-medium transition-colors relative",
+            location.startsWith("/profile") ? "text-primary" : "text-muted-foreground hover:text-white")}>
+          <span className="relative">
+            {avatarUrl ? (
+              <img src={avatarUrl} alt={user.username} className="w-5 h-5 rounded-full ring-1 ring-white/20" />
+            ) : (
+              <UserCircle2 className="w-5 h-5" />
+            )}
+          </span>
+          <span className="leading-none">Profile</span>
+          {location.startsWith("/profile") && (
+            <span className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 rounded-full bg-gradient-to-r from-primary to-secondary" />
+          )}
+        </Link>
+      )}
     </nav>
   );
 }
@@ -226,6 +217,7 @@ function AppRouter() {
           <Route path="/list" component={ListPage} />
           <Route path="/messages" component={MessagesPage} />
           <Route path="/admin" component={AdminPage} />
+          <Route path="/profile/:userId" component={ProfilePage} />
           <Route component={NotFound} />
         </Switch>
       </div>

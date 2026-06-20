@@ -7,6 +7,7 @@ import controlRouter from "./control";
 import messagesRouter from "./messages";
 import adminRouter from "./admin";
 import staffRouter from "./staff";
+import profilesRouter from "./profiles";
 import ticketsRouter from "./tickets";
 import presenceRouter from "./presence";
 
@@ -20,6 +21,7 @@ router.use(controlRouter);
 router.use(messagesRouter);
 router.use(adminRouter);
 router.use(staffRouter);
+router.use(profilesRouter);
 router.use(ticketsRouter);
 router.use(presenceRouter);
 
