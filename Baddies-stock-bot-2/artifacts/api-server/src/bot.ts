@@ -1,6 +1,7 @@
 import fs from "fs";
 import path from "path";
 import { getRole, hasMinRole } from "./permissions";
+import { approveImage, rejectImage } from "./imageReview";
 
 import {
   Client,
@@ -1264,6 +1265,54 @@ export async function startBot() {
         await (btn.channel as { delete(reason?: string): Promise<unknown> }).delete(
           `Ticket sold — closed by ${btn.user.tag}`,
         );
+        return;
+      }
+
+      // ── imgapprove — approve a pending image ──────────────────────────────
+      if (interaction.isButton() && interaction.customId.startsWith("imgapprove:")) {
+        const btn = interaction as ButtonInteraction;
+        const role = getRole(btn.user.id, btn.user.username);
+        if (!hasMinRole(role, "mod")) {
+          await btn.reply({ content: "❌ Mod or higher is required to approve images.", ephemeral: true });
+          return;
+        }
+        const pendingId = btn.customId.slice("imgapprove:".length);
+        const result = approveImage(pendingId);
+        if (!result.ok) {
+          await btn.reply({ content: "❌ Review entry not found — it may have already been handled.", ephemeral: true });
+          return;
+        }
+        const typeLabel = result.entry?.type === "dm" ? "DM image" : result.entry?.type === "avatar" ? "profile avatar" : "profile banner";
+        await btn.update({
+          content: `✅ ${typeLabel.charAt(0).toUpperCase() + typeLabel.slice(1)} **approved** by <@${btn.user.id}> (${btn.user.username})`,
+          components: [],
+          embeds: [],
+          files: [],
+        });
+        return;
+      }
+
+      // ── imgreject — reject a pending image ────────────────────────────────
+      if (interaction.isButton() && interaction.customId.startsWith("imgreject:")) {
+        const btn = interaction as ButtonInteraction;
+        const role = getRole(btn.user.id, btn.user.username);
+        if (!hasMinRole(role, "mod")) {
+          await btn.reply({ content: "❌ Mod or higher is required to reject images.", ephemeral: true });
+          return;
+        }
+        const pendingId = btn.customId.slice("imgreject:".length);
+        const result = rejectImage(pendingId);
+        if (!result.ok) {
+          await btn.reply({ content: "❌ Review entry not found — it may have already been handled.", ephemeral: true });
+          return;
+        }
+        const typeLabel = result.entry?.type === "dm" ? "DM image" : result.entry?.type === "avatar" ? "profile avatar" : "profile banner";
+        await btn.update({
+          content: `❌ ${typeLabel.charAt(0).toUpperCase() + typeLabel.slice(1)} **rejected** by <@${btn.user.id}> (${btn.user.username})`,
+          components: [],
+          embeds: [],
+          files: [],
+        });
         return;
       }
 

@@ -3,6 +3,15 @@ import multer from "multer";
 import path from "path";
 import fs from "fs";
 import OpenAI from "openai";
+import {
+  ActionRowBuilder,
+  ButtonBuilder,
+  ButtonStyle,
+  EmbedBuilder,
+  AttachmentBuilder,
+} from "discord.js";
+import { getBotClient } from "../bot";
+import { createPendingImage, type PendingImage } from "../imageReview";
 
 const UPLOADS_DIR = path.resolve(process.cwd(), "../../uploads");
 const AVATAR_DIR = path.join(UPLOADS_DIR, "avatars");
@@ -26,6 +35,42 @@ const upload = multer({
     cb(null, allowed.includes(file.mimetype));
   },
 });
+
+const IMAGE_REVIEW_CHANNEL_ID = process.env["IMAGE_REVIEW_CHANNEL_ID"] ?? "1517999979224895549";
+
+async function postImageForReview(entry: PendingImage, buffer: Buffer, mimeType: string, aiFlag?: string): Promise<void> {
+  try {
+    const bot = getBotClient();
+    if (!bot) return;
+    const channel = await bot.channels.fetch(IMAGE_REVIEW_CHANNEL_ID).catch(() => null);
+    if (!channel || !channel.isTextBased()) return;
+
+    const typeLabel = entry.type === "dm" ? "DM Image" : entry.type === "avatar" ? "Profile Avatar" : "Profile Banner";
+    const ext = mimeType.split("/")[1] ?? "jpg";
+    const attachName = `image.${ext}`;
+    const attachment = new AttachmentBuilder(Buffer.from(buffer), { name: attachName });
+
+    const embed = new EmbedBuilder()
+      .setColor(0xf97316)
+      .setTitle(`🖼️ Image Review — ${typeLabel}`)
+      .addFields(
+        { name: "Uploaded by", value: `<@${entry.uploadedBy}> (${entry.uploadedByName})`, inline: true },
+        ...(aiFlag ? [{ name: "AI flag", value: aiFlag.slice(0, 512), inline: false }] : []),
+      )
+      .setImage(`attachment://${attachName}`)
+      .setFooter({ text: `ID: ${entry.id}` })
+      .setTimestamp();
+
+    const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
+      new ButtonBuilder().setCustomId(`imgapprove:${entry.id}`).setLabel("✅ Approve").setStyle(ButtonStyle.Success),
+      new ButtonBuilder().setCustomId(`imgreject:${entry.id}`).setLabel("❌ Reject").setStyle(ButtonStyle.Danger),
+    );
+
+    await (channel as import("discord.js").TextChannel).send({ embeds: [embed], components: [row], files: [attachment] });
+  } catch (err) {
+    console.error("[imageReview] Failed to post for review:", err);
+  }
+}
 
 async function moderateImage(buffer: Buffer, mimeType: string): Promise<{ safe: boolean; reason: string }> {
   const apiKey = process.env["OPENAI_API_KEY"];
@@ -62,7 +107,7 @@ SAFE if it is: profile selfies (clothed), game screenshots, Roblox avatars, logo
     return { safe: !!result.safe, reason: result.reason ?? "" };
   } catch (err) {
     console.error("[moderation] Error calling OpenAI:", err);
-    return { safe: false, reason: "Moderation check failed. Please try again." };
+    return { safe: false, reason: "Moderation check failed — image sent for manual review." };
   }
 }
 
@@ -70,7 +115,6 @@ const router = Router();
 
 // Serve static uploads under /api/uploads/
 router.use("/uploads", (req, res, next) => {
-  // Only allow GET for uploads
   if (req.method !== "GET") { next(); return; }
   const filePath = path.join(UPLOADS_DIR, req.path);
   if (!filePath.startsWith(UPLOADS_DIR)) { res.status(403).end(); return; }
@@ -88,18 +132,39 @@ router.post("/uploads/profile-image", upload.single("image"), async (req: Reques
 
   // AI moderation
   const { safe, reason } = await moderateImage(req.file.buffer, req.file.mimetype);
-  if (!safe) {
-    res.status(422).json({ error: `Image rejected by content moderation: ${reason || "Not appropriate for teens."}` });
-    return;
-  }
 
-  // Determine extension
   const extMap: Record<string, string> = {
     "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp", "image/gif": "gif",
   };
   const ext = extMap[req.file.mimetype] ?? "jpg";
-  const filename = `${user.id}.${ext}`;
   const dir = imageType === "banner" ? BANNER_DIR : AVATAR_DIR;
+  const urlField = imageType === "banner" ? "bannerImageUrl" : "customAvatarUrl";
+
+  if (!safe) {
+    // Send to mod review instead of auto-blocking
+    const filename = `${user.id}_pending_${Date.now()}.${ext}`;
+    const filePath = path.join(dir, filename);
+    fs.writeFileSync(filePath, req.file.buffer);
+
+    const url = `/api/uploads/${imageType}s/${filename}`;
+    const pending = createPendingImage({
+      type: imageType as "avatar" | "banner",
+      filePath,
+      url,
+      uploadedBy: user.id,
+      uploadedByName: user.username,
+      profileField: urlField as "customAvatarUrl" | "bannerImageUrl",
+      aiFlag: reason,
+    });
+
+    await postImageForReview(pending, req.file.buffer, req.file.mimetype, reason);
+
+    res.json({ ok: true, pending: true, pendingId: pending.id });
+    return;
+  }
+
+  // Safe — save normally
+  const filename = `${user.id}.${ext}`;
   const filePath = path.join(dir, filename);
 
   // Remove any existing image for this user (other extensions)
@@ -111,10 +176,8 @@ router.post("/uploads/profile-image", upload.single("image"), async (req: Reques
 
   fs.writeFileSync(filePath, req.file.buffer);
 
-  const urlField = imageType === "banner" ? "bannerImageUrl" : "customAvatarUrl";
   const url = `/api/uploads/${imageType}s/${filename}`;
 
-  // Update profile record
   const profiles = loadProfiles();
   profiles[user.id] = { ...(profiles[user.id] ?? {}), [urlField]: url };
   saveProfiles(profiles);
@@ -124,7 +187,7 @@ router.post("/uploads/profile-image", upload.single("image"), async (req: Reques
 
 // ── Upload DM image ───────────────────────────────────────────────────────────
 
-router.post("/uploads/dm-image", upload.single("image"), (req: Request, res: Response) => {
+router.post("/uploads/dm-image", upload.single("image"), async (req: Request, res: Response) => {
   const user = req.session?.discordUser;
   if (!user) { res.status(401).json({ error: "Not authenticated" }); return; }
   if (!req.file) { res.status(400).json({ error: "No image uploaded or invalid file type" }); return; }
@@ -137,7 +200,20 @@ router.post("/uploads/dm-image", upload.single("image"), (req: Request, res: Res
   const filePath = path.join(DM_DIR, filename);
   fs.writeFileSync(filePath, req.file.buffer);
 
-  res.json({ ok: true, url: `/api/uploads/dms/${filename}` });
+  const url = `/api/uploads/dms/${filename}`;
+
+  // Always send DM images for mod review
+  const pending = createPendingImage({
+    type: "dm",
+    filePath,
+    url,
+    uploadedBy: user.id,
+    uploadedByName: user.username,
+  });
+
+  await postImageForReview(pending, req.file.buffer, req.file.mimetype);
+
+  res.json({ ok: true, url, pendingId: pending.id, pending: true });
 });
 
 // ── Remove profile image ──────────────────────────────────────────────────────
@@ -150,10 +226,11 @@ router.delete("/uploads/profile-image", (req: Request, res: Response) => {
   const dir = imageType === "banner" ? BANNER_DIR : AVATAR_DIR;
   const urlField = imageType === "banner" ? "bannerImageUrl" : "customAvatarUrl";
 
-  // Remove all extensions
   for (const ext of ["jpg", "png", "webp", "gif"]) {
-    const old = path.join(dir, `${user.id}.${ext}`);
-    if (fs.existsSync(old)) fs.unlinkSync(old);
+    for (const variant of [`${user.id}.${ext}`, `${user.id}_pending_*.${ext}`]) {
+      const old = path.join(dir, `${user.id}.${ext}`);
+      if (fs.existsSync(old)) fs.unlinkSync(old);
+    }
   }
 
   const profiles = loadProfiles();

@@ -176,10 +176,14 @@ function ProfileEditor({
         credentials: "include",
         body: form,
       });
-      const data = await r.json() as { ok?: boolean; url?: string; error?: string };
+      const data = await r.json() as { ok?: boolean; url?: string; error?: string; pending?: boolean };
       if (!r.ok) throw new Error(data.error ?? "Upload failed");
-      setUrl(data.url ?? null);
-      qc.invalidateQueries({ queryKey: ["profile-own"] });
+      if (data.pending) {
+        setUploadError("✅ Image submitted for mod review — it will appear once approved.");
+      } else {
+        setUrl(data.url ?? null);
+        qc.invalidateQueries({ queryKey: ["profile-own"] });
+      }
     } catch (err) {
       setUploadError(err instanceof Error ? err.message : "Upload failed");
     } finally {

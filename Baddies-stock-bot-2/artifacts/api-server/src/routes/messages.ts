@@ -4,6 +4,7 @@ import path from "path";
 import { randomUUID } from "crypto";
 import { filterContent } from "../contentFilter";
 import { getBotClient } from "../bot";
+import { linkPendingToMessage } from "../imageReview";
 
 const router: IRouter = Router();
 
@@ -16,6 +17,7 @@ export interface Message {
   senderAvatar: string | null;
   content: string;
   imageUrl?: string;
+  imagePending?: boolean;
   timestamp: string;
   filtered: boolean;
 }
@@ -173,7 +175,7 @@ router.get("/messages/:conversationId", requireSession, (req: any, res: any) => 
 
 router.post("/messages/:conversationId", requireSession, async (req: any, res: any) => {
   const userId = req.session.discordUser.id;
-  const { content, imageUrl } = req.body as { content?: string; imageUrl?: string };
+  const { content, imageUrl, pendingId } = req.body as { content?: string; imageUrl?: string; pendingId?: string };
 
   if (!content?.trim() && !imageUrl) {
     res.status(400).json({ error: "Message cannot be empty." });
@@ -202,7 +204,7 @@ router.post("/messages/:conversationId", requireSession, async (req: any, res: a
     senderName: sender.username,
     senderAvatar: sender.avatar ?? null,
     content: filter.filtered,
-    ...(imageUrl ? { imageUrl } : {}),
+    ...(imageUrl ? { imageUrl, imagePending: !!pendingId } : {}),
     timestamp: new Date().toISOString(),
     filtered: !filter.clean,
   };
@@ -212,6 +214,11 @@ router.post("/messages/:conversationId", requireSession, async (req: any, res: a
   conv.readBy = [userId];
   convs[idx] = conv;
   saveConversations(convs);
+
+  // Link pending image record to this conversation + message
+  if (pendingId && imageUrl) {
+    try { linkPendingToMessage(pendingId, conv.id, msg.id); } catch {}
+  }
 
   const recipientId = userId === conv.buyerId ? conv.sellerId : conv.buyerId;
   const recipientName = userId === conv.buyerId ? conv.sellerName : conv.buyerName;
