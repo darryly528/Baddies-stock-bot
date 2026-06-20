@@ -8,6 +8,7 @@ import {
 import type { Guild, GuildMember } from "discord.js";
 import fs from "fs";
 import path from "path";
+import { sendAuditLog } from "../audit";
 
 const MESSAGES_PATH = process.env["MESSAGES_PATH"] ?? path.resolve(process.cwd(), "../../messages.json");
 function loadConversations() {
@@ -84,26 +85,32 @@ router.get("/admin/listings", requireMinRole("admin"), (_req, res) => res.json(l
 
 router.delete("/admin/listings/:id", requireMinRole("admin"), (req, res) => {
   const { id } = req.params as { id: string };
+  const actor = req.session!.discordUser!;
   const LISTINGS_PATH = process.env["LISTINGS_PATH"] ?? path.resolve(process.cwd(), "../../listings.json");
   let listings = loadListings();
   const before = listings.length;
   listings = listings.filter((l) => l.id !== id);
   if (listings.length === before) { res.status(404).json({ error: "Listing not found" }); return; }
   fs.writeFileSync(LISTINGS_PATH, JSON.stringify(listings, null, 2), "utf8");
+  void sendAuditLog({ action: "LISTING_DELETE", actorId: actor.id, actorUsername: actor.username, details: `Listing ID: ${id}` });
   res.json({ ok: true });
 });
 
-router.delete("/admin/listings", requireMinRole("admin"), (_req, res) => {
+router.delete("/admin/listings", requireMinRole("admin"), (req, res) => {
+  const actor = req.session!.discordUser!;
   const LISTINGS_PATH = process.env["LISTINGS_PATH"] ?? path.resolve(process.cwd(), "../../listings.json");
   fs.writeFileSync(LISTINGS_PATH, "[]", "utf8");
+  void sendAuditLog({ action: "LISTINGS_CLEAR", actorId: actor.id, actorUsername: actor.username, details: "All listings cleared" });
   res.json({ ok: true });
 });
 
-router.delete("/admin/listings/sold-out", requireMinRole("admin"), (_req, res) => {
+router.delete("/admin/listings/sold-out", requireMinRole("admin"), (req, res) => {
+  const actor = req.session!.discordUser!;
   const LISTINGS_PATH = process.env["LISTINGS_PATH"] ?? path.resolve(process.cwd(), "../../listings.json");
   let listings = loadListings();
   listings = listings.map((l) => ({ ...l, items: l.items.filter((i) => !i.soldOut) })).filter((l) => l.items.length > 0);
   fs.writeFileSync(LISTINGS_PATH, JSON.stringify(listings, null, 2), "utf8");
+  void sendAuditLog({ action: "LISTINGS_PURGE_SOLDOUT", actorId: actor.id, actorUsername: actor.username, details: `${listings.length} listing(s) remaining after purge` });
   res.json({ ok: true, remaining: listings.length });
 });
 
@@ -275,12 +282,14 @@ router.get("/admin/guilds", requireMinRole("admin"), (_req, res) => {
 
 router.post("/admin/members/:userId/ban", requireMinRole("admin"), async (req, res) => {
   const { userId } = req.params as { userId: string };
-  const { reason } = req.body as { reason?: string };
+  const { reason, targetUsername } = req.body as { reason?: string; targetUsername?: string };
+  const actor = req.session!.discordUser!;
   const guilds = getAllGuilds();
   if (guilds.length === 0) { res.status(503).json({ error: "Bot offline" }); return; }
   const msg = reason ?? "Banned via admin panel";
   try {
     await Promise.all(guilds.map((g) => g.members.ban(userId, { reason: msg }).catch(() => null)));
+    void sendAuditLog({ action: "BAN", actorId: actor.id, actorUsername: actor.username, targetId: userId, targetUsername, details: reason });
     res.json({ ok: true });
   } catch (err) {
     res.status(500).json({ error: String(err) });
@@ -289,10 +298,12 @@ router.post("/admin/members/:userId/ban", requireMinRole("admin"), async (req, r
 
 router.delete("/admin/members/:userId/ban", requireMinRole("admin"), async (req, res) => {
   const { userId } = req.params as { userId: string };
+  const actor = req.session!.discordUser!;
   const guilds = getAllGuilds();
   if (guilds.length === 0) { res.status(503).json({ error: "Bot offline" }); return; }
   try {
     await Promise.all(guilds.map((g) => g.bans.remove(userId, "Unbanned via admin panel").catch(() => null)));
+    void sendAuditLog({ action: "UNBAN", actorId: actor.id, actorUsername: actor.username, targetId: userId });
     res.json({ ok: true });
   } catch (err) {
     res.status(500).json({ error: String(err) });
@@ -303,7 +314,8 @@ router.delete("/admin/members/:userId/ban", requireMinRole("admin"), async (req,
 
 router.post("/admin/members/:userId/timeout", requireMinRole("admin"), async (req, res) => {
   const { userId } = req.params as { userId: string };
-  const { minutes } = req.body as { minutes: number };
+  const { minutes, targetUsername } = req.body as { minutes: number; targetUsername?: string };
+  const actor = req.session!.discordUser!;
   if (!minutes || minutes <= 0) { res.status(400).json({ error: "Invalid duration" }); return; }
   const guilds = getAllGuilds();
   if (guilds.length === 0) { res.status(503).json({ error: "Bot offline" }); return; }
@@ -314,6 +326,7 @@ router.post("/admin/members/:userId/timeout", requireMinRole("admin"), async (re
       const m = await guild.members.fetch({ user: userId, force: false }).catch(() => null);
       if (m) { await m.timeout(until, "Timed out via admin panel"); applied++; }
     }));
+    void sendAuditLog({ action: "TIMEOUT", actorId: actor.id, actorUsername: actor.username, targetId: userId, targetUsername, details: `${minutes} minute(s) — until ${until.toUTCString()}` });
     res.json({ ok: true, applied, until: until.toISOString() });
   } catch (err) {
     res.status(500).json({ error: String(err) });
@@ -322,6 +335,7 @@ router.post("/admin/members/:userId/timeout", requireMinRole("admin"), async (re
 
 router.delete("/admin/members/:userId/timeout", requireMinRole("admin"), async (req, res) => {
   const { userId } = req.params as { userId: string };
+  const actor = req.session!.discordUser!;
   const guilds = getAllGuilds();
   if (guilds.length === 0) { res.status(503).json({ error: "Bot offline" }); return; }
   try {
@@ -329,6 +343,7 @@ router.delete("/admin/members/:userId/timeout", requireMinRole("admin"), async (
       const m = await guild.members.fetch({ user: userId, force: false }).catch(() => null);
       if (m) await m.timeout(null, "Timeout removed via admin panel");
     }));
+    void sendAuditLog({ action: "TIMEOUT_REMOVE", actorId: actor.id, actorUsername: actor.username, targetId: userId });
     res.json({ ok: true });
   } catch (err) {
     res.status(500).json({ error: String(err) });
@@ -338,12 +353,18 @@ router.delete("/admin/members/:userId/timeout", requireMinRole("admin"), async (
 // ── Suspend ───────────────────────────────────────────────────────────────────
 
 router.post("/admin/members/:userId/suspend", requireMinRole("admin"), (req, res) => {
-  suspendedUsers.add((req.params as { userId: string }).userId);
+  const { userId } = req.params as { userId: string };
+  const actor = req.session!.discordUser!;
+  suspendedUsers.add(userId);
+  void sendAuditLog({ action: "SUSPEND", actorId: actor.id, actorUsername: actor.username, targetId: userId });
   res.json({ ok: true });
 });
 
 router.delete("/admin/members/:userId/suspend", requireMinRole("admin"), (req, res) => {
-  suspendedUsers.delete((req.params as { userId: string }).userId);
+  const { userId } = req.params as { userId: string };
+  const actor = req.session!.discordUser!;
+  suspendedUsers.delete(userId);
+  void sendAuditLog({ action: "UNSUSPEND", actorId: actor.id, actorUsername: actor.username, targetId: userId });
   res.json({ ok: true });
 });
 
@@ -351,10 +372,13 @@ router.delete("/admin/members/:userId/suspend", requireMinRole("admin"), (req, r
 
 router.post("/admin/members/:userId/kick", requireMinRole("co-owner"), async (req, res) => {
   const { userId } = req.params as { userId: string };
+  const { targetUsername } = req.body as { targetUsername?: string };
+  const actor = req.session!.discordUser!;
   const guilds = getAllGuilds();
   if (guilds.length === 0) { res.status(503).json({ error: "Bot offline" }); return; }
   try {
     await Promise.all(guilds.map((g) => g.members.kick(userId, "Kicked via admin panel").catch(() => null)));
+    void sendAuditLog({ action: "KICK", actorId: actor.id, actorUsername: actor.username, targetId: userId, targetUsername });
     res.json({ ok: true });
   } catch (err) {
     res.status(500).json({ error: String(err) });

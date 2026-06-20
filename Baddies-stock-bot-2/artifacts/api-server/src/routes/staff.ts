@@ -8,6 +8,7 @@ import {
 } from "../permissions";
 import { getBotClient } from "../bot";
 import type { Guild } from "discord.js";
+import { sendAuditLog } from "../audit";
 
 const router = Router();
 
@@ -66,8 +67,9 @@ router.post("/admin/staff", requireMinRole("admin"), (req: Request, res: Respons
     return;
   }
 
-  const callerId = req.session!.discordUser!.id;
-  setStaffMember(userId, role, callerId, username);
+  const caller = req.session!.discordUser!;
+  setStaffMember(userId, role, caller.id, username);
+  void sendAuditLog({ action: "STAFF_ADD", actorId: caller.id, actorUsername: caller.username, targetId: userId, targetUsername: username, details: `Role: ${role}` });
   res.json({ ok: true, userId, role, username });
 });
 
@@ -90,8 +92,9 @@ router.patch("/admin/staff/:userId/role", requireMinRole("admin"), (req: Request
   const target = staff.find((s) => s.userId === userId);
   if (!target) { res.status(404).json({ error: "Staff member not found" }); return; }
 
-  const callerId = req.session!.discordUser!.id;
-  setStaffMember(userId, role, callerId, target.username);
+  const caller = req.session!.discordUser!;
+  setStaffMember(userId, role, caller.id, target.username);
+  void sendAuditLog({ action: "STAFF_ROLE_CHANGE", actorId: caller.id, actorUsername: caller.username, targetId: userId, targetUsername: target.username, details: `${target.role} → ${role}` });
   res.json({ ok: true, userId, role });
 });
 
@@ -111,7 +114,9 @@ router.delete("/admin/staff/:userId", requireMinRole("admin"), (req: Request, re
     return;
   }
 
+  const caller = req.session!.discordUser!;
   removeStaffMember(userId);
+  void sendAuditLog({ action: "STAFF_REMOVE", actorId: caller.id, actorUsername: caller.username, targetId: userId, targetUsername: target.username, details: `Was: ${target.role}` });
   res.json({ ok: true });
 });
 
@@ -143,11 +148,13 @@ router.post("/admin/members/:userId/ban-request", requireMinRole("mod"), (req: R
     reason: reason.trim(),
   });
 
+  void sendAuditLog({ action: "BAN_REQUEST", actorId: caller.id, actorUsername: caller.username, targetId: userId, targetUsername, details: reason.trim() });
   res.json({ ok: true, request: req2 });
 });
 
 router.post("/admin/ban-requests/:reqId/approve", requireMinRole("admin"), async (req: Request, res: Response) => {
   const { reqId } = req.params as { reqId: string };
+  const actor = req.session!.discordUser!;
   const request = updateBanRequestStatus(reqId, "approved");
   if (!request) { res.status(404).json({ error: "Ban request not found" }); return; }
 
@@ -156,13 +163,16 @@ router.post("/admin/ban-requests/:reqId/approve", requireMinRole("admin"), async
     await Promise.all(guilds.map((g) => g.members.ban(request.targetUserId, { reason: `Approved ban: ${request.reason}` }).catch(() => null)));
   }
 
+  void sendAuditLog({ action: "BAN_REQUEST_APPROVE", actorId: actor.id, actorUsername: actor.username, targetId: request.targetUserId, targetUsername: request.targetUsername, details: `Requested by ${request.requestedByUsername}: ${request.reason}` });
   res.json({ ok: true });
 });
 
 router.delete("/admin/ban-requests/:reqId", requireMinRole("admin"), (req: Request, res: Response) => {
   const { reqId } = req.params as { reqId: string };
+  const actor = req.session!.discordUser!;
   const request = updateBanRequestStatus(reqId, "rejected");
   if (!request) { res.status(404).json({ error: "Ban request not found" }); return; }
+  void sendAuditLog({ action: "BAN_REQUEST_REJECT", actorId: actor.id, actorUsername: actor.username, targetId: request.targetUserId, targetUsername: request.targetUsername, details: `Requested by ${request.requestedByUsername}: ${request.reason}` });
   res.json({ ok: true });
 });
 
@@ -184,13 +194,16 @@ router.post("/admin/members/:userId/warn", requireMinRole("mod"), (req: Request,
     issuedBy: caller.id,
     issuedByUsername: caller.username,
   });
+  void sendAuditLog({ action: "WARN", actorId: caller.id, actorUsername: caller.username, targetId: userId, details: reason.trim() });
   res.json({ ok: true, warning });
 });
 
 router.delete("/admin/members/:userId/warnings/:warningId", requireMinRole("admin"), (req: Request, res: Response) => {
   const { userId, warningId } = req.params as { userId: string; warningId: string };
+  const actor = req.session!.discordUser!;
   const removed = removeWarning(userId, warningId);
   if (!removed) { res.status(404).json({ error: "Warning not found" }); return; }
+  void sendAuditLog({ action: "WARN_REMOVE", actorId: actor.id, actorUsername: actor.username, targetId: userId, details: `Warning ID: ${warningId}` });
   res.json({ ok: true });
 });
 
