@@ -153,10 +153,22 @@
         "content": "###",
         "timestamp": "2026-05-21T01:22:26.459Z",
         "filtered": true
+      },
+      {
+        "id": "b16dc3c3-3fe3-4f4d-a290-8d113c13607d",
+        "senderId": "718222852918083615",
+        "senderName": "Admin",
+        "senderAvatar": null,
+        "content": "",
+        "imageUrl": "/api/uploads/dms/718222852918083615_1781996117198.png",
+        "imagePending": false,
+        "isAdmin": true,
+        "timestamp": "2026-06-20T22:55:18.253Z",
+        "filtered": false
       }
     ],
     "createdAt": "2026-04-03T10:21:41.750Z",
-    "updatedAt": "2026-05-21T01:22:26.459Z",
+    "updatedAt": "2026-06-20T22:55:18.253Z",
     "readBy": [
       "718222852918083615",
       "916248084697190440"

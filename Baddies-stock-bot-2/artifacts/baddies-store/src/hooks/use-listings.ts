@@ -35,6 +35,8 @@ export interface Listing {
   startingBid?: number;
   bids?: Bid[];
   isVerifiedReseller?: boolean;
+  cardStyle?: string;
+  sellerAccentColor?: string;
 }
 
 export function useListings(refetchInterval?: number) {

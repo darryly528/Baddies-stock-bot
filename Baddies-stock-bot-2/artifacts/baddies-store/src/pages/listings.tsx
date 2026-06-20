@@ -537,6 +537,62 @@ function BidModal({
   );
 }
 
+function accentRgb(hex: string) {
+  const h = (hex || "#ff0080").replace("#", "").padEnd(6, "0");
+  return `${parseInt(h.slice(0, 2), 16)},${parseInt(h.slice(2, 4), 16)},${parseInt(h.slice(4, 6), 16)}`;
+}
+
+function getCardStyleProps(cardStyle: string | undefined, accent: string | undefined) {
+  const a = accent && /^#[0-9a-fA-F]{6}$/.test(accent) ? accent : "#ff0080";
+  const rgb = accentRgb(a);
+  const rgba = (o: number) => `rgba(${rgb},${o})`;
+
+  switch (cardStyle) {
+    case "neon":
+      return {
+        baseClass: "border transition-all duration-200",
+        style: { borderColor: rgba(0.35) } as React.CSSProperties,
+        whileHover: { borderColor: a, boxShadow: `0 0 28px ${rgba(0.45)}` },
+        showStripe: false,
+      };
+    case "minimal":
+      return {
+        baseClass: "border border-white/5 transition-all duration-200",
+        style: {} as React.CSSProperties,
+        whileHover: {},
+        showStripe: false,
+      };
+    case "frost":
+      return {
+        baseClass: "border border-white/20 transition-all duration-200",
+        style: { background: "rgba(255,255,255,0.025)" } as React.CSSProperties,
+        whileHover: { borderColor: "rgba(255,255,255,0.45)", boxShadow: "0 0 20px rgba(255,255,255,0.08)" },
+        showStripe: false,
+      };
+    case "dark":
+      return {
+        baseClass: "border border-white/[0.06] transition-all duration-200",
+        style: { background: "rgba(0,0,0,0.35)" } as React.CSSProperties,
+        whileHover: { borderColor: rgba(0.45), boxShadow: `0 0 18px ${rgba(0.25)}` },
+        showStripe: false,
+      };
+    case "gradient":
+      return {
+        baseClass: "border border-white/10 transition-all duration-200",
+        style: {} as React.CSSProperties,
+        whileHover: { borderColor: rgba(0.35), boxShadow: `0 0 22px ${rgba(0.3)}` },
+        showStripe: true,
+      };
+    default:
+      return {
+        baseClass: "border border-white/10 hover:border-primary/40 hover:shadow-[0_0_20px_rgba(255,0,128,0.15)] transition-all duration-200",
+        style: {} as React.CSSProperties,
+        whileHover: {},
+        showStripe: false,
+      };
+  }
+}
+
 function AuctionCard({
   flat,
   isOwn,
@@ -556,6 +612,10 @@ function AuctionCard({
   const ended = t?.ended ?? false;
 
   const urgentTimer = t && !t.ended && t.days === 0 && t.hours < 2;
+  const isDefaultStyle = !listing.cardStyle || listing.cardStyle === "default";
+  const stProps = (!ended && !isDefaultStyle)
+    ? getCardStyleProps(listing.cardStyle, listing.sellerAccentColor)
+    : null;
 
   return (
     <motion.div
@@ -563,14 +623,20 @@ function AuctionCard({
         hidden: { opacity: 0, y: 20 },
         show: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 300, damping: 24 } },
       }}
-      whileHover={{ y: -3, transition: { type: "spring", stiffness: 400, damping: 25 } }}
+      whileHover={{ y: -3, transition: { type: "spring", stiffness: 400, damping: 25 }, ...(stProps?.whileHover ?? {}) }}
       className={cn(
-        "group relative flex flex-col overflow-hidden rounded-2xl glass-panel border transition-all duration-200",
+        "group relative flex flex-col overflow-hidden rounded-2xl glass-panel",
         ended
-          ? "border-white/10 opacity-70"
-          : "border-amber-500/25 hover:border-amber-500/50 hover:shadow-[0_0_20px_rgba(245,158,11,0.2)]"
+          ? "border border-white/10 opacity-70 transition-all duration-200"
+          : isDefaultStyle
+          ? "border border-amber-500/25 hover:border-amber-500/50 hover:shadow-[0_0_20px_rgba(245,158,11,0.2)] transition-all duration-200"
+          : stProps!.baseClass
       )}
+      style={stProps?.style}
     >
+      {stProps?.showStripe && !ended && (
+        <div className="absolute top-0 inset-x-0 h-0.5 z-30" style={{ background: listing.sellerAccentColor ?? "#ff0080" }} />
+      )}
       <div className="absolute inset-0 bg-gradient-to-t from-background via-background/20 to-transparent opacity-80 z-10 pointer-events-none" />
 
       <div className="relative h-32 sm:h-44 w-full p-3 sm:p-5 flex items-center justify-center bg-black/40">
@@ -683,15 +749,21 @@ function ListingItemCard({
     ? `https://cdn.discordapp.com/avatars/${listing.discordUserId}/${listing.discordAvatar}.png?size=64`
     : null;
 
+  const stProps = getCardStyleProps(listing.cardStyle, listing.sellerAccentColor);
+
   return (
     <motion.div
       variants={{
         hidden: { opacity: 0, y: 20 },
         show: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 300, damping: 24 } },
       }}
-      whileHover={{ y: -3, transition: { type: "spring", stiffness: 400, damping: 25 } }}
-      className="group relative flex flex-col overflow-hidden rounded-2xl glass-panel border border-white/10 hover:border-primary/40 hover:shadow-[0_0_20px_rgba(255,0,128,0.15)] transition-all duration-200"
+      whileHover={{ y: -3, transition: { type: "spring", stiffness: 400, damping: 25 }, ...stProps.whileHover }}
+      className={cn("group relative flex flex-col overflow-hidden rounded-2xl glass-panel", stProps.baseClass)}
+      style={stProps.style}
     >
+      {stProps.showStripe && (
+        <div className="absolute top-0 inset-x-0 h-0.5 z-30" style={{ background: listing.sellerAccentColor ?? "#ff0080" }} />
+      )}
       <div className="absolute inset-0 bg-gradient-to-t from-background via-background/20 to-transparent opacity-80 z-10 pointer-events-none" />
 
       <div className="relative h-32 sm:h-44 w-full p-3 sm:p-5 flex items-center justify-center bg-black/40">
@@ -718,7 +790,8 @@ function ListingItemCard({
       </div>
 
       <div className="relative z-20 p-3 sm:p-4 flex flex-col gap-2 flex-grow">
-        <h3 className="font-display font-bold text-sm sm:text-base text-white leading-tight line-clamp-2 group-hover:text-primary transition-colors">
+        <h3 className={cn("font-display font-bold text-sm sm:text-base text-white leading-tight line-clamp-2 transition-colors",
+          listing.cardStyle === "default" || !listing.cardStyle ? "group-hover:text-primary" : "group-hover:text-white/90")}>
           {item.name}
         </h3>
 

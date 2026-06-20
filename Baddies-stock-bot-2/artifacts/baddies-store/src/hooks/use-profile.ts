@@ -11,6 +11,16 @@ export type FeaturedItem = {
 };
 
 export type BannerStyle = "default" | "sunset" | "ocean" | "forest" | "midnight" | "fire" | "aurora" | "gold";
+export type CardStyle = "default" | "neon" | "minimal" | "frost" | "dark" | "gradient";
+
+export const CARD_STYLES: { key: CardStyle; label: string; desc: string }[] = [
+  { key: "default",  label: "Default",  desc: "Classic dark glass" },
+  { key: "neon",     label: "Neon",     desc: "Glowing accent border" },
+  { key: "minimal",  label: "Minimal",  desc: "Clean, no glow" },
+  { key: "frost",    label: "Frost",    desc: "Icy frosted glass" },
+  { key: "dark",     label: "Dark",     desc: "Deep dark panel" },
+  { key: "gradient", label: "Gradient", desc: "Accent top stripe" },
+];
 
 export type Profile = {
   userId: string;
@@ -20,6 +30,7 @@ export type Profile = {
   bio: string;
   accentColor: string;
   bannerStyle: BannerStyle;
+  cardStyle: CardStyle;
   tradePreferences: string;
   featuredItems: FeaturedItem[];
   siteRole: string | null;
@@ -86,7 +97,7 @@ export function useProfile(userId: string | undefined) {
 export function useUpdateProfile() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (data: { tagline?: string; bio?: string; accentColor?: string; bannerStyle?: BannerStyle; tradePreferences?: string; featuredItems?: FeaturedItem[] }) =>
+    mutationFn: (data: { tagline?: string; bio?: string; accentColor?: string; bannerStyle?: BannerStyle; cardStyle?: CardStyle; tradePreferences?: string; featuredItems?: FeaturedItem[] }) =>
       fetch(`${apiBase}/api/profile`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },

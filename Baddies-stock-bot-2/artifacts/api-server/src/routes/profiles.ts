@@ -19,6 +19,7 @@ type ProfileData = {
   bio: string;
   accentColor: string;
   bannerStyle: string;
+  cardStyle: string;
   tradePreferences: string;
   featuredItems: FeaturedItem[];
   username: string;
@@ -30,7 +31,7 @@ type ProfileData = {
 
 type ProfilesStore = Record<string, ProfileData>;
 
-function loadProfiles(): ProfilesStore {
+export function loadProfiles(): ProfilesStore {
   try { return JSON.parse(fs.readFileSync(PROFILES_PATH, "utf8")); } catch { return {}; }
 }
 function saveProfiles(p: ProfilesStore): void {
@@ -38,6 +39,7 @@ function saveProfiles(p: ProfilesStore): void {
 }
 
 const VALID_BANNER_STYLES = ["default", "sunset", "ocean", "forest", "midnight", "fire", "aurora", "gold"];
+const VALID_CARD_STYLES = ["default", "neon", "minimal", "frost", "dark", "gradient"];
 const HEX_RE = /^#[0-9a-fA-F]{6}$/;
 
 const router = Router();
@@ -52,6 +54,7 @@ router.get("/profile", (req: Request, res: Response) => {
     userId: u.id, username: u.username, avatarHash: u.avatar ?? null,
     tagline: p.tagline ?? "", bio: p.bio ?? "",
     accentColor: p.accentColor ?? "#ff0080", bannerStyle: p.bannerStyle ?? "default",
+    cardStyle: p.cardStyle ?? "default",
     tradePreferences: p.tradePreferences ?? "", featuredItems: p.featuredItems ?? [],
     siteRole: getRole(u.id, u.username), updatedAt: p.updatedAt ?? null,
     customAvatarUrl: p.customAvatarUrl ?? null,
@@ -62,7 +65,7 @@ router.get("/profile", (req: Request, res: Response) => {
 router.patch("/profile", (req: Request, res: Response) => {
   const u = req.session?.discordUser;
   if (!u) { res.status(401).json({ error: "Not authenticated" }); return; }
-  const { tagline, bio, accentColor, bannerStyle, tradePreferences, featuredItems } = req.body as Partial<ProfileData & { featuredItems: FeaturedItem[] }>;
+  const { tagline, bio, accentColor, bannerStyle, cardStyle, tradePreferences, featuredItems } = req.body as Partial<ProfileData & { featuredItems: FeaturedItem[] }>;
   const profiles = loadProfiles();
   const ex = profiles[u.id] ?? {} as Partial<ProfileData>;
 
@@ -72,6 +75,7 @@ router.patch("/profile", (req: Request, res: Response) => {
     bio:              typeof bio === "string"               ? bio.slice(0, 500)             : (ex.bio ?? ""),
     accentColor:      typeof accentColor === "string" && HEX_RE.test(accentColor) ? accentColor : (ex.accentColor ?? "#ff0080"),
     bannerStyle:      typeof bannerStyle === "string" && VALID_BANNER_STYLES.includes(bannerStyle) ? bannerStyle : (ex.bannerStyle ?? "default"),
+    cardStyle:        typeof cardStyle === "string" && VALID_CARD_STYLES.includes(cardStyle) ? cardStyle : (ex.cardStyle ?? "default"),
     tradePreferences: typeof tradePreferences === "string" ? tradePreferences.slice(0, 200) : (ex.tradePreferences ?? ""),
     featuredItems:    Array.isArray(featuredItems) ? (featuredItems as FeaturedItem[]).slice(0, 6) : (ex.featuredItems ?? []),
     updatedAt: new Date().toISOString(),
@@ -108,7 +112,8 @@ router.get("/profiles/:userId", (req: Request, res: Response) => {
   res.json({
     userId, username: p.username, avatarHash: p.avatarHash,
     tagline: p.tagline, bio: p.bio, accentColor: p.accentColor,
-    bannerStyle: p.bannerStyle, tradePreferences: p.tradePreferences,
+    bannerStyle: p.bannerStyle, cardStyle: p.cardStyle ?? "default",
+    tradePreferences: p.tradePreferences,
     featuredItems: p.featuredItems, siteRole,
     listingCount: userListings.length, activeListings: userListings, updatedAt: p.updatedAt,
     customAvatarUrl: p.customAvatarUrl ?? null,

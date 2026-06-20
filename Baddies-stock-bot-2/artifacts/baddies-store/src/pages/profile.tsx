@@ -13,8 +13,8 @@ import { ReportModal, type ReportTarget } from "@/components/report-modal";
 import { useAuth } from "@/contexts/auth-context";
 import {
   useProfile, useOwnProfile, useUpdateProfile,
-  BANNER_STYLES, ACCENT_COLORS, getBannerClass,
-  type BannerStyle, type FeaturedItem, type Profile,
+  BANNER_STYLES, ACCENT_COLORS, getBannerClass, CARD_STYLES,
+  type BannerStyle, type CardStyle, type FeaturedItem, type Profile,
 } from "@/hooks/use-profile";
 import { ROLE_LABEL, ROLE_COLOR, type AnyRole } from "@/hooks/use-staff";
 import { cn } from "@/lib/utils";
@@ -269,12 +269,13 @@ function ProfileEditor({
   onClose: () => void;
 }) {
   const qc = useQueryClient();
-  const [tab, setTab] = useState<"about" | "style" | "items">("about");
+  const [tab, setTab] = useState<"about" | "style" | "cards" | "items">("about");
   const [tagline, setTagline] = useState(profile.tagline);
   const [bio, setBio] = useState(profile.bio);
   const [tradePrefs, setTradePrefs] = useState(profile.tradePreferences);
   const [accentColor, setAccentColor] = useState(profile.accentColor);
   const [bannerStyle, setBannerStyle] = useState<BannerStyle>(profile.bannerStyle);
+  const [cardStyle, setCardStyle] = useState<CardStyle>((profile.cardStyle as CardStyle) ?? "default");
   const [featuredItems, setFeaturedItems] = useState<FeaturedItem[]>(profile.featuredItems);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -360,7 +361,7 @@ function ProfileEditor({
   async function handleSave() {
     setError(null);
     try {
-      await update.mutateAsync({ tagline, bio, accentColor, bannerStyle, tradePreferences: tradePrefs, featuredItems });
+      await update.mutateAsync({ tagline, bio, accentColor, bannerStyle, cardStyle, tradePreferences: tradePrefs, featuredItems });
       setSaved(true);
       setTimeout(() => { setSaved(false); onClose(); }, 1000);
     } catch (err) {
@@ -398,7 +399,7 @@ function ProfileEditor({
 
       {/* Tabs */}
       <div className="flex gap-1 p-2 bg-black/30 border-b border-white/10 shrink-0">
-        {(["about", "style", "items"] as const).map((t) => (
+        {(["about", "style", "cards", "items"] as const).map((t) => (
           <button key={t} onClick={() => setTab(t)}
             className={cn("flex-1 py-1.5 rounded-lg text-xs font-semibold capitalize transition-colors",
               tab === t ? "bg-primary/20 text-primary border border-primary/30" : "text-muted-foreground hover:text-white")}>
@@ -562,6 +563,76 @@ function ProfileEditor({
               <p className="text-[11px] text-muted-foreground/70">Max 5MB · JPEG, PNG, WebP, GIF · GIFs upload as-is, others can be cropped</p>
               <input ref={bannerInputRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif" className="hidden"
                 onChange={(e) => { const f = e.target.files?.[0]; if (f) openCropOrUpload("banner", f); e.target.value = ""; }} />
+            </div>
+          </>
+        )}
+
+        {tab === "cards" && (
+          <>
+            <div className="space-y-3">
+              <div>
+                <label className="text-[11px] text-muted-foreground uppercase tracking-wider font-semibold">Card Style</label>
+                <p className="text-[11px] text-muted-foreground mt-0.5">Choose how your listing cards look to everyone in the store.</p>
+              </div>
+              <div className="grid grid-cols-3 gap-2">
+                {CARD_STYLES.map((s) => {
+                  const previewStyle = (() => {
+                    const h = accentColor.replace("#", "");
+                    const r = parseInt(h.slice(0, 2), 16);
+                    const g = parseInt(h.slice(2, 4), 16);
+                    const b = parseInt(h.slice(4, 6), 16);
+                    const rgba = (a: number) => `rgba(${r},${g},${b},${a})`;
+                    switch (s.key) {
+                      case "neon":     return { border: `1px solid ${rgba(0.6)}`, boxShadow: `0 0 12px ${rgba(0.35)}` };
+                      case "minimal":  return { border: "1px solid rgba(255,255,255,0.05)" };
+                      case "frost":    return { border: "1px solid rgba(255,255,255,0.3)", background: "rgba(255,255,255,0.04)" };
+                      case "dark":     return { border: "1px solid rgba(255,255,255,0.06)", background: "rgba(0,0,0,0.5)" };
+                      case "gradient": return { border: "1px solid rgba(255,255,255,0.1)" };
+                      default:         return { border: "1px solid rgba(255,255,255,0.1)" };
+                    }
+                  })();
+                  return (
+                    <button key={s.key} onClick={() => setCardStyle(s.key)}
+                      className={cn("relative flex flex-col overflow-hidden rounded-xl transition-all",
+                        cardStyle === s.key ? "ring-2 ring-white scale-105" : "opacity-55 hover:opacity-85 hover:scale-[1.03]")}
+                      style={previewStyle}
+                    >
+                      {s.key === "gradient" && (
+                        <div className="absolute top-0 inset-x-0 h-0.5 z-10" style={{ background: accentColor }} />
+                      )}
+                      <div className="h-10 w-full flex items-center justify-center"
+                        style={{ background: s.key === "dark" ? "rgba(0,0,0,0.65)" : "rgba(0,0,0,0.42)" }}>
+                        <Box className="w-4 h-4 text-white/20" />
+                      </div>
+                      <div className="px-2 py-1.5 space-y-1"
+                        style={{ background: s.key === "frost" ? "rgba(255,255,255,0.03)" : undefined }}>
+                        <div className="w-10 h-1.5 rounded-full bg-white/25" />
+                        <div className="w-6 h-1 rounded-full bg-white/15" />
+                      </div>
+                      {cardStyle === s.key && (
+                        <div className="absolute inset-0 flex items-center justify-center bg-black/40">
+                          <Check className="w-4 h-4 text-white drop-shadow" />
+                        </div>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+              <div className="grid grid-cols-3 gap-2">
+                {CARD_STYLES.map((s) => (
+                  <div key={s.key} className="text-center">
+                    <p className={cn("text-[10px] font-semibold transition-colors",
+                      cardStyle === s.key ? "text-white" : "text-muted-foreground")}>{s.label}</p>
+                    <p className={cn("text-[9px] transition-colors",
+                      cardStyle === s.key ? "text-white/60" : "text-muted-foreground/60")}>{s.desc}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="px-3 py-2.5 rounded-xl bg-white/5 border border-white/10">
+              <p className="text-[11px] text-muted-foreground leading-relaxed">
+                <span className="text-white/70 font-semibold">Tip:</span> Your accent color (set in Style) is used for the glow and border colors in Neon, Dark, and Gradient styles.
+              </p>
             </div>
           </>
         )}
