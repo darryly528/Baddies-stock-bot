@@ -14,6 +14,7 @@ import uploadsRouter from "./uploads";
 import vouchesRouter from "./vouches";
 import reportsRouter from "./reports";
 import blocksRouter from "./blocks";
+import shopsRouter from "./shops";
 
 const router: IRouter = Router();
 
@@ -32,5 +33,6 @@ router.use(uploadsRouter);
 router.use(vouchesRouter);
 router.use(reportsRouter);
 router.use(blocksRouter);
+router.use(shopsRouter);
 
 export default router;

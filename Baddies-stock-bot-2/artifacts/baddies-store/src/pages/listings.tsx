@@ -1108,6 +1108,113 @@ function CartDrawer({
   );
 }
 
+// ── Create Shop Modal ─────────────────────────────────────────────────────────
+
+type ShopStatus = "pending" | "approved" | "rejected";
+interface ShopApplication {
+  userId: string; username: string; shopName: string;
+  tagline: string; categories: string; status: ShopStatus;
+  rejectionReason?: string;
+}
+
+function CreateShopModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: () => void }) {
+  const [shopName, setShopName] = useState("");
+  const [tagline, setTagline] = useState("");
+  const [categories, setCategories] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleSubmit() {
+    if (!shopName.trim()) { setError("Shop name is required"); return; }
+    setSubmitting(true); setError(null);
+    try {
+      const r = await fetch("/api/shops/apply", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ shopName: shopName.trim(), tagline: tagline.trim(), categories: categories.trim() }),
+      });
+      const d = await r.json() as { ok?: boolean; error?: string };
+      if (!r.ok) throw new Error(d.error ?? "Failed to submit");
+      onSuccess();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Submission failed");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <motion.div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+      initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+      <motion.div className="w-full max-w-md glass-panel border border-white/15 rounded-2xl p-6 space-y-5"
+        initial={{ scale: 0.92, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.92, opacity: 0 }}>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-xl bg-violet-500/20 border border-violet-500/30 flex items-center justify-center">
+              <Store className="w-4 h-4 text-violet-400" />
+            </div>
+            <div>
+              <h2 className="font-bold text-white text-base">Create a Shop</h2>
+              <p className="text-[11px] text-muted-foreground">Admins will review your application</p>
+            </div>
+          </div>
+          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-white/10 text-muted-foreground hover:text-white transition-colors">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        <div className="space-y-3">
+          <div className="space-y-1.5">
+            <label className="text-[11px] text-muted-foreground uppercase tracking-wider font-semibold">
+              Shop Name <span className="text-red-400">*</span>
+            </label>
+            <input value={shopName} onChange={(e) => setShopName(e.target.value.slice(0, 40))}
+              placeholder="e.g. Baddies Emporium"
+              className="w-full px-3 py-2.5 rounded-xl bg-white/5 border border-white/10 text-sm text-white placeholder-muted-foreground focus:outline-none focus:border-violet-500/50 transition" />
+            <p className="text-[10px] text-muted-foreground/60 text-right">{shopName.length}/40</p>
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="text-[11px] text-muted-foreground uppercase tracking-wider font-semibold">Tagline</label>
+            <input value={tagline} onChange={(e) => setTagline(e.target.value.slice(0, 100))}
+              placeholder="A short catchy description of your shop"
+              className="w-full px-3 py-2.5 rounded-xl bg-white/5 border border-white/10 text-sm text-white placeholder-muted-foreground focus:outline-none focus:border-violet-500/50 transition" />
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="text-[11px] text-muted-foreground uppercase tracking-wider font-semibold">What do you sell?</label>
+            <textarea value={categories} onChange={(e) => setCategories(e.target.value.slice(0, 200))}
+              placeholder="e.g. Limited items, Accessories, Vehicles…"
+              rows={3}
+              className="w-full px-3 py-2.5 rounded-xl bg-white/5 border border-white/10 text-sm text-white placeholder-muted-foreground focus:outline-none focus:border-violet-500/50 transition resize-none" />
+          </div>
+        </div>
+
+        <div className="glass-panel border border-amber-500/20 rounded-xl p-3 flex items-start gap-2">
+          <AlertTriangle className="w-3.5 h-3.5 text-amber-400 shrink-0 mt-0.5" />
+          <p className="text-[11px] text-amber-200/80">Your application will be sent to our admins for review. You'll be able to see your status on this page.</p>
+        </div>
+
+        {error && <p className="text-xs text-red-400 flex items-center gap-1.5"><AlertTriangle className="w-3 h-3" />{error}</p>}
+
+        <div className="flex gap-2">
+          <button onClick={onClose} className="flex-1 py-2.5 rounded-xl border border-white/15 text-sm font-semibold text-muted-foreground hover:text-white hover:border-white/30 transition-colors">
+            Cancel
+          </button>
+          <button onClick={handleSubmit} disabled={submitting || !shopName.trim()}
+            className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-white transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+            style={{ background: "linear-gradient(135deg, #7c3aed, #4f46e5)" }}>
+            {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Store className="w-4 h-4" />}
+            {submitting ? "Submitting…" : "Submit Application"}
+          </button>
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+}
+
 // ── Shops view ────────────────────────────────────────────────────────────────
 
 interface SellerShop {
@@ -1121,13 +1228,17 @@ interface SellerShop {
   sampleImages: (string | null)[];
 }
 
-function ShopsView({ listings, onMessage, user, onLoginPrompt }: {
+function ShopsView({ listings, onMessage, user, onLoginPrompt, approvedShops, myShop, onCreateShop }: {
   listings: Listing[];
   onMessage: (listing: Listing, item: ListingItem) => void;
   user: { id: string } | null;
   onLoginPrompt: () => void;
+  approvedShops: ShopApplication[];
+  myShop: ShopApplication | null;
+  onCreateShop: () => void;
 }) {
   const [expanded, setExpanded] = useState<string | null>(null);
+  const approvedIds = new Set(approvedShops.map((s) => s.userId));
 
   const shops = Object.values(
     listings.reduce<Record<string, SellerShop>>((acc, listing) => {
@@ -1156,24 +1267,69 @@ function ShopsView({ listings, onMessage, user, onLoginPrompt }: {
     }, {})
   ).sort((a, b) => b.itemCount - a.itemCount);
 
+  const ctaSection = (
+    <div className="mt-6">
+      {!user ? (
+        <button onClick={onLoginPrompt}
+          className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl border border-dashed border-violet-500/30 text-sm font-semibold text-violet-400 hover:bg-violet-500/10 transition-colors">
+          <Store className="w-4 h-4" />
+          Log in to open your own shop
+        </button>
+      ) : myShop?.status === "approved" ? (
+        <div className="flex items-center justify-center gap-2 py-3 rounded-2xl border border-green-500/30 bg-green-500/10 text-sm font-semibold text-green-400">
+          <CheckCircle2 className="w-4 h-4" />
+          Your shop is approved and live!
+        </div>
+      ) : myShop?.status === "pending" ? (
+        <div className="flex items-center justify-center gap-2 py-3 rounded-2xl border border-amber-500/30 bg-amber-500/10 text-sm font-semibold text-amber-400">
+          <Loader2 className="w-4 h-4 animate-spin" />
+          Your shop application is under review…
+        </div>
+      ) : myShop?.status === "rejected" ? (
+        <div className="space-y-2">
+          <div className="flex items-center justify-center gap-2 py-2.5 rounded-2xl border border-red-500/30 bg-red-500/10 text-sm font-semibold text-red-400">
+            <AlertTriangle className="w-4 h-4" />
+            Your previous application was rejected{myShop.rejectionReason ? ` — ${myShop.rejectionReason}` : ""}
+          </div>
+          <button onClick={onCreateShop}
+            className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl border border-dashed border-violet-500/30 text-sm font-semibold text-violet-400 hover:bg-violet-500/10 transition-colors">
+            <Store className="w-4 h-4" />
+            Re-apply for a shop
+          </button>
+        </div>
+      ) : (
+        <button onClick={onCreateShop}
+          className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl border border-dashed border-violet-500/30 text-sm font-semibold text-violet-400 hover:bg-violet-500/10 transition-colors">
+          <Store className="w-4 h-4" />
+          Create your own shop
+        </button>
+      )}
+    </div>
+  );
+
   if (shops.length === 0) {
     return (
-      <div className="text-center py-24 glass-panel rounded-3xl">
-        <Store className="w-12 h-12 text-muted-foreground/30 mx-auto mb-4" />
-        <h3 className="text-xl font-bold mb-2">No shops open</h3>
-        <p className="text-muted-foreground">Check back soon.</p>
+      <div className="space-y-4">
+        <div className="text-center py-16 glass-panel rounded-3xl">
+          <Store className="w-12 h-12 text-muted-foreground/30 mx-auto mb-4" />
+          <h3 className="text-xl font-bold mb-2">No shops open yet</h3>
+          <p className="text-muted-foreground">Be the first to create one!</p>
+        </div>
+        {ctaSection}
       </div>
     );
   }
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+    <div className="space-y-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
       {shops.map((shop) => {
         const isExpanded = expanded === shop.sellerId;
         const accent = shop.accentColor;
         const avatarUrl = shop.sellerAvatar
           ?? `https://cdn.discordapp.com/embed/avatars/0.png`;
         const totalItems = shop.listings.reduce((s, l) => s + l.items.filter((i) => !i.soldOut).length, 0);
+        const isVerified = approvedIds.has(shop.sellerId);
 
         return (
           <motion.div
@@ -1182,8 +1338,16 @@ function ShopsView({ listings, onMessage, user, onLoginPrompt }: {
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
             className="glass-panel border border-white/10 rounded-2xl overflow-hidden"
-            style={{ borderColor: `${accent}22` }}
+            style={{ borderColor: isVerified ? `${accent}40` : `${accent}22` }}
           >
+            {/* Verified banner */}
+            {isVerified && (
+              <div className="px-3 py-1.5 flex items-center gap-1.5 text-[10px] font-bold tracking-wide uppercase"
+                style={{ background: `${accent}18`, color: accent }}>
+                <CheckCircle2 className="w-3 h-3" />
+                Verified Shop
+              </div>
+            )}
             {/* Shop header */}
             <div className="p-4 space-y-3">
               <div className="flex items-center gap-3">
@@ -1198,7 +1362,7 @@ function ShopsView({ listings, onMessage, user, onLoginPrompt }: {
                 </Link>
                 <div className="flex-1 min-w-0">
                   <Link href={`/profile/${shop.sellerId}`} className="font-bold text-white hover:text-primary transition-colors text-sm truncate block">
-                    {shop.sellerName}
+                    {isVerified ? (approvedShops.find(s => s.userId === shop.sellerId)?.shopName ?? shop.sellerName) : shop.sellerName}
                   </Link>
                   <p className="text-[11px] text-muted-foreground">
                     {totalItems} item{totalItems !== 1 ? "s" : ""} · {shop.listings.length} listing{shop.listings.length !== 1 ? "s" : ""}
@@ -1311,6 +1475,8 @@ function ShopsView({ listings, onMessage, user, onLoginPrompt }: {
           </motion.div>
         );
       })}
+      </div>
+      {ctaSection}
     </div>
   );
 }
@@ -1367,6 +1533,37 @@ export default function ListingsPage() {
   const [joinCheckFailed, setJoinCheckFailed] = useState(false);
   const [onboardingModal, setOnboardingModal] = useState<{ pendingEntries: CartEntry[]; inviteUrl: string } | null>(null);
   const [loginPrompt, setLoginPrompt] = useState(false);
+  const [createShopModal, setCreateShopModal] = useState(false);
+  const [approvedShops, setApprovedShops] = useState<ShopApplication[]>([]);
+  const [myShop, setMyShop] = useState<ShopApplication | null>(null);
+
+  useEffect(() => {
+    fetch("/api/shops", { credentials: "include" })
+      .then((r) => r.ok ? r.json() : [])
+      .then((d: ShopApplication[]) => setApprovedShops(d))
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    if (!user) { setMyShop(null); return; }
+    fetch("/api/shops/mine", { credentials: "include" })
+      .then((r) => r.ok ? r.json() : null)
+      .then((d: ShopApplication | null) => setMyShop(d))
+      .catch(() => {});
+  }, [user]);
+
+  function refreshShopStatus() {
+    fetch("/api/shops", { credentials: "include" })
+      .then((r) => r.ok ? r.json() : [])
+      .then((d: ShopApplication[]) => setApprovedShops(d))
+      .catch(() => {});
+    if (user) {
+      fetch("/api/shops/mine", { credentials: "include" })
+        .then((r) => r.ok ? r.json() : null)
+        .then((d: ShopApplication | null) => setMyShop(d))
+        .catch(() => {});
+    }
+  }
 
   const activeListings = [...listings].reverse().filter((l) => l.items.some((i) => !i.soldOut));
 
@@ -1591,6 +1788,12 @@ export default function ListingsPage() {
             }}
             user={user}
             onLoginPrompt={() => setLoginPrompt(true)}
+            approvedShops={approvedShops}
+            myShop={myShop}
+            onCreateShop={() => {
+              if (!user) { setLoginPrompt(true); return; }
+              setCreateShopModal(true);
+            }}
           />
         ) : flatItems.length === 0 ? (
           <div className="text-center py-24 glass-panel rounded-3xl">
@@ -1954,6 +2157,19 @@ export default function ListingsPage() {
       <AnimatePresence>
         {reportTarget && (
           <ReportModal target={reportTarget} onClose={() => setReportTarget(null)} />
+        )}
+      </AnimatePresence>
+
+      {/* Create shop modal */}
+      <AnimatePresence>
+        {createShopModal && (
+          <CreateShopModal
+            onClose={() => setCreateShopModal(false)}
+            onSuccess={() => {
+              setCreateShopModal(false);
+              refreshShopStatus();
+            }}
+          />
         )}
       </AnimatePresence>
     </div>

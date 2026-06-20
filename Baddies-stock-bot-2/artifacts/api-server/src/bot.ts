@@ -2,6 +2,7 @@ import fs from "fs";
 import path from "path";
 import { getRole, hasMinRole } from "./permissions";
 import { approveImage, rejectImage } from "./imageReview";
+import { approveShop, rejectShop } from "./shopReview";
 
 import {
   Client,
@@ -1373,6 +1374,50 @@ export async function startBot() {
           components: [],
           embeds: [],
           files: [],
+        });
+        return;
+      }
+
+      // ── shopapprove — approve a shop application ──────────────────────────
+      if (interaction.isButton() && interaction.customId.startsWith("shopapprove:")) {
+        const btn = interaction as ButtonInteraction;
+        const role = getRole(btn.user.id, btn.user.username);
+        if (!hasMinRole(role, "mod")) {
+          await btn.reply({ content: "❌ Mod or higher required to approve shops.", ephemeral: true });
+          return;
+        }
+        const userId = btn.customId.slice("shopapprove:".length);
+        const result = approveShop(userId, btn.user.id, btn.user.username);
+        if (!result.ok) {
+          await btn.reply({ content: "❌ Shop application not found — it may have already been handled.", ephemeral: true });
+          return;
+        }
+        await btn.update({
+          content: `✅ Shop **${result.app?.shopName}** approved by <@${btn.user.id}> (${btn.user.username})`,
+          components: [],
+          embeds: [],
+        });
+        return;
+      }
+
+      // ── shopreject — reject a shop application ────────────────────────────
+      if (interaction.isButton() && interaction.customId.startsWith("shopreject:")) {
+        const btn = interaction as ButtonInteraction;
+        const role = getRole(btn.user.id, btn.user.username);
+        if (!hasMinRole(role, "mod")) {
+          await btn.reply({ content: "❌ Mod or higher required to reject shops.", ephemeral: true });
+          return;
+        }
+        const userId = btn.customId.slice("shopreject:".length);
+        const result = rejectShop(userId, btn.user.id, btn.user.username);
+        if (!result.ok) {
+          await btn.reply({ content: "❌ Shop application not found — it may have already been handled.", ephemeral: true });
+          return;
+        }
+        await btn.update({
+          content: `❌ Shop **${result.app?.shopName}** rejected by <@${btn.user.id}> (${btn.user.username})`,
+          components: [],
+          embeds: [],
         });
         return;
       }
