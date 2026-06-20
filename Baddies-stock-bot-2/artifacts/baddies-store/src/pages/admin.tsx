@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef, useEffect } from "react";
+import { useState, useMemo, useRef, useEffect, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -7,6 +7,7 @@ import {
   Crown, Hammer, Clock, Ban, UserX, ShieldCheck, Search,
   MessageSquare, ArrowLeft, Inbox, Eye, Plus, Check, UserCog,
   FileWarning, CheckCircle2, XCircle, BadgeCheck, Star,
+  Palette, Upload, ImageIcon, RotateCcw, EyeOff,
 } from "lucide-react";
 import { useAuth } from "../contexts/auth-context";
 import { Link } from "wouter";
@@ -804,13 +805,326 @@ function MemberRow({
   );
 }
 
+// ── Theme Tab ────────────────────────────────────────────────────────────────
+
+type SiteTheme = {
+  primaryColor: string;
+  secondaryColor: string;
+  bgUrl: string | null;
+  bgOverlay: number;
+  bgBlur: boolean;
+};
+
+const DEFAULT_THEME: SiteTheme = {
+  primaryColor: "#ff0080",
+  secondaryColor: "#7c3aed",
+  bgUrl: null,
+  bgOverlay: 0.6,
+  bgBlur: false,
+};
+
+function ThemeTab() {
+  const qc = useQueryClient();
+  const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [dragging, setDragging] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const { data: saved, isLoading } = useQuery<SiteTheme>({
+    queryKey: ["site-theme"],
+    queryFn: () => fetch("/api/theme").then((r) => r.json()),
+    staleTime: 10_000,
+  });
+
+  const [local, setLocal] = useState<SiteTheme>(DEFAULT_THEME);
+  useEffect(() => { if (saved) setLocal(saved); }, [saved]);
+
+  function showToast(msg: string, ok = true) {
+    setToast({ msg, ok });
+    setTimeout(() => setToast(null), 3500);
+  }
+
+  async function handleUpload(file: File) {
+    if (!file.type.startsWith("image/")) { showToast("Only image files allowed", false); return; }
+    setUploading(true);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      const r = await fetch("/api/uploads/theme-bg", { method: "POST", body: fd, credentials: "include" });
+      const data = await r.json();
+      if (data.ok) {
+        setLocal((prev) => ({ ...prev, bgUrl: data.url }));
+        showToast("Background uploaded!");
+      } else {
+        showToast(data.error ?? "Upload failed", false);
+      }
+    } catch { showToast("Upload failed", false); }
+    finally { setUploading(false); }
+  }
+
+  const onDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setDragging(false);
+    const file = e.dataTransfer.files[0];
+    if (file) handleUpload(file);
+  }, []);
+
+  async function handleSave() {
+    setSaving(true);
+    try {
+      const r = await fetch("/api/theme", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(local),
+      });
+      const data = await r.json();
+      if (data.ok) {
+        qc.setQueryData(["site-theme"], data.theme);
+        document.documentElement.style.setProperty("--color-primary", data.theme.primaryColor);
+        document.documentElement.style.setProperty("--color-ring", data.theme.primaryColor);
+        document.documentElement.style.setProperty("--color-accent-foreground", data.theme.primaryColor);
+        document.documentElement.style.setProperty("--color-secondary", data.theme.secondaryColor);
+        showToast("Theme saved! Changes are live.");
+      } else {
+        showToast(data.error ?? "Failed to save", false);
+      }
+    } catch { showToast("Failed to save", false); }
+    finally { setSaving(false); }
+  }
+
+  function handleReset() {
+    setLocal({ ...DEFAULT_THEME });
+  }
+
+  if (isLoading) return (
+    <div className="space-y-3">
+      {[1,2,3].map((i) => <div key={i} className="h-20 rounded-2xl bg-white/5 animate-pulse" />)}
+    </div>
+  );
+
+  const hasChanges = JSON.stringify(local) !== JSON.stringify(saved);
+
+  return (
+    <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="space-y-5">
+
+      {/* Color pickers */}
+      <div className="glass-panel border border-white/10 rounded-2xl p-5 space-y-4">
+        <h3 className="font-display font-bold text-white flex items-center gap-2">
+          <Palette className="w-4 h-4 text-primary" /> Brand Colors
+        </h3>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {/* Primary */}
+          <div className="space-y-2">
+            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Primary Color</label>
+            <div className="flex items-center gap-3">
+              <div className="relative w-12 h-12 rounded-xl overflow-hidden border border-white/20 shrink-0">
+                <input
+                  type="color"
+                  value={local.primaryColor}
+                  onChange={(e) => setLocal((p) => ({ ...p, primaryColor: e.target.value }))}
+                  className="absolute inset-0 w-full h-full cursor-pointer opacity-0"
+                />
+                <div className="absolute inset-0 rounded-xl" style={{ background: local.primaryColor }} />
+              </div>
+              <div className="flex-1">
+                <input
+                  type="text"
+                  value={local.primaryColor}
+                  onChange={(e) => setLocal((p) => ({ ...p, primaryColor: e.target.value }))}
+                  className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white font-mono focus:outline-none focus:border-primary/50"
+                  placeholder="#ff0080"
+                />
+                <p className="text-[10px] text-muted-foreground mt-1">Buttons, links, badges</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Secondary */}
+          <div className="space-y-2">
+            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Secondary Color</label>
+            <div className="flex items-center gap-3">
+              <div className="relative w-12 h-12 rounded-xl overflow-hidden border border-white/20 shrink-0">
+                <input
+                  type="color"
+                  value={local.secondaryColor}
+                  onChange={(e) => setLocal((p) => ({ ...p, secondaryColor: e.target.value }))}
+                  className="absolute inset-0 w-full h-full cursor-pointer opacity-0"
+                />
+                <div className="absolute inset-0 rounded-xl" style={{ background: local.secondaryColor }} />
+              </div>
+              <div className="flex-1">
+                <input
+                  type="text"
+                  value={local.secondaryColor}
+                  onChange={(e) => setLocal((p) => ({ ...p, secondaryColor: e.target.value }))}
+                  className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white font-mono focus:outline-none focus:border-primary/50"
+                  placeholder="#7c3aed"
+                />
+                <p className="text-[10px] text-muted-foreground mt-1">Gradients, accents</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Live gradient preview */}
+        <div className="h-8 rounded-xl" style={{ background: `linear-gradient(to right, ${local.primaryColor}, ${local.secondaryColor})` }} />
+      </div>
+
+      {/* Background image */}
+      <div className="glass-panel border border-white/10 rounded-2xl p-5 space-y-4">
+        <h3 className="font-display font-bold text-white flex items-center gap-2">
+          <ImageIcon className="w-4 h-4 text-primary" /> Site Background
+        </h3>
+
+        {/* Drop zone */}
+        <div
+          onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
+          onDragLeave={() => setDragging(false)}
+          onDrop={onDrop}
+          onClick={() => fileInputRef.current?.click()}
+          className={cn(
+            "relative h-36 rounded-xl border-2 border-dashed cursor-pointer transition-all overflow-hidden flex items-center justify-center",
+            dragging ? "border-primary bg-primary/10" : "border-white/15 hover:border-white/30 hover:bg-white/3"
+          )}
+        >
+          {local.bgUrl ? (
+            <>
+              <img src={local.bgUrl} alt="background preview" className="absolute inset-0 w-full h-full object-cover opacity-60" />
+              <div className="relative z-10 text-center">
+                <Upload className="w-6 h-6 text-white mx-auto mb-1 drop-shadow" />
+                <p className="text-xs font-semibold text-white drop-shadow">Click or drag to replace</p>
+              </div>
+            </>
+          ) : (
+            <div className="text-center">
+              {uploading ? (
+                <RefreshCw className="w-8 h-8 text-muted-foreground mx-auto mb-2 animate-spin" />
+              ) : (
+                <Upload className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
+              )}
+              <p className="text-sm font-medium text-muted-foreground">
+                {uploading ? "Uploading…" : "Drop image/GIF here or click to browse"}
+              </p>
+              <p className="text-[10px] text-muted-foreground/60 mt-1">JPG, PNG, GIF, WEBP — max 15 MB</p>
+            </div>
+          )}
+        </div>
+
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={(e) => { const f = e.target.files?.[0]; if (f) handleUpload(f); e.target.value = ""; }}
+        />
+
+        {/* Remove background button */}
+        {local.bgUrl && (
+          <button
+            onClick={() => setLocal((p) => ({ ...p, bgUrl: null }))}
+            className="flex items-center gap-1.5 text-xs text-red-400 hover:text-red-300 transition-colors"
+          >
+            <X className="w-3.5 h-3.5" /> Remove background
+          </button>
+        )}
+
+        {/* Overlay opacity */}
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
+              <EyeOff className="w-3.5 h-3.5" /> Overlay Darkness
+            </label>
+            <span className="text-xs font-mono text-white">{Math.round(local.bgOverlay * 100)}%</span>
+          </div>
+          <input
+            type="range"
+            min={0}
+            max={100}
+            value={Math.round(local.bgOverlay * 100)}
+            onChange={(e) => setLocal((p) => ({ ...p, bgOverlay: Number(e.target.value) / 100 }))}
+            className="w-full accent-primary"
+          />
+          <p className="text-[10px] text-muted-foreground">Higher = darker overlay over the background image</p>
+        </div>
+
+        {/* Background blur */}
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-sm font-semibold text-white">Blur Background</p>
+            <p className="text-[10px] text-muted-foreground">Softens the background image</p>
+          </div>
+          <button
+            onClick={() => setLocal((p) => ({ ...p, bgBlur: !p.bgBlur }))}
+            className={cn(
+              "relative w-11 h-6 rounded-full transition-colors",
+              local.bgBlur ? "bg-primary" : "bg-white/15"
+            )}
+          >
+            <span className={cn(
+              "absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform",
+              local.bgBlur ? "translate-x-5" : "translate-x-0"
+            )} />
+          </button>
+        </div>
+      </div>
+
+      {/* Live preview badge */}
+      {local.bgUrl && (
+        <div className="relative h-40 rounded-2xl overflow-hidden border border-white/10">
+          <img src={local.bgUrl} alt="" className="absolute inset-0 w-full h-full object-cover"
+            style={{ filter: local.bgBlur ? "blur(4px) scale(1.05)" : "none" }} />
+          <div className="absolute inset-0" style={{ background: `rgba(0,0,0,${local.bgOverlay})` }} />
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="text-center">
+              <p className="font-display font-extrabold text-2xl" style={{ color: local.primaryColor }}>Preview</p>
+              <p className="text-white/70 text-sm">This is how your background will look</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Action buttons */}
+      <div className="flex items-center gap-3">
+        <button
+          onClick={handleSave}
+          disabled={saving || !hasChanges}
+          className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl font-semibold text-sm transition-all disabled:opacity-40"
+          style={{ background: `linear-gradient(135deg, ${local.primaryColor}, ${local.secondaryColor})`, color: "white" }}
+        >
+          {saving ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+          {saving ? "Saving…" : hasChanges ? "Save & Apply Theme" : "Theme Saved"}
+        </button>
+        <button
+          onClick={handleReset}
+          className="flex items-center gap-1.5 px-4 py-3 rounded-xl border border-white/15 text-muted-foreground hover:text-white hover:border-white/30 text-sm font-semibold transition-all"
+        >
+          <RotateCcw className="w-4 h-4" /> Reset
+        </button>
+      </div>
+
+      <AnimatePresence>
+        {toast && (
+          <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 8 }}
+            className={cn("fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-5 py-2.5 rounded-xl shadow-xl border text-sm font-semibold flex items-center gap-2",
+              toast.ok ? "bg-green-500/20 border-green-500/30 text-green-300" : "bg-red-500/20 border-red-500/30 text-red-300")}>
+            {toast.ok ? <Check className="w-4 h-4" /> : <AlertTriangle className="w-4 h-4" />}
+            {toast.msg}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </motion.div>
+  );
+}
+
 // ── Main page ────────────────────────────────────────────────────────────────
 
 export default function AdminPage() {
   const { user } = useAuth();
   const qc = useQueryClient();
 
-  type TabKey = "listings" | "members" | "staff" | "requests";
+  type TabKey = "listings" | "members" | "staff" | "requests" | "theme";
   const [tab, setTab] = useState<TabKey>("members");
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [confirm, setConfirm] = useState<{ message: string; action: () => void } | null>(null);
@@ -842,10 +1156,10 @@ export default function AdminPage() {
   useEffect(() => {
     if (!callerRole) return;
     const ROLE_RANK: Record<string, number> = { owner: 4, "co-owner": 3, admin: 2, mod: 1, verified_reseller: 0 };
-    const minRoles: Record<TabKey, string> = { members: "mod", requests: "mod", listings: "admin", staff: "mod" };
+    const minRoles: Record<TabKey, string> = { members: "mod", requests: "mod", listings: "admin", staff: "mod", theme: "admin" };
     const rank = ROLE_RANK[callerRole] ?? 0;
     if ((ROLE_RANK[minRoles[tab]] ?? 99) > rank) {
-      const first = (["members", "requests", "listings", "staff"] as TabKey[]).find(
+      const first = (["members", "requests", "listings", "staff", "theme"] as TabKey[]).find(
         (k) => (ROLE_RANK[minRoles[k]] ?? 99) <= rank
       );
       if (first) setTab(first);
@@ -965,6 +1279,7 @@ export default function AdminPage() {
     { key: "requests", label: `Requests${banRequests.length > 0 ? ` (${banRequests.length})` : ""}`, icon: Ban, minRole: "mod" },
     { key: "listings", label: "Listings", icon: ShoppingBag, minRole: "admin" },
     { key: "staff", label: "Staff", icon: UserCog, minRole: "mod" },
+    { key: "theme", label: "Theme", icon: Palette, minRole: "admin" },
   ];
 
   const visibleTabs = tabs.filter((t) => hasMinRole(callerRole, t.minRole));
@@ -1193,6 +1508,9 @@ export default function AdminPage() {
 
         {/* ── BAN REQUESTS TAB ── */}
         {tab === "requests" && <BanRequestsTab />}
+
+        {/* ── THEME TAB ── */}
+        {tab === "theme" && <ThemeTab />}
 
       </div>
 

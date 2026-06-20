@@ -1,6 +1,7 @@
 import { Switch, Route, Router as WouterRouter, Link, useLocation } from "wouter";
 import { QueryClient, QueryClientProvider, useQuery } from "@tanstack/react-query";
 import { motion, AnimatePresence, LayoutGroup } from "framer-motion";
+import { useEffect } from "react";
 import Home from "./pages/home";
 import ListPage from "./pages/list";
 import ListingsPage from "./pages/listings";
@@ -13,6 +14,53 @@ import { PackagePlus, ShoppingBag, LogOut, LayoutList, Inbox, Shield, UserCircle
 import { cn } from "./lib/utils";
 import { AuthProvider, useAuth } from "./contexts/auth-context";
 import { useConversations } from "./hooks/use-messages";
+
+type SiteTheme = {
+  primaryColor: string;
+  secondaryColor: string;
+  bgUrl: string | null;
+  bgOverlay: number;
+  bgBlur: boolean;
+};
+
+function SiteTheme() {
+  const { data: theme } = useQuery<SiteTheme>({
+    queryKey: ["site-theme"],
+    queryFn: () => fetch("/api/theme").then((r) => r.json()),
+    staleTime: 60_000,
+    refetchInterval: 120_000,
+  });
+
+  useEffect(() => {
+    if (!theme) return;
+    const root = document.documentElement;
+    root.style.setProperty("--color-primary", theme.primaryColor);
+    root.style.setProperty("--color-ring", theme.primaryColor);
+    root.style.setProperty("--color-accent-foreground", theme.primaryColor);
+    root.style.setProperty("--color-secondary", theme.secondaryColor);
+  }, [theme?.primaryColor, theme?.secondaryColor]);
+
+  if (!theme?.bgUrl) return null;
+
+  return (
+    <>
+      <div
+        className="fixed inset-0 -z-10"
+        style={{
+          backgroundImage: `url(${theme.bgUrl})`,
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+          backgroundAttachment: "fixed",
+          filter: theme.bgBlur ? "blur(4px) scale(1.04)" : "none",
+        }}
+      />
+      <div
+        className="fixed inset-0 -z-10"
+        style={{ background: `rgba(0,0,0,${theme.bgOverlay})` }}
+      />
+    </>
+  );
+}
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -314,6 +362,7 @@ function AppRouter() {
 
   return (
     <>
+      <SiteTheme />
       <NavBar />
       <div className="pt-14 pb-20 md:pb-0">
         <motion.div

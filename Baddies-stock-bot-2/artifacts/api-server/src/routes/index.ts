@@ -15,6 +15,7 @@ import vouchesRouter from "./vouches";
 import reportsRouter from "./reports";
 import blocksRouter from "./blocks";
 import shopsRouter from "./shops";
+import themeRouter from "./theme";
 
 const router: IRouter = Router();
 
@@ -34,5 +35,6 @@ router.use(vouchesRouter);
 router.use(reportsRouter);
 router.use(blocksRouter);
 router.use(shopsRouter);
+router.use(themeRouter);
 
 export default router;
