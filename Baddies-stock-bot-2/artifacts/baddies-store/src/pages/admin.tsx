@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef, useEffect } from "react";
+import { useState, useMemo, useRef, useEffect, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -580,6 +580,13 @@ export default function AdminPage() {
     enabled: isAdmin,
   });
 
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+
+  useEffect(() => {
+    const id = setTimeout(() => setDebouncedSearch(memberSearch.trim()), 350);
+    return () => clearTimeout(id);
+  }, [memberSearch]);
+
   const { data: members = [], isLoading: membersLoading, refetch: refetchMembers } = useQuery<GuildMember[]>({
     queryKey: ["admin-members"],
     queryFn: () => fetch("/api/admin/members").then((r) => r.json()),
@@ -587,15 +594,19 @@ export default function AdminPage() {
     staleTime: 30_000,
   });
 
+  const { data: searchResults, isFetching: searchFetching } = useQuery<GuildMember[]>({
+    queryKey: ["admin-members-search", debouncedSearch],
+    queryFn: () => fetch(`/api/admin/members/search?q=${encodeURIComponent(debouncedSearch)}`).then((r) => r.json()),
+    enabled: isAdmin && tab === "members" && debouncedSearch.length >= 2,
+    staleTime: 10_000,
+  });
+
+  const isSearching = memberSearch.trim().length >= 2;
   const filteredMembers = useMemo(() => {
-    const q = memberSearch.toLowerCase().trim();
-    if (!q) return members;
-    return members.filter((m) =>
-      m.username.toLowerCase().includes(q) ||
-      (m.displayName ?? "").toLowerCase().includes(q) ||
-      m.id.includes(q)
-    );
-  }, [members, memberSearch]);
+    if (isSearching && searchResults) return searchResults;
+    if (isSearching) return [];
+    return members;
+  }, [members, searchResults, isSearching]);
 
   function showToast(msg: string, ok = true) {
     setToast({ msg, ok });
@@ -814,22 +825,51 @@ export default function AdminPage() {
             <div className="flex items-center gap-3 flex-wrap">
               <div className="relative flex-1 min-w-48">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <input type="text" placeholder="Search by name or ID…" value={memberSearch}
+                <input
+                  type="text"
+                  placeholder="Search by name or ID… (live)"
+                  value={memberSearch}
                   onChange={(e) => setMemberSearch(e.target.value)}
-                  className="w-full pl-9 pr-4 py-2 rounded-xl bg-white/5 border border-white/10 text-sm text-white placeholder-muted-foreground focus:outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/30 transition" />
+                  className="w-full pl-9 pr-9 py-2 rounded-xl bg-white/5 border border-white/10 text-sm text-white placeholder-muted-foreground focus:outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/30 transition"
+                />
+                {searchFetching && (
+                  <RefreshCw className="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-primary animate-spin" />
+                )}
+                {memberSearch && !searchFetching && (
+                  <button
+                    onClick={() => setMemberSearch("")}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-white transition-colors"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
               </div>
               <button onClick={() => refetchMembers()}
                 className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-sm font-semibold text-white hover:bg-white/10 transition-colors">
                 <RefreshCw className="w-4 h-4" />Refresh
               </button>
-              <p className="text-xs text-muted-foreground">{filteredMembers.length} / {members.length} members</p>
+              <p className="text-xs text-muted-foreground">
+                {isSearching
+                  ? `${filteredMembers.length} result${filteredMembers.length !== 1 ? "s" : ""}`
+                  : `${members.length} member${members.length !== 1 ? "s" : ""}`}
+              </p>
             </div>
 
-            {membersLoading ? (
+            {membersLoading && !isSearching ? (
               <div className="space-y-2">{Array.from({ length: 6 }).map((_, i) => <div key={i} className="glass-panel border border-white/10 rounded-xl h-16 animate-pulse bg-white/5" />)}</div>
-            ) : members.length === 0 ? (
+            ) : isSearching && searchFetching && filteredMembers.length === 0 ? (
+              <div className="space-y-2">{Array.from({ length: 3 }).map((_, i) => <div key={i} className="glass-panel border border-white/10 rounded-xl h-16 animate-pulse bg-white/5" />)}</div>
+            ) : isSearching && memberSearch.trim().length < 2 ? (
+              <div className="glass-panel border border-white/10 rounded-2xl p-8 text-center text-muted-foreground text-sm">
+                Type at least 2 characters to search…
+              </div>
+            ) : !isSearching && members.length === 0 ? (
               <div className="glass-panel border border-white/10 rounded-2xl p-12 text-center text-muted-foreground">
                 No members found — make sure the bot is online.
+              </div>
+            ) : filteredMembers.length === 0 && isSearching ? (
+              <div className="glass-panel border border-white/10 rounded-2xl p-8 text-center text-muted-foreground text-sm">
+                No members match "<span className="text-white">{memberSearch}</span>"
               </div>
             ) : (
               <div className="space-y-2">

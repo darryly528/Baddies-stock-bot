@@ -208,6 +208,69 @@ router.get("/admin/members", requireAdmin, async (_req, res) => {
   }
 });
 
+// ── Member search — uses Discord's search API, no privileged intent needed ───
+router.get("/admin/members/search", requireAdmin, async (req, res) => {
+  const q = ((req.query as Record<string, string>).q ?? "").trim();
+  if (!q) { res.json([]); return; }
+
+  const guilds = getAllGuilds();
+  if (guilds.length === 0) { res.status(503).json({ error: "Bot offline" }); return; }
+
+  try {
+    const merged = new Map<string, object>();
+
+    await Promise.all(
+      guilds.map(async (guild) => {
+        const results = await guild.members.search({ query: q, limit: 25 }).catch(() => null);
+        if (!results) return;
+        for (const [, m] of results) {
+          if (m.user.bot) continue;
+          const avatarUrl = m.user.avatar
+            ? `https://cdn.discordapp.com/avatars/${m.id}/${m.user.avatar}.png?size=64`
+            : `https://cdn.discordapp.com/embed/avatars/${Number(BigInt(m.id) >> 22n) % 6}.png`;
+          const guildEntry = { id: guild.id, name: guild.name, icon: guild.iconURL({ size: 32 }) };
+          const isVerified = VERIFIED_SELLER_ROLE_ID ? m.roles.cache.has(VERIFIED_SELLER_ROLE_ID) : false;
+          const isMod = MOD_ROLE_ID_ENV ? m.roles.cache.has(MOD_ROLE_ID_ENV) : false;
+          const timedOut = m.communicationDisabledUntilTimestamp && m.communicationDisabledUntilTimestamp > Date.now()
+            ? new Date(m.communicationDisabledUntilTimestamp).toISOString()
+            : null;
+          if (merged.has(m.id)) {
+            const existing = merged.get(m.id) as Record<string, unknown>;
+            (existing.guilds as unknown[]).push(guildEntry);
+            existing.isVerifiedSeller = existing.isVerifiedSeller || isVerified;
+            existing.isMod = existing.isMod || isMod;
+          } else {
+            merged.set(m.id, {
+              id: m.id,
+              username: m.user.username,
+              displayName: m.displayName !== m.user.username ? m.displayName : null,
+              avatar: avatarUrl,
+              guilds: [guildEntry],
+              isVerifiedSeller: isVerified,
+              isMod,
+              isSuspended: suspendedUsers.has(m.id),
+              isOwner: m.user.username === OWNER_USERNAME,
+              timedOutUntil: timedOut,
+              joinedAt: m.joinedAt?.toISOString() ?? null,
+            });
+          }
+        }
+      })
+    );
+
+    const list = [...merged.values()].sort((a: Record<string, unknown>, b: Record<string, unknown>) => {
+      if (a.isOwner) return -1;
+      if (b.isOwner) return 1;
+      if (a.isMod !== b.isMod) return a.isMod ? -1 : 1;
+      return (a.username as string).localeCompare(b.username as string);
+    });
+
+    res.json(list);
+  } catch (err) {
+    res.status(500).json({ error: String(err) });
+  }
+});
+
 // ── Guilds list (for info display) ───────────────────────────────────────────
 router.get("/admin/guilds", requireAdmin, (_req, res) => {
   const guilds = getAllGuilds().map((g) => ({
