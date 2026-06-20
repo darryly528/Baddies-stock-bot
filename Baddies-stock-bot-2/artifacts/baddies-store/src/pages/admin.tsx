@@ -894,6 +894,13 @@ function ThemeTab() {
         document.documentElement.style.setProperty("--color-primary", data.theme.primaryColor);
         document.documentElement.style.setProperty("--color-ring", data.theme.primaryColor);
         document.documentElement.style.setProperty("--color-accent-foreground", data.theme.primaryColor);
+        const hex = data.theme.primaryColor.replace("#", "");
+        if (hex.length === 6) {
+          const r = parseInt(hex.slice(0, 2), 16);
+          const g = parseInt(hex.slice(2, 4), 16);
+          const b = parseInt(hex.slice(4, 6), 16);
+          document.documentElement.style.setProperty("--color-accent", `rgba(${r}, ${g}, ${b}, 0.15)`);
+        }
         document.documentElement.style.setProperty("--color-secondary", data.theme.secondaryColor);
         showToast("Theme saved! Changes are live.");
       } else {
@@ -926,7 +933,7 @@ function ThemeTab() {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {/* Primary */}
           <div className="space-y-2">
-            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Primary Color</label>
+            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Accent Color</label>
             <div className="flex items-center gap-3">
               <div className="relative w-12 h-12 rounded-xl overflow-hidden border border-white/20 shrink-0">
                 <input
@@ -956,7 +963,7 @@ function ThemeTab() {
                     </button>
                   )}
                 </div>
-                <p className="text-[10px] text-muted-foreground">Buttons, links, badges</p>
+                <p className="text-[10px] text-muted-foreground">Buttons, sliders, highlights, badges, links</p>
               </div>
             </div>
           </div>

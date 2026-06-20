@@ -34,9 +34,18 @@ function SiteTheme() {
   useEffect(() => {
     if (!theme) return;
     const root = document.documentElement;
+    // accent color → all interactive UI elements
     root.style.setProperty("--color-primary", theme.primaryColor);
     root.style.setProperty("--color-ring", theme.primaryColor);
     root.style.setProperty("--color-accent-foreground", theme.primaryColor);
+    // derive the transparent accent tint from the hex value
+    const hex = theme.primaryColor.replace("#", "");
+    if (hex.length === 6) {
+      const r = parseInt(hex.slice(0, 2), 16);
+      const g = parseInt(hex.slice(2, 4), 16);
+      const b = parseInt(hex.slice(4, 6), 16);
+      root.style.setProperty("--color-accent", `rgba(${r}, ${g}, ${b}, 0.15)`);
+    }
     root.style.setProperty("--color-secondary", theme.secondaryColor);
   }, [theme?.primaryColor, theme?.secondaryColor]);
 
