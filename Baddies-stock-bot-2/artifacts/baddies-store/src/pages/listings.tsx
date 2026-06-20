@@ -31,13 +31,11 @@ import {
   TrendingUp,
   ChevronUp,
   HandCoins,
-  Flag,
   Image as ImageIcon,
   Store,
   Tag,
 } from "lucide-react";
 import { Link } from "wouter";
-import { ReportModal, type ReportTarget } from "@/components/report-modal";
 import { cn, formatNumber } from "@/lib/utils";
 
 const PAYMENT_EMOJI: Record<string, string> = {
@@ -784,14 +782,12 @@ function ListingItemCard({
   onToggle,
   isOwn,
   onOffer,
-  onReport,
 }: {
   flat: FlatItem;
   inCart: boolean;
   onToggle: () => void;
   isOwn: boolean;
   onOffer: () => void;
-  onReport?: () => void;
 }) {
   const { listing, item } = flat;
   const avatarUrl = listing.discordUserId && listing.discordAvatar
@@ -875,17 +871,6 @@ function ListingItemCard({
 
           {!isOwn && (
             <div className="flex items-center gap-1.5 flex-shrink-0">
-              {/* Report button */}
-              {onReport && (
-                <button
-                  onClick={onReport}
-                  className="flex items-center gap-1 text-[11px] sm:text-xs font-semibold px-2 py-1.5 rounded-lg border transition-all duration-200 bg-white/5 text-red-400/60 border-white/15 hover:bg-red-500/20 hover:text-red-400 hover:border-red-500/40"
-                  title="Report listing"
-                >
-                  <Flag className="w-3 h-3" />
-                </button>
-              )}
-
               {/* Offer button */}
               <button
                 onClick={onOffer}
@@ -1729,7 +1714,6 @@ export default function ListingsPage() {
 
   const [cart, setCart] = useState<CartEntry[]>([]);
   const [cartOpen, setCartOpen] = useState(false);
-  const [reportTarget, setReportTarget] = useState<ReportTarget | null>(null);
   const [activeFilter, setActiveFilter] = useState<"all" | "auctions" | "fixed" | "shops">("all");
   const [chatTarget, setChatTarget] = useState<{
     listingId: string;
@@ -2050,7 +2034,6 @@ export default function ListingsPage() {
                   onToggle={() => toggleCart(flat)}
                   isOwn={isOwn}
                   onOffer={() => openOffer(flat)}
-                  onReport={user ? () => setReportTarget({ type: "listing", id: flat.listing.id, name: flat.listing.items[0]?.name ?? flat.listing.id }) : undefined}
                 />
               );
             })}
@@ -2367,12 +2350,6 @@ export default function ListingsPage() {
         )}
       </AnimatePresence>
 
-      {/* Report modal */}
-      <AnimatePresence>
-        {reportTarget && (
-          <ReportModal target={reportTarget} onClose={() => setReportTarget(null)} />
-        )}
-      </AnimatePresence>
 
       {/* Create shop modal */}
       <AnimatePresence>
