@@ -331,7 +331,8 @@ function StaffTab({ callerRole }: { callerRole: AnyRole }) {
   const [addSuccess, setAddSuccess] = useState(false);
   const [debouncedLookupId, setDebouncedLookupId] = useState("");
 
-  const isValidDiscordId = /^\d{17,20}$/.test(newId.trim());
+  // Accept 15–21 digits to handle edge-case snowflakes without false negatives
+  const isValidDiscordId = /^\d{15,21}$/.test(newId.trim());
 
   useEffect(() => {
     if (!isValidDiscordId) { setDebouncedLookupId(""); return; }
@@ -339,13 +340,14 @@ function StaffTab({ callerRole }: { callerRole: AnyRole }) {
     return () => clearTimeout(t);
   }, [newId, isValidDiscordId]);
 
-  const { data: lookedUpMember, isFetching: lookupFetching, isError: lookupNotFound } = useQuery<{
-    id: string; username: string; avatar: string; inGuild: boolean;
-  }>({
+  const { data: lookedUpMember, isFetching: lookupFetching, isError: lookupFailed, error: lookupError } = useQuery<
+    { id: string; username: string; avatar: string; inGuild: boolean },
+    Error
+  >({
     queryKey: ["member-lookup", debouncedLookupId],
     queryFn: () => fetch(`/api/admin/members/lookup?userId=${debouncedLookupId}`, { credentials: "include" })
-      .then(async (r) => { const d = await r.json(); if (!r.ok) throw new Error(d.error); return d; }),
-    enabled: debouncedLookupId.length >= 17,
+      .then(async (r) => { const d = await r.json(); if (!r.ok) throw new Error(d.error ?? `HTTP ${r.status}`); return d; }),
+    enabled: debouncedLookupId.length >= 15,
     retry: false,
     staleTime: 60_000,
   });
@@ -421,11 +423,20 @@ function StaffTab({ callerRole }: { callerRole: AnyRole }) {
                     )}
                   </div>
                 )}
-                {lookupNotFound && !lookupFetching && debouncedLookupId.length >= 17 && (
-                  <p className="text-xs text-red-400 px-3 py-2 bg-red-500/5 border border-red-500/15 rounded-xl">
-                    User not found on Discord — check the ID and try again.
-                  </p>
-                )}
+                {lookupFailed && !lookupFetching && debouncedLookupId.length >= 15 && (() => {
+                  const msg = lookupError?.message ?? "";
+                  const isOffline = /offline|unavailable|bot/i.test(msg);
+                  const isNotFound = /not found|404/i.test(msg);
+                  return (
+                    <div className={`text-xs px-3 py-2 rounded-xl border ${isOffline ? "text-amber-400 bg-amber-500/5 border-amber-500/15" : "text-red-400 bg-red-500/5 border-red-500/15"}`}>
+                      {isOffline
+                        ? "⚠️ Bot is offline — ID looks valid, enter the username manually and save."
+                        : isNotFound
+                          ? "No Discord account found for this ID — double-check and try again."
+                          : `Lookup failed: ${msg || "unknown error"} — you can still add manually.`}
+                    </div>
+                  );
+                })()}
               </motion.div>
             )}
           </AnimatePresence>

@@ -234,15 +234,18 @@ router.get("/admin/members/search", requireMinRole("admin"), async (req, res) =>
 
 router.get("/admin/members/lookup", requireMinRole("admin"), async (req, res) => {
   const userId = ((req.query as Record<string, string>).userId ?? "").trim();
-  if (!/^\d{17,20}$/.test(userId)) {
-    res.status(400).json({ error: "Invalid Discord user ID (must be 17–20 digits)" }); return;
+  if (!/^\d{15,21}$/.test(userId)) {
+    res.status(400).json({ error: "Invalid Discord user ID format — must be a numeric snowflake ID" }); return;
   }
 
   const bot = getBotClient();
-  if (!bot) { res.status(503).json({ error: "Bot is offline" }); return; }
+  if (!bot) {
+    res.status(503).json({ error: "Bot is offline — cannot look up user right now. You can still add staff manually." });
+    return;
+  }
 
   try {
-    const user = await bot.users.fetch(userId);
+    const user = await bot.users.fetch(userId, { force: true });
     const avatarUrl = user.avatar
       ? `https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png?size=64`
       : `https://cdn.discordapp.com/embed/avatars/${Number(BigInt(user.id) >> 22n) % 6}.png`;
@@ -255,7 +258,7 @@ router.get("/admin/members/lookup", requireMinRole("admin"), async (req, res) =>
 
     res.json({ id: user.id, username: user.username, avatar: avatarUrl, inGuild });
   } catch {
-    res.status(404).json({ error: "User not found" });
+    res.status(404).json({ error: "User not found on Discord — verify the ID is correct" });
   }
 });
 
