@@ -65,7 +65,7 @@ router.get("/admin/me", (req, res) => {
 
 // ── Store stats ───────────────────────────────────────────────────────────────
 
-router.get("/admin/stats", requireMinRole("mod"), (_req, res) => {
+router.get("/admin/stats", requireMinRole("admin"), (_req, res) => {
   const listings = loadListings();
   const totalItems = listings.reduce((sum, l) => sum + l.items.length, 0);
   const activeItems = listings.reduce((sum, l) => sum + l.items.filter((i) => !i.soldOut).length, 0);
@@ -81,9 +81,9 @@ router.get("/admin/stats", requireMinRole("mod"), (_req, res) => {
 
 // ── Listings management ───────────────────────────────────────────────────────
 
-router.get("/admin/listings", requireMinRole("mod"), (_req, res) => res.json(loadListings()));
+router.get("/admin/listings", requireMinRole("admin"), (_req, res) => res.json(loadListings()));
 
-router.delete("/admin/listings/:id", requireMinRole("mod"), (req, res) => {
+router.delete("/admin/listings/:id", requireMinRole("admin"), (req, res) => {
   const { id } = req.params as { id: string };
   const actor = req.session!.discordUser!;
   const LISTINGS_PATH = process.env["LISTINGS_PATH"] ?? path.resolve(process.cwd(), "../../listings.json");
@@ -104,7 +104,7 @@ router.delete("/admin/listings", requireMinRole("admin"), (req, res) => {
   res.json({ ok: true });
 });
 
-router.delete("/admin/listings/sold-out", requireMinRole("mod"), (req, res) => {
+router.delete("/admin/listings/sold-out", requireMinRole("admin"), (req, res) => {
   const actor = req.session!.discordUser!;
   const LISTINGS_PATH = process.env["LISTINGS_PATH"] ?? path.resolve(process.cwd(), "../../listings.json");
   let listings = loadListings();
