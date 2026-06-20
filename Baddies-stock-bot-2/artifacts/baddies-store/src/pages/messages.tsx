@@ -24,6 +24,7 @@ export default function MessagesPage() {
   const [imageUploading, setImageUploading] = useState(false);
   const [reportTarget, setReportTarget] = useState<ReportTarget | null>(null);
   const [mmStatus, setMmStatus] = useState<string | null>(null);
+  const [showMmConfirm, setShowMmConfirm] = useState(false);
   const convBottomRef = useRef<HTMLDivElement>(null);
   const imgInputRef = useRef<HTMLInputElement>(null);
 
@@ -193,17 +194,7 @@ export default function MessagesPage() {
                     <span className="text-[10px] text-primary font-medium px-2 py-1 bg-primary/10 rounded-lg">{mmStatus}</span>
                   )}
                   <button
-                    onClick={async () => {
-                      setMmStatus(null);
-                      try {
-                        await mmTicket.mutateAsync();
-                        setMmStatus("Ticket created in Discord!");
-                        setTimeout(() => setMmStatus(null), 4000);
-                      } catch {
-                        setMmStatus("Failed — bot may be offline");
-                        setTimeout(() => setMmStatus(null), 4000);
-                      }
-                    }}
+                    onClick={() => setShowMmConfirm(true)}
                     disabled={mmTicket.isPending}
                     className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium text-primary/80 bg-primary/10 hover:bg-primary/20 disabled:opacity-40 transition-colors"
                     title="Request a middleman"
@@ -386,6 +377,77 @@ export default function MessagesPage() {
       <AnimatePresence>
         {reportTarget && (
           <ReportModal target={reportTarget} onClose={() => setReportTarget(null)} />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {showMmConfirm && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+            onClick={() => setShowMmConfirm(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.92, opacity: 0, y: 12 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.92, opacity: 0, y: 12 }}
+              transition={{ type: "spring", duration: 0.3 }}
+              onClick={(e) => e.stopPropagation()}
+              className="w-full max-w-sm rounded-2xl bg-[#18181b] border border-white/10 shadow-2xl p-6 flex flex-col gap-4"
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-primary/15 flex items-center justify-center flex-shrink-0">
+                  <Shield className="w-5 h-5 text-primary" />
+                </div>
+                <div>
+                  <h3 className="text-base font-semibold text-white">Request a Middleman?</h3>
+                  <p className="text-xs text-muted-foreground">Read before confirming</p>
+                </div>
+              </div>
+
+              <div className="rounded-xl bg-primary/8 border border-primary/20 px-4 py-3 flex items-start gap-3">
+                <span className="text-xl mt-0.5">💰</span>
+                <p className="text-sm text-white/80 leading-relaxed">
+                  The middleman facilitates this trade and takes a{" "}
+                  <span className="font-bold text-primary">15% fee</span>{" "}
+                  of the total transaction value as compensation for their service.
+                </p>
+              </div>
+
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                A private Discord ticket will be opened with both parties and a moderator who will oversee the exchange.
+              </p>
+
+              <div className="flex gap-2 pt-1">
+                <button
+                  onClick={() => setShowMmConfirm(false)}
+                  className="flex-1 py-2 rounded-xl text-sm font-medium text-muted-foreground bg-white/5 hover:bg-white/10 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={async () => {
+                    setShowMmConfirm(false);
+                    setMmStatus(null);
+                    try {
+                      await mmTicket.mutateAsync();
+                      setMmStatus("Ticket created in Discord!");
+                      setTimeout(() => setMmStatus(null), 4000);
+                    } catch {
+                      setMmStatus("Failed — bot may be offline");
+                      setTimeout(() => setMmStatus(null), 4000);
+                    }
+                  }}
+                  disabled={mmTicket.isPending}
+                  className="flex-1 py-2 rounded-xl text-sm font-bold text-white bg-primary hover:bg-primary/80 disabled:opacity-50 transition-colors"
+                >
+                  {mmTicket.isPending ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : "Confirm"}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
         )}
       </AnimatePresence>
     </div>
