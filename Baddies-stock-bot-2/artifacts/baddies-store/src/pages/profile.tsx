@@ -266,11 +266,12 @@ function accentRgbProfile(hex: string) {
   return `${parseInt(h.slice(0, 2), 16)},${parseInt(h.slice(2, 4), 16)},${parseInt(h.slice(4, 6), 16)}`;
 }
 
-function MockCard({ cardStyle, accentColor, edgeEffect, username }: {
+function MockCard({ cardStyle, accentColor, edgeEffect, username, previewImage }: {
   cardStyle: string;
   accentColor: string;
   edgeEffect: string;
   username: string;
+  previewImage?: string | null;
 }) {
   const a = /^#[0-9a-fA-F]{6}$/.test(accentColor) ? accentColor : "#ff0080";
   const rgb = accentRgbProfile(a);
@@ -333,8 +334,12 @@ function MockCard({ cardStyle, accentColor, edgeEffect, username }: {
       )}
 
       {/* Image area */}
-      <div className="relative h-24 w-full flex items-center justify-center bg-black/40">
-        <Box className="w-8 h-8 text-white/15" />
+      <div className="relative h-24 w-full flex items-center justify-center bg-black/40 overflow-hidden">
+        {previewImage ? (
+          <img src={previewImage} alt="Preview" className="w-full h-full object-contain p-1 drop-shadow-xl" />
+        ) : (
+          <Box className="w-8 h-8 text-white/15" />
+        )}
         <div className="absolute top-1.5 left-1.5">
           <span className="px-1.5 py-0.5 text-[9px] font-bold rounded-md uppercase tracking-wider backdrop-blur-md bg-white/10 border border-white/20 text-white/80">Sword</span>
         </div>
@@ -384,6 +389,8 @@ function ProfileEditor({
   const [bannerStyle, setBannerStyle] = useState<BannerStyle>(profile.bannerStyle);
   const [cardStyle, setCardStyle] = useState<CardStyle>((profile.cardStyle as CardStyle) ?? "default");
   const [edgeEffect, setEdgeEffect] = useState<EdgeEffect>((profile.edgeEffect as EdgeEffect) ?? "none");
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
+  const previewImageRef = useRef<HTMLInputElement>(null);
   const [featuredItems, setFeaturedItems] = useState<FeaturedItem[]>(profile.featuredItems);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -682,8 +689,42 @@ function ProfileEditor({
               <label className="text-[11px] text-muted-foreground uppercase tracking-wider font-semibold">Live Preview</label>
               <p className="text-[11px] text-muted-foreground mt-0.5">How your listing cards appear in the store.</p>
             </div>
-            <div className="flex justify-center py-1">
-              <MockCard cardStyle={cardStyle} accentColor={accentColor} edgeEffect={edgeEffect} username={profile.username} />
+            <div className="flex flex-col items-center gap-2 py-1">
+              <MockCard cardStyle={cardStyle} accentColor={accentColor} edgeEffect={edgeEffect} username={profile.username} previewImage={previewImage} />
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => previewImageRef.current?.click()}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border bg-white/5 border-white/15 text-muted-foreground hover:text-white hover:border-white/30 transition-all"
+                >
+                  <Upload className="w-3 h-3" />
+                  {previewImage ? "Change image" : "Upload image"}
+                </button>
+                {previewImage && (
+                  <button
+                    type="button"
+                    onClick={() => setPreviewImage(null)}
+                    className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium border bg-white/5 border-white/10 text-muted-foreground hover:text-red-400 hover:border-red-500/30 transition-all"
+                  >
+                    <X className="w-3 h-3" />
+                    Remove
+                  </button>
+                )}
+              </div>
+              <input
+                ref={previewImageRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+                  const reader = new FileReader();
+                  reader.onload = (ev) => setPreviewImage(ev.target?.result as string);
+                  reader.readAsDataURL(file);
+                  e.target.value = "";
+                }}
+              />
             </div>
 
             {/* Card style picker */}
