@@ -811,7 +811,7 @@ export default function AdminPage() {
   const qc = useQueryClient();
 
   type TabKey = "listings" | "members" | "staff" | "requests";
-  const [tab, setTab] = useState<TabKey>("listings");
+  const [tab, setTab] = useState<TabKey>("members");
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [confirm, setConfirm] = useState<{ message: string; action: () => void } | null>(null);
   const [timeoutTarget, setTimeoutTarget] = useState<GuildMember | null>(null);
@@ -836,6 +836,20 @@ export default function AdminPage() {
   const isCoOwnerOrAbove = hasMinRole(callerRole, "co-owner");
   const isModOrAbove = hasMinRole(callerRole, "mod");
 
+  // When role loads, jump to first accessible tab if the current one isn't visible
+  useEffect(() => {
+    if (!callerRole) return;
+    const ROLE_RANK: Record<string, number> = { owner: 4, "co-owner": 3, admin: 2, mod: 1, verified_reseller: 0 };
+    const minRoles: Record<TabKey, string> = { members: "mod", requests: "mod", listings: "admin", staff: "admin" };
+    const rank = ROLE_RANK[callerRole] ?? 0;
+    if ((ROLE_RANK[minRoles[tab]] ?? 99) > rank) {
+      const first = (["members", "requests", "listings", "staff"] as TabKey[]).find(
+        (k) => (ROLE_RANK[minRoles[k]] ?? 99) <= rank
+      );
+      if (first) setTab(first);
+    }
+  }, [callerRole]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const { data: stats, isLoading: statsLoading } = useQuery<Stats>({
     queryKey: ["admin-stats"],
     queryFn: () => fetch("/api/admin/stats", { credentials: "include" }).then((r) => { if (!r.ok) throw new Error("Forbidden"); return r.json(); }),
@@ -857,21 +871,21 @@ export default function AdminPage() {
   const { data: members = [], isLoading: membersLoading, refetch: refetchMembers } = useQuery<GuildMember[]>({
     queryKey: ["admin-members"],
     queryFn: () => fetch("/api/admin/members", { credentials: "include" }).then((r) => r.json()),
-    enabled: isAdmin && tab === "members",
+    enabled: isModOrAbove && tab === "members",
     staleTime: 30_000,
   });
 
   const { data: searchResults, isFetching: searchFetching } = useQuery<GuildMember[]>({
     queryKey: ["admin-members-search", debouncedSearch],
     queryFn: () => fetch(`/api/admin/members/search?q=${encodeURIComponent(debouncedSearch)}`, { credentials: "include" }).then((r) => r.json()),
-    enabled: isAdmin && tab === "members" && debouncedSearch.length >= 2,
+    enabled: isModOrAbove && tab === "members" && debouncedSearch.length >= 2,
     staleTime: 10_000,
   });
 
   const { data: banRequests = [] } = useQuery<BanRequest[]>({
     queryKey: ["admin-ban-requests"],
     queryFn: () => fetch("/api/admin/ban-requests", { credentials: "include" }).then((r) => r.json()),
-    enabled: isAdmin,
+    enabled: isModOrAbove,
     refetchInterval: 30_000,
   });
 
@@ -945,10 +959,10 @@ export default function AdminPage() {
   }
 
   const tabs: { key: TabKey; label: string; icon: any; minRole: AnyRole }[] = [
+    { key: "members", label: "Members", icon: Users, minRole: "mod" },
+    { key: "requests", label: `Requests${banRequests.length > 0 ? ` (${banRequests.length})` : ""}`, icon: Ban, minRole: "mod" },
     { key: "listings", label: "Listings", icon: ShoppingBag, minRole: "admin" },
-    { key: "members", label: "Members", icon: Users, minRole: "admin" },
     { key: "staff", label: "Staff", icon: UserCog, minRole: "admin" },
-    { key: "requests", label: `Requests${banRequests.length > 0 ? ` (${banRequests.length})` : ""}`, icon: Ban, minRole: "admin" },
   ];
 
   const visibleTabs = tabs.filter((t) => hasMinRole(callerRole, t.minRole));

@@ -122,7 +122,7 @@ router.delete("/admin/staff/:userId", requireMinRole("admin"), (req: Request, re
 
 // ── Ban requests ──────────────────────────────────────────────────────────────
 
-router.get("/admin/ban-requests", requireMinRole("admin"), (_req, res) => {
+router.get("/admin/ban-requests", requireMinRole("mod"), (_req, res) => {
   res.json(getBanRequests().filter((r) => r.status === "pending"));
 });
 

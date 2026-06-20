@@ -116,7 +116,7 @@ router.delete("/admin/listings/sold-out", requireMinRole("admin"), (req, res) =>
 
 // ── Members list ──────────────────────────────────────────────────────────────
 
-router.get("/admin/members", requireMinRole("admin"), async (_req, res) => {
+router.get("/admin/members", requireMinRole("mod"), async (_req, res) => {
   const guilds = getAllGuilds();
   const staff = getStaff();
   const staffMap = new Map(staff.map((s) => [s.userId, s]));
@@ -191,7 +191,7 @@ router.get("/admin/members", requireMinRole("admin"), async (_req, res) => {
 
 // ── Member search ─────────────────────────────────────────────────────────────
 
-router.get("/admin/members/search", requireMinRole("admin"), async (req, res) => {
+router.get("/admin/members/search", requireMinRole("mod"), async (req, res) => {
   const q = ((req.query as Record<string, string>).q ?? "").trim();
   if (!q) { res.json([]); return; }
   const guilds = getAllGuilds();
