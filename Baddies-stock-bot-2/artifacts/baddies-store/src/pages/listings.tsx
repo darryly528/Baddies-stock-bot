@@ -33,7 +33,10 @@ import {
   HandCoins,
   Flag,
   Image as ImageIcon,
+  Store,
+  Tag,
 } from "lucide-react";
+import { Link } from "wouter";
 import { ReportModal, type ReportTarget } from "@/components/report-modal";
 import { cn, formatNumber } from "@/lib/utils";
 
@@ -1105,6 +1108,213 @@ function CartDrawer({
   );
 }
 
+// ── Shops view ────────────────────────────────────────────────────────────────
+
+interface SellerShop {
+  sellerId: string;
+  sellerName: string;
+  sellerAvatar: string | null;
+  listings: Listing[];
+  itemCount: number;
+  paymentMethods: string[];
+  accentColor: string;
+  sampleImages: (string | null)[];
+}
+
+function ShopsView({ listings, onMessage, user, onLoginPrompt }: {
+  listings: Listing[];
+  onMessage: (listing: Listing, item: ListingItem) => void;
+  user: { id: string } | null;
+  onLoginPrompt: () => void;
+}) {
+  const [expanded, setExpanded] = useState<string | null>(null);
+
+  const shops = Object.values(
+    listings.reduce<Record<string, SellerShop>>((acc, listing) => {
+      const key = listing.discordUserId ?? listing.seller;
+      if (!acc[key]) {
+        acc[key] = {
+          sellerId: listing.discordUserId ?? listing.seller,
+          sellerName: listing.seller,
+          sellerAvatar: listing.discordAvatar,
+          listings: [],
+          itemCount: 0,
+          paymentMethods: [],
+          accentColor: listing.sellerAccentColor ?? "#ff0080",
+          sampleImages: [],
+        };
+      }
+      acc[key].listings.push(listing);
+      listing.items.filter((i) => !i.soldOut).forEach((item) => {
+        acc[key].itemCount++;
+        if (acc[key].sampleImages.length < 4) acc[key].sampleImages.push(item.imageUrl ?? null);
+      });
+      listing.paymentMethods.forEach((m) => {
+        if (!acc[key].paymentMethods.includes(m)) acc[key].paymentMethods.push(m);
+      });
+      return acc;
+    }, {})
+  ).sort((a, b) => b.itemCount - a.itemCount);
+
+  if (shops.length === 0) {
+    return (
+      <div className="text-center py-24 glass-panel rounded-3xl">
+        <Store className="w-12 h-12 text-muted-foreground/30 mx-auto mb-4" />
+        <h3 className="text-xl font-bold mb-2">No shops open</h3>
+        <p className="text-muted-foreground">Check back soon.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      {shops.map((shop) => {
+        const isExpanded = expanded === shop.sellerId;
+        const accent = shop.accentColor;
+        const avatarUrl = shop.sellerAvatar
+          ?? `https://cdn.discordapp.com/embed/avatars/0.png`;
+        const totalItems = shop.listings.reduce((s, l) => s + l.items.filter((i) => !i.soldOut).length, 0);
+
+        return (
+          <motion.div
+            key={shop.sellerId}
+            layout
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="glass-panel border border-white/10 rounded-2xl overflow-hidden"
+            style={{ borderColor: `${accent}22` }}
+          >
+            {/* Shop header */}
+            <div className="p-4 space-y-3">
+              <div className="flex items-center gap-3">
+                <Link href={`/profile/${shop.sellerId}`}>
+                  <img
+                    src={avatarUrl}
+                    alt={shop.sellerName}
+                    className="w-11 h-11 rounded-full ring-2 shrink-0 object-cover hover:opacity-80 transition-opacity"
+                    style={{ ringColor: accent, borderColor: accent }}
+                    onError={(e) => { (e.target as HTMLImageElement).src = `https://cdn.discordapp.com/embed/avatars/0.png`; }}
+                  />
+                </Link>
+                <div className="flex-1 min-w-0">
+                  <Link href={`/profile/${shop.sellerId}`} className="font-bold text-white hover:text-primary transition-colors text-sm truncate block">
+                    {shop.sellerName}
+                  </Link>
+                  <p className="text-[11px] text-muted-foreground">
+                    {totalItems} item{totalItems !== 1 ? "s" : ""} · {shop.listings.length} listing{shop.listings.length !== 1 ? "s" : ""}
+                  </p>
+                </div>
+                <Link
+                  href={`/profile/${shop.sellerId}`}
+                  className="shrink-0 flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-semibold border transition-all hover:opacity-90"
+                  style={{ borderColor: `${accent}50`, color: accent, background: `${accent}14` }}
+                >
+                  <ExternalLink className="w-3 h-3" />
+                  Profile
+                </Link>
+              </div>
+
+              {/* Item thumbnails */}
+              {shop.sampleImages.length > 0 && (
+                <div className="flex gap-1.5">
+                  {shop.sampleImages.slice(0, 4).map((img, i) => (
+                    img ? (
+                      <img key={i} src={img} alt="" className="w-12 h-12 rounded-lg object-contain bg-black/30 p-0.5" />
+                    ) : (
+                      <div key={i} className="w-12 h-12 rounded-lg bg-white/5 flex items-center justify-center">
+                        <Box className="w-5 h-5 text-muted-foreground/20" />
+                      </div>
+                    )
+                  ))}
+                  {totalItems > 4 && (
+                    <div className="w-12 h-12 rounded-lg bg-white/5 flex items-center justify-center text-xs font-bold text-muted-foreground">
+                      +{totalItems - 4}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Payment methods */}
+              {shop.paymentMethods.length > 0 && (
+                <div className="flex flex-wrap gap-1.5">
+                  {shop.paymentMethods.slice(0, 5).map((m) => (
+                    <div key={m} className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-white/5 border border-white/10 text-[10px] text-muted-foreground">
+                      {PAYMENT_EMOJI[m] ? (
+                        <img src={PAYMENT_EMOJI[m]} alt={m} className="w-3 h-3 object-contain" />
+                      ) : null}
+                      {m}
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Toggle items button */}
+              <button
+                onClick={() => setExpanded(isExpanded ? null : shop.sellerId)}
+                className="w-full flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-semibold border transition-all"
+                style={{
+                  borderColor: isExpanded ? `${accent}50` : "rgba(255,255,255,0.1)",
+                  color: isExpanded ? accent : "var(--muted-foreground)",
+                  background: isExpanded ? `${accent}12` : "transparent",
+                }}
+              >
+                <Tag className="w-3 h-3" />
+                {isExpanded ? "Hide items" : `Browse ${totalItems} item${totalItems !== 1 ? "s" : ""}`}
+              </button>
+            </div>
+
+            {/* Expanded item list */}
+            <AnimatePresence>
+              {isExpanded && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: "auto", opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={{ duration: 0.25 }}
+                  className="overflow-hidden"
+                >
+                  <div className="border-t border-white/10 px-4 py-3 space-y-2 max-h-72 overflow-y-auto">
+                    {shop.listings.flatMap((l) =>
+                      l.items.filter((i) => !i.soldOut).map((item) => (
+                        <div key={`${l.id}-${item.name}`} className="flex items-center gap-2.5 py-1.5">
+                          {item.imageUrl ? (
+                            <img src={item.imageUrl} alt={item.name} className="w-9 h-9 rounded-lg object-contain bg-black/30 p-0.5 shrink-0" />
+                          ) : (
+                            <div className="w-9 h-9 rounded-lg bg-white/5 flex items-center justify-center shrink-0">
+                              <Box className="w-4 h-4 text-muted-foreground/20" />
+                            </div>
+                          )}
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs font-semibold text-white truncate">{item.name}</p>
+                            {item.price && (
+                              <p className="text-[11px] text-green-400 font-bold">${item.price}</p>
+                            )}
+                          </div>
+                          <button
+                            onClick={() => {
+                              if (!user) { onLoginPrompt(); return; }
+                              onMessage(l, item);
+                            }}
+                            className="shrink-0 flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-semibold border transition-all hover:opacity-90"
+                            style={{ borderColor: `${accent}40`, color: accent, background: `${accent}14` }}
+                          >
+                            <MessageCircle className="w-3 h-3" />
+                            Buy
+                          </button>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </motion.div>
+        );
+      })}
+    </div>
+  );
+}
+
 function usePresencePing() {
   const [activeUsers, setActiveUsers] = useState(1);
 
@@ -1140,7 +1350,7 @@ export default function ListingsPage() {
   const [cart, setCart] = useState<CartEntry[]>([]);
   const [cartOpen, setCartOpen] = useState(false);
   const [reportTarget, setReportTarget] = useState<ReportTarget | null>(null);
-  const [activeFilter, setActiveFilter] = useState<"all" | "auctions" | "fixed">("all");
+  const [activeFilter, setActiveFilter] = useState<"all" | "auctions" | "fixed" | "shops">("all");
   const [chatTarget, setChatTarget] = useState<{
     listingId: string;
     listingTitle: string;
@@ -1322,11 +1532,12 @@ export default function ListingsPage() {
         </motion.div>
 
         {/* Filter tabs */}
-        <div className="flex gap-1 mb-6 glass-panel rounded-2xl p-1.5 max-w-xs mx-auto">
+        <div className="flex gap-1 mb-6 glass-panel rounded-2xl p-1.5 max-w-sm mx-auto">
           {([
             { key: "all", label: "All" },
             { key: "auctions", label: `Auctions${auctionCount > 0 ? ` (${auctionCount})` : ""}` },
             { key: "fixed", label: "Buy" },
+            { key: "shops", label: "Shops" },
           ] as const).map(({ key, label }) => (
             <motion.button
               key={key}
@@ -1344,6 +1555,8 @@ export default function ListingsPage() {
                     "absolute inset-0 rounded-xl",
                     key === "auctions"
                       ? "bg-gradient-to-r from-amber-500 to-amber-600"
+                      : key === "shops"
+                      ? "bg-gradient-to-r from-violet-500 to-indigo-500"
                       : "bg-gradient-to-r from-primary to-secondary"
                   )}
                   transition={{ type: "spring", bounce: 0.2, duration: 0.35 }}
@@ -1351,6 +1564,7 @@ export default function ListingsPage() {
               )}
               <span className="relative z-10 flex items-center gap-1.5">
                 {key === "auctions" && <Gavel className="w-3 h-3" />}
+                {key === "shops" && <Store className="w-3 h-3" />}
                 {label}
               </span>
             </motion.button>
@@ -1361,6 +1575,23 @@ export default function ListingsPage() {
           <div className="flex items-center justify-center py-24">
             <Loader2 className="w-10 h-10 animate-spin text-primary" />
           </div>
+        ) : activeFilter === "shops" ? (
+          <ShopsView
+            listings={activeListings}
+            onMessage={(listing, item) => {
+              if (!user) { setLoginPrompt(true); return; }
+              setChatTarget({
+                listingId: listing.id,
+                listingTitle: item.name,
+                sellerId: listing.discordUserId ?? listing.seller,
+                sellerName: listing.seller,
+                sellerAvatar: listing.discordAvatar,
+                prefill: `Hi! I'd like to buy ${item.name}${item.price ? ` (listed at $${item.price})` : ""}. Is it still available?`,
+              });
+            }}
+            user={user}
+            onLoginPrompt={() => setLoginPrompt(true)}
+          />
         ) : flatItems.length === 0 ? (
           <div className="text-center py-24 glass-panel rounded-3xl">
             <LayoutList className="w-12 h-12 text-muted-foreground/30 mx-auto mb-4" />
