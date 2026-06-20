@@ -11,6 +11,9 @@ export interface ShopApplication {
   shopName: string;
   tagline: string;
   categories: string;
+  bannerUrl?: string;
+  logoUrl?: string;
+  accentColor?: string;
   status: ShopStatus;
   createdAt: string;
   updatedAt: string;
@@ -34,6 +37,9 @@ export function upsertShopApplication(data: {
   shopName: string;
   tagline: string;
   categories: string;
+  bannerUrl?: string;
+  logoUrl?: string;
+  accentColor?: string;
 }): ShopApplication {
   const shops = loadShops();
   const existing = shops[data.userId];

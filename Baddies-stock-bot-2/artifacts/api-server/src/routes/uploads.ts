@@ -18,7 +18,8 @@ const AVATAR_DIR = path.join(UPLOADS_DIR, "avatars");
 const BANNER_DIR = path.join(UPLOADS_DIR, "banners");
 const BG_DIR = path.join(UPLOADS_DIR, "backgrounds");
 const DM_DIR = path.join(UPLOADS_DIR, "dms");
-[UPLOADS_DIR, AVATAR_DIR, BANNER_DIR, BG_DIR, DM_DIR].forEach((d) => { if (!fs.existsSync(d)) fs.mkdirSync(d, { recursive: true }); });
+const SHOP_DIR = path.join(UPLOADS_DIR, "shops");
+[UPLOADS_DIR, AVATAR_DIR, BANNER_DIR, BG_DIR, DM_DIR, SHOP_DIR].forEach((d) => { if (!fs.existsSync(d)) fs.mkdirSync(d, { recursive: true }); });
 
 const PROFILES_PATH = process.env["PROFILES_PATH"] ?? path.resolve(process.cwd(), "../../profiles.json");
 function loadProfiles(): Record<string, Record<string, unknown>> {
@@ -216,6 +217,28 @@ router.post("/uploads/dm-image", upload.single("image"), async (req: Request, re
   await postImageForReview(pending, req.file.buffer, req.file.mimetype);
 
   res.json({ ok: true, url, pendingId: pending.id, pending: true });
+});
+
+// ── Upload shop image (banner or logo) ───────────────────────────────────────
+
+router.post("/uploads/shop-image", upload.single("image"), async (req: Request, res: Response) => {
+  const user = req.session?.discordUser;
+  if (!user) { res.status(401).json({ error: "Not authenticated" }); return; }
+  if (!req.file) { res.status(400).json({ error: "No image uploaded or invalid file type (JPEG/PNG/WebP/GIF only)" }); return; }
+
+  const rawType = req.query["type"] as string;
+  const imageType = rawType === "logo" ? "logo" : "banner";
+
+  const extMap: Record<string, string> = {
+    "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp", "image/gif": "gif",
+  };
+  const ext = extMap[req.file.mimetype] ?? "jpg";
+  const filename = `${user.id}_${imageType}_${Date.now()}.${ext}`;
+  const filePath = path.join(SHOP_DIR, filename);
+  fs.writeFileSync(filePath, req.file.buffer);
+
+  const url = `/api/uploads/shops/${filename}`;
+  res.json({ ok: true, url });
 });
 
 // ── Remove profile image ──────────────────────────────────────────────────────

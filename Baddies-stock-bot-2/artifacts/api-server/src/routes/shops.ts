@@ -41,8 +41,9 @@ router.post("/shops/apply", async (req: Request, res: Response) => {
   const user = req.session?.discordUser;
   if (!user) { res.status(401).json({ error: "Not authenticated" }); return; }
 
-  const { shopName, tagline, categories } = req.body as {
+  const { shopName, tagline, categories, bannerUrl, logoUrl, accentColor } = req.body as {
     shopName?: string; tagline?: string; categories?: string;
+    bannerUrl?: string; logoUrl?: string; accentColor?: string;
   };
 
   if (!shopName?.trim()) { res.status(400).json({ error: "Shop name is required" }); return; }
@@ -60,6 +61,9 @@ router.post("/shops/apply", async (req: Request, res: Response) => {
     shopName: shopName.trim(),
     tagline: (tagline ?? "").trim().slice(0, 100),
     categories: (categories ?? "").trim().slice(0, 200),
+    bannerUrl: bannerUrl ?? undefined,
+    logoUrl: logoUrl ?? undefined,
+    accentColor: accentColor ?? undefined,
   });
 
   await postShopForReview(app);

@@ -1114,25 +1114,118 @@ type ShopStatus = "pending" | "approved" | "rejected";
 interface ShopApplication {
   userId: string; username: string; shopName: string;
   tagline: string; categories: string; status: ShopStatus;
+  bannerUrl?: string; logoUrl?: string; accentColor?: string;
   rejectionReason?: string;
 }
 
+const SHOP_PALETTE = [
+  "#a855f7", "#7c3aed", "#3b82f6", "#06b6d4", "#10b981",
+  "#f59e0b", "#ef4444", "#ec4899", "#f97316", "#ffffff",
+];
+
+function ShopImageUpload({
+  label, type, value, onChange,
+}: { label: string; type: "banner" | "logo"; value: string; onChange: (url: string) => void }) {
+  const [uploading, setUploading] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  async function handleFile(file: File) {
+    setUploading(true);
+    try {
+      const fd = new FormData();
+      fd.append("image", file);
+      const r = await fetch(`/api/uploads/shop-image?type=${type}`, {
+        method: "POST", credentials: "include", body: fd,
+      });
+      const d = await r.json() as { ok?: boolean; url?: string; error?: string };
+      if (d.url) onChange(d.url);
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  function handleDrop(e: React.DragEvent) {
+    e.preventDefault();
+    const file = e.dataTransfer.files[0];
+    if (file) handleFile(file);
+  }
+
+  const isBanner = type === "banner";
+
+  return (
+    <div className="space-y-1.5">
+      <label className="text-[11px] text-muted-foreground uppercase tracking-wider font-semibold">{label}</label>
+      <div
+        onDrop={handleDrop}
+        onDragOver={(e) => e.preventDefault()}
+        onClick={() => inputRef.current?.click()}
+        className={cn(
+          "relative cursor-pointer rounded-xl border border-dashed border-white/20 hover:border-violet-500/50 transition-colors overflow-hidden group",
+          isBanner ? "h-24" : "h-20 w-20"
+        )}
+      >
+        {value ? (
+          <>
+            <img src={value} alt={label} className="w-full h-full object-cover" />
+            <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+              <p className="text-[10px] font-semibold text-white">Change</p>
+            </div>
+          </>
+        ) : (
+          <div className="w-full h-full flex flex-col items-center justify-center gap-1 bg-white/3">
+            {uploading ? (
+              <Loader2 className="w-5 h-5 animate-spin text-violet-400" />
+            ) : (
+              <>
+                <ImageIcon className="w-5 h-5 text-muted-foreground/40" />
+                <p className="text-[10px] text-muted-foreground/60">{isBanner ? "Drop or click" : "Upload"}</p>
+                <p className="text-[9px] text-muted-foreground/40">PNG · JPG · GIF</p>
+              </>
+            )}
+          </div>
+        )}
+        {uploading && value && (
+          <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
+            <Loader2 className="w-5 h-5 animate-spin text-white" />
+          </div>
+        )}
+      </div>
+      <input ref={inputRef} type="file" accept="image/*" className="hidden"
+        onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f); e.target.value = ""; }} />
+      {value && (
+        <button onClick={() => onChange("")} className="text-[10px] text-red-400 hover:text-red-300 transition-colors">
+          Remove
+        </button>
+      )}
+    </div>
+  );
+}
+
 function CreateShopModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: () => void }) {
+  const [step, setStep] = useState<1 | 2>(1);
   const [shopName, setShopName] = useState("");
   const [tagline, setTagline] = useState("");
-  const [categories, setCategories] = useState("");
+  const [bannerUrl, setBannerUrl] = useState("");
+  const [logoUrl, setLogoUrl] = useState("");
+  const [accentColor, setAccentColor] = useState("#a855f7");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   async function handleSubmit() {
-    if (!shopName.trim()) { setError("Shop name is required"); return; }
     setSubmitting(true); setError(null);
     try {
       const r = await fetch("/api/shops/apply", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ shopName: shopName.trim(), tagline: tagline.trim(), categories: categories.trim() }),
+        body: JSON.stringify({
+          shopName: shopName.trim(),
+          tagline: tagline.trim(),
+          categories: "",
+          bannerUrl: bannerUrl || undefined,
+          logoUrl: logoUrl || undefined,
+          accentColor,
+        }),
       });
       const d = await r.json() as { ok?: boolean; error?: string };
       if (!r.ok) throw new Error(d.error ?? "Failed to submit");
@@ -1148,16 +1241,23 @@ function CreateShopModal({ onClose, onSuccess }: { onClose: () => void; onSucces
     <motion.div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
       initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-      <motion.div className="w-full max-w-md glass-panel border border-white/15 rounded-2xl p-6 space-y-5"
+      <motion.div className="w-full max-w-lg glass-panel border border-white/15 rounded-2xl overflow-hidden"
         initial={{ scale: 0.92, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.92, opacity: 0 }}>
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
+
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 pt-5 pb-4 border-b border-white/8">
+          <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-xl bg-violet-500/20 border border-violet-500/30 flex items-center justify-center">
               <Store className="w-4 h-4 text-violet-400" />
             </div>
             <div>
               <h2 className="font-bold text-white text-base">Create a Shop</h2>
-              <p className="text-[11px] text-muted-foreground">Admins will review your application</p>
+              <div className="flex items-center gap-1.5 mt-0.5">
+                {([1, 2] as const).map((s) => (
+                  <div key={s} className={cn("h-1 rounded-full transition-all", s === step ? "w-5 bg-violet-500" : s < step ? "w-3 bg-violet-500/50" : "w-3 bg-white/15")} />
+                ))}
+                <span className="text-[10px] text-muted-foreground ml-1">Step {step} of 2</span>
+              </div>
             </div>
           </div>
           <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-white/10 text-muted-foreground hover:text-white transition-colors">
@@ -1165,51 +1265,123 @@ function CreateShopModal({ onClose, onSuccess }: { onClose: () => void; onSucces
           </button>
         </div>
 
-        <div className="space-y-3">
-          <div className="space-y-1.5">
-            <label className="text-[11px] text-muted-foreground uppercase tracking-wider font-semibold">
-              Shop Name <span className="text-red-400">*</span>
-            </label>
-            <input value={shopName} onChange={(e) => setShopName(e.target.value.slice(0, 40))}
-              placeholder="e.g. Baddies Emporium"
-              className="w-full px-3 py-2.5 rounded-xl bg-white/5 border border-white/10 text-sm text-white placeholder-muted-foreground focus:outline-none focus:border-violet-500/50 transition" />
-            <p className="text-[10px] text-muted-foreground/60 text-right">{shopName.length}/40</p>
-          </div>
+        <AnimatePresence mode="wait">
+          {step === 1 ? (
+            <motion.div key="step1" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.18 }}
+              className="p-6 space-y-5">
+              <div className="text-center space-y-1">
+                <p className="text-white font-semibold">What's your shop called?</p>
+                <p className="text-[12px] text-muted-foreground">Give your shop a name customers will remember</p>
+              </div>
 
-          <div className="space-y-1.5">
-            <label className="text-[11px] text-muted-foreground uppercase tracking-wider font-semibold">Tagline</label>
-            <input value={tagline} onChange={(e) => setTagline(e.target.value.slice(0, 100))}
-              placeholder="A short catchy description of your shop"
-              className="w-full px-3 py-2.5 rounded-xl bg-white/5 border border-white/10 text-sm text-white placeholder-muted-foreground focus:outline-none focus:border-violet-500/50 transition" />
-          </div>
+              <div className="space-y-2">
+                <input
+                  value={shopName}
+                  onChange={(e) => setShopName(e.target.value.slice(0, 40))}
+                  placeholder="e.g. Baddies Emporium"
+                  autoFocus
+                  className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-lg font-semibold text-white placeholder-white/20 focus:outline-none focus:border-violet-500/60 transition text-center"
+                />
+                <p className="text-[10px] text-muted-foreground/60 text-right">{shopName.length}/40</p>
+              </div>
 
-          <div className="space-y-1.5">
-            <label className="text-[11px] text-muted-foreground uppercase tracking-wider font-semibold">What do you sell?</label>
-            <textarea value={categories} onChange={(e) => setCategories(e.target.value.slice(0, 200))}
-              placeholder="e.g. Limited items, Accessories, Vehicles…"
-              rows={3}
-              className="w-full px-3 py-2.5 rounded-xl bg-white/5 border border-white/10 text-sm text-white placeholder-muted-foreground focus:outline-none focus:border-violet-500/50 transition resize-none" />
-          </div>
-        </div>
+              <div className="space-y-1.5">
+                <label className="text-[11px] text-muted-foreground uppercase tracking-wider font-semibold">Short tagline</label>
+                <input value={tagline} onChange={(e) => setTagline(e.target.value.slice(0, 80))}
+                  placeholder="A sentence about what you sell…"
+                  className="w-full px-3 py-2.5 rounded-xl bg-white/5 border border-white/10 text-sm text-white placeholder-muted-foreground focus:outline-none focus:border-violet-500/50 transition" />
+              </div>
 
-        <div className="glass-panel border border-amber-500/20 rounded-xl p-3 flex items-start gap-2">
-          <AlertTriangle className="w-3.5 h-3.5 text-amber-400 shrink-0 mt-0.5" />
-          <p className="text-[11px] text-amber-200/80">Your application will be sent to our admins for review. You'll be able to see your status on this page.</p>
-        </div>
+              <button
+                onClick={() => { if (!shopName.trim()) return; setStep(2); }}
+                disabled={!shopName.trim()}
+                className="w-full py-3 rounded-xl text-sm font-bold text-white disabled:opacity-40 transition-all flex items-center justify-center gap-2"
+                style={{ background: "linear-gradient(135deg, #7c3aed, #4f46e5)" }}>
+                Next — Design your shop →
+              </button>
+            </motion.div>
+          ) : (
+            <motion.div key="step2" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.18 }}
+              className="p-6 space-y-5">
+              <div className="text-center space-y-1">
+                <p className="text-white font-semibold">Design <span style={{ color: accentColor }}>{shopName}</span></p>
+                <p className="text-[12px] text-muted-foreground">Add a banner, logo, and brand color — images & GIFs welcome</p>
+              </div>
 
-        {error && <p className="text-xs text-red-400 flex items-center gap-1.5"><AlertTriangle className="w-3 h-3" />{error}</p>}
+              {/* Live preview card */}
+              <div className="rounded-xl overflow-hidden border" style={{ borderColor: `${accentColor}40` }}>
+                <div className="h-16 bg-white/5 relative overflow-hidden">
+                  {bannerUrl ? (
+                    <img src={bannerUrl} alt="banner" className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center" style={{ background: `linear-gradient(135deg, ${accentColor}30, ${accentColor}10)` }}>
+                      <p className="text-[10px] text-white/30">Banner preview</p>
+                    </div>
+                  )}
+                </div>
+                <div className="px-3 py-2.5 flex items-center gap-2.5" style={{ background: `${accentColor}08` }}>
+                  <div className="w-8 h-8 rounded-full border-2 overflow-hidden shrink-0" style={{ borderColor: accentColor }}>
+                    {logoUrl ? (
+                      <img src={logoUrl} alt="logo" className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-[10px] font-bold" style={{ background: `${accentColor}30`, color: accentColor }}>
+                        {shopName[0]?.toUpperCase()}
+                      </div>
+                    )}
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold text-white">{shopName}</p>
+                    {tagline && <p className="text-[10px] text-muted-foreground truncate">{tagline}</p>}
+                  </div>
+                  <div className="ml-auto flex items-center gap-1 text-[9px] font-bold uppercase tracking-wide" style={{ color: accentColor }}>
+                    <CheckCircle2 className="w-2.5 h-2.5" />
+                    Verified
+                  </div>
+                </div>
+              </div>
 
-        <div className="flex gap-2">
-          <button onClick={onClose} className="flex-1 py-2.5 rounded-xl border border-white/15 text-sm font-semibold text-muted-foreground hover:text-white hover:border-white/30 transition-colors">
-            Cancel
-          </button>
-          <button onClick={handleSubmit} disabled={submitting || !shopName.trim()}
-            className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-white transition-all disabled:opacity-50 flex items-center justify-center gap-2"
-            style={{ background: "linear-gradient(135deg, #7c3aed, #4f46e5)" }}>
-            {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Store className="w-4 h-4" />}
-            {submitting ? "Submitting…" : "Submit Application"}
-          </button>
-        </div>
+              {/* Upload controls */}
+              <div className="grid grid-cols-[1fr_auto] gap-4 items-start">
+                <ShopImageUpload label="Banner (image or GIF)" type="banner" value={bannerUrl} onChange={setBannerUrl} />
+                <ShopImageUpload label="Logo" type="logo" value={logoUrl} onChange={setLogoUrl} />
+              </div>
+
+              {/* Color picker */}
+              <div className="space-y-2">
+                <label className="text-[11px] text-muted-foreground uppercase tracking-wider font-semibold">Brand color</label>
+                <div className="flex items-center gap-2 flex-wrap">
+                  {SHOP_PALETTE.map((c) => (
+                    <button key={c} onClick={() => setAccentColor(c)}
+                      className="w-6 h-6 rounded-full border-2 transition-transform hover:scale-110"
+                      style={{ background: c, borderColor: accentColor === c ? "white" : "transparent" }} />
+                  ))}
+                  <label className="relative w-6 h-6 rounded-full overflow-hidden cursor-pointer border-2 border-white/20 hover:scale-110 transition-transform"
+                    title="Custom color">
+                    <input type="color" value={accentColor} onChange={(e) => setAccentColor(e.target.value)}
+                      className="absolute inset-0 opacity-0 w-full h-full cursor-pointer" />
+                    <div className="w-full h-full flex items-center justify-center text-[8px] font-bold"
+                      style={{ background: accentColor, color: "white", textShadow: "0 0 4px rgba(0,0,0,0.8)" }}>+</div>
+                  </label>
+                </div>
+              </div>
+
+              {error && <p className="text-xs text-red-400 flex items-center gap-1.5"><AlertTriangle className="w-3 h-3" />{error}</p>}
+
+              <div className="flex gap-2">
+                <button onClick={() => setStep(1)} className="px-4 py-2.5 rounded-xl border border-white/15 text-sm font-semibold text-muted-foreground hover:text-white hover:border-white/30 transition-colors">
+                  ← Back
+                </button>
+                <button onClick={handleSubmit} disabled={submitting}
+                  className="flex-1 py-2.5 rounded-xl text-sm font-bold text-white transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                  style={{ background: "linear-gradient(135deg, #7c3aed, #4f46e5)" }}>
+                  {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Store className="w-4 h-4" />}
+                  {submitting ? "Submitting…" : "Submit for Review"}
+                </button>
+              </div>
+              <p className="text-[10px] text-muted-foreground/60 text-center">Admins will review your application before it goes live</p>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </motion.div>
     </motion.div>
   );
@@ -1325,11 +1497,13 @@ function ShopsView({ listings, onMessage, user, onLoginPrompt, approvedShops, my
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
       {shops.map((shop) => {
         const isExpanded = expanded === shop.sellerId;
-        const accent = shop.accentColor;
-        const avatarUrl = shop.sellerAvatar
+        const verifiedShop = approvedShops.find((s) => s.userId === shop.sellerId);
+        const isVerified = !!verifiedShop;
+        const accent = verifiedShop?.accentColor ?? shop.accentColor;
+        const displayAvatar = verifiedShop?.logoUrl ?? shop.sellerAvatar
           ?? `https://cdn.discordapp.com/embed/avatars/0.png`;
+        const displayName = verifiedShop?.shopName ?? shop.sellerName;
         const totalItems = shop.listings.reduce((s, l) => s + l.items.filter((i) => !i.soldOut).length, 0);
-        const isVerified = approvedIds.has(shop.sellerId);
 
         return (
           <motion.div
@@ -1338,35 +1512,50 @@ function ShopsView({ listings, onMessage, user, onLoginPrompt, approvedShops, my
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
             className="glass-panel border border-white/10 rounded-2xl overflow-hidden"
-            style={{ borderColor: isVerified ? `${accent}40` : `${accent}22` }}
+            style={{ borderColor: isVerified ? `${accent}50` : `${accent}22` }}
           >
-            {/* Verified banner */}
-            {isVerified && (
-              <div className="px-3 py-1.5 flex items-center gap-1.5 text-[10px] font-bold tracking-wide uppercase"
-                style={{ background: `${accent}18`, color: accent }}>
-                <CheckCircle2 className="w-3 h-3" />
-                Verified Shop
-              </div>
-            )}
-            {/* Shop header */}
-            <div className="p-4 space-y-3">
-              <div className="flex items-center gap-3">
+            {/* Banner image or gradient */}
+            <div className="relative h-20 overflow-hidden">
+              {verifiedShop?.bannerUrl ? (
+                <img src={verifiedShop.bannerUrl} alt="banner" className="w-full h-full object-cover" />
+              ) : (
+                <div className="w-full h-full" style={{ background: `linear-gradient(135deg, ${accent}30 0%, ${accent}08 100%)` }} />
+              )}
+              {isVerified && (
+                <div className="absolute top-2 right-2 flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold tracking-wide backdrop-blur-sm border"
+                  style={{ background: `${accent}30`, color: accent, borderColor: `${accent}50` }}>
+                  <CheckCircle2 className="w-2.5 h-2.5" />
+                  Verified Shop
+                </div>
+              )}
+              {/* Avatar overlapping banner */}
+              <div className="absolute -bottom-5 left-4">
                 <Link href={`/profile/${shop.sellerId}`}>
                   <img
-                    src={avatarUrl}
-                    alt={shop.sellerName}
-                    className="w-11 h-11 rounded-full ring-2 shrink-0 object-cover hover:opacity-80 transition-opacity"
-                    style={{ ringColor: accent, borderColor: accent }}
+                    src={displayAvatar}
+                    alt={displayName}
+                    className="w-11 h-11 rounded-full border-2 object-cover hover:opacity-80 transition-opacity bg-black"
+                    style={{ borderColor: accent }}
                     onError={(e) => { (e.target as HTMLImageElement).src = `https://cdn.discordapp.com/embed/avatars/0.png`; }}
                   />
                 </Link>
+              </div>
+            </div>
+
+            {/* Shop header */}
+            <div className="pt-7 px-4 pb-4 space-y-3">
+              <div className="flex items-start gap-2">
                 <div className="flex-1 min-w-0">
                   <Link href={`/profile/${shop.sellerId}`} className="font-bold text-white hover:text-primary transition-colors text-sm truncate block">
-                    {isVerified ? (approvedShops.find(s => s.userId === shop.sellerId)?.shopName ?? shop.sellerName) : shop.sellerName}
+                    {displayName}
                   </Link>
-                  <p className="text-[11px] text-muted-foreground">
-                    {totalItems} item{totalItems !== 1 ? "s" : ""} · {shop.listings.length} listing{shop.listings.length !== 1 ? "s" : ""}
-                  </p>
+                  {verifiedShop?.tagline ? (
+                    <p className="text-[11px] text-muted-foreground truncate">{verifiedShop.tagline}</p>
+                  ) : (
+                    <p className="text-[11px] text-muted-foreground">
+                      {totalItems} item{totalItems !== 1 ? "s" : ""} · {shop.listings.length} listing{shop.listings.length !== 1 ? "s" : ""}
+                    </p>
+                  )}
                 </div>
                 <Link
                   href={`/profile/${shop.sellerId}`}
