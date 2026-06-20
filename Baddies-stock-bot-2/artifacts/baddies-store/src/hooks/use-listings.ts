@@ -37,6 +37,7 @@ export interface Listing {
   isVerifiedReseller?: boolean;
   cardStyle?: string;
   sellerAccentColor?: string;
+  sellerEdgeEffect?: string;
 }
 
 export function useListings(refetchInterval?: number) {

@@ -13,8 +13,8 @@ import { ReportModal, type ReportTarget } from "@/components/report-modal";
 import { useAuth } from "@/contexts/auth-context";
 import {
   useProfile, useOwnProfile, useUpdateProfile,
-  BANNER_STYLES, ACCENT_COLORS, getBannerClass, CARD_STYLES,
-  type BannerStyle, type CardStyle, type FeaturedItem, type Profile,
+  BANNER_STYLES, ACCENT_COLORS, getBannerClass, CARD_STYLES, EDGE_EFFECTS,
+  type BannerStyle, type CardStyle, type EdgeEffect, type FeaturedItem, type Profile,
 } from "@/hooks/use-profile";
 import { ROLE_LABEL, ROLE_COLOR, type AnyRole } from "@/hooks/use-staff";
 import { cn } from "@/lib/utils";
@@ -259,6 +259,113 @@ function CatalogSearch({
   );
 }
 
+// ── Card preview helper ───────────────────────────────────────────────────────
+
+function accentRgbProfile(hex: string) {
+  const h = (hex || "#ff0080").replace("#", "").padEnd(6, "0");
+  return `${parseInt(h.slice(0, 2), 16)},${parseInt(h.slice(2, 4), 16)},${parseInt(h.slice(4, 6), 16)}`;
+}
+
+function MockCard({ cardStyle, accentColor, edgeEffect, username }: {
+  cardStyle: string;
+  accentColor: string;
+  edgeEffect: string;
+  username: string;
+}) {
+  const a = /^#[0-9a-fA-F]{6}$/.test(accentColor) ? accentColor : "#ff0080";
+  const rgb = accentRgbProfile(a);
+  const rgba = (o: number) => `rgba(${rgb},${o})`;
+
+  const baseStyle: React.CSSProperties = (() => {
+    switch (cardStyle) {
+      case "neon":     return { border: `1px solid ${rgba(0.45)}`, boxShadow: `0 0 16px ${rgba(0.2)}` };
+      case "minimal":  return { border: "1px solid rgba(255,255,255,0.05)" };
+      case "frost":    return { border: "1px solid rgba(255,255,255,0.25)", background: "rgba(255,255,255,0.03)" };
+      case "dark":     return { border: "1px solid rgba(255,255,255,0.06)", background: "rgba(0,0,0,0.5)" };
+      case "gradient": return { border: "1px solid rgba(255,255,255,0.1)" };
+      default:         return { border: "1px solid rgba(255,255,255,0.1)" };
+    }
+  })();
+
+  const edgeStyle: React.CSSProperties = (() => {
+    if (edgeEffect === "glow") return { boxShadow: `${baseStyle.boxShadow ? baseStyle.boxShadow + ", " : ""}0 0 24px ${rgba(0.45)}` };
+    if (edgeEffect === "pulse") return {};
+    return {};
+  })();
+
+  const mergedStyle: React.CSSProperties = { ...baseStyle, ...edgeStyle };
+
+  const pulseAnim = edgeEffect === "pulse"
+    ? { boxShadow: [`0 0 0px ${rgba(0)}`, `0 0 28px ${rgba(0.55)}`, `0 0 0px ${rgba(0)}`] as string[] }
+    : undefined;
+
+  return (
+    <motion.div
+      className="relative flex flex-col overflow-hidden rounded-2xl w-44"
+      style={{ background: "rgba(10,10,18,0.85)", ...mergedStyle }}
+      animate={pulseAnim}
+      transition={edgeEffect === "pulse" ? { repeat: Infinity, duration: 2, ease: "easeInOut" } : undefined}
+    >
+      {cardStyle === "gradient" && (
+        <div className="absolute top-0 inset-x-0 h-0.5 z-10" style={{ background: a }} />
+      )}
+
+      {/* Shimmer overlay */}
+      {edgeEffect === "shimmer" && (
+        <div className="absolute inset-0 z-40 pointer-events-none overflow-hidden rounded-2xl">
+          <motion.div
+            className="absolute top-0 bottom-0 w-12 -skew-x-12"
+            style={{ background: `linear-gradient(90deg, transparent, ${rgba(0.22)}, transparent)` }}
+            animate={{ x: ["-100%", "500%"] }}
+            transition={{ repeat: Infinity, duration: 2.2, ease: "linear", repeatDelay: 1.2 }}
+          />
+        </div>
+      )}
+
+      {/* Corner accents */}
+      {edgeEffect === "corner" && (
+        <>
+          <div className="absolute top-0 left-0 w-2 h-2 z-40 pointer-events-none" style={{ background: a, boxShadow: `0 0 8px ${rgba(0.9)}, 0 0 16px ${rgba(0.5)}`, borderRadius: "2px 0 2px 0" }} />
+          <div className="absolute top-0 right-0 w-2 h-2 z-40 pointer-events-none" style={{ background: a, boxShadow: `0 0 8px ${rgba(0.9)}, 0 0 16px ${rgba(0.5)}`, borderRadius: "0 2px 0 2px" }} />
+          <div className="absolute bottom-0 left-0 w-2 h-2 z-40 pointer-events-none" style={{ background: a, boxShadow: `0 0 8px ${rgba(0.9)}, 0 0 16px ${rgba(0.5)}`, borderRadius: "0 2px 0 2px" }} />
+          <div className="absolute bottom-0 right-0 w-2 h-2 z-40 pointer-events-none" style={{ background: a, boxShadow: `0 0 8px ${rgba(0.9)}, 0 0 16px ${rgba(0.5)}`, borderRadius: "2px 0 2px 0" }} />
+        </>
+      )}
+
+      {/* Image area */}
+      <div className="relative h-24 w-full flex items-center justify-center bg-black/40">
+        <Box className="w-8 h-8 text-white/15" />
+        <div className="absolute top-1.5 left-1.5">
+          <span className="px-1.5 py-0.5 text-[9px] font-bold rounded-md uppercase tracking-wider backdrop-blur-md bg-white/10 border border-white/20 text-white/80">Sword</span>
+        </div>
+        <div className="absolute top-1.5 right-1.5">
+          <span className="px-1.5 py-0.5 text-[9px] font-semibold rounded-md bg-black/60 text-white/70 border border-white/10">Qty: 1</span>
+        </div>
+      </div>
+
+      {/* Content */}
+      <div className="p-2.5 flex flex-col gap-1.5">
+        <p className="font-bold text-xs text-white leading-tight">Dragon Blade</p>
+        <div className="flex items-center gap-1.5">
+          <div className="w-4 h-4 rounded-full flex items-center justify-center text-[8px] font-bold flex-shrink-0"
+            style={{ background: rgba(0.2), color: a }}>
+            {username[0]?.toUpperCase() ?? "?"}
+          </div>
+          <span className="text-[10px] text-white/40 truncate">{username}</span>
+        </div>
+        <div className="flex items-center justify-between mt-0.5">
+          <p className="text-xs font-bold text-green-400">$12.99</p>
+          <div className="flex items-center gap-1">
+            <div className="w-5 h-5 rounded-md bg-white/5 border border-white/15 flex items-center justify-center">
+              <Plus className="w-2.5 h-2.5 text-white/50" />
+            </div>
+          </div>
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
 // ── Profile editor panel ──────────────────────────────────────────────────────
 
 function ProfileEditor({
@@ -276,6 +383,7 @@ function ProfileEditor({
   const [accentColor, setAccentColor] = useState(profile.accentColor);
   const [bannerStyle, setBannerStyle] = useState<BannerStyle>(profile.bannerStyle);
   const [cardStyle, setCardStyle] = useState<CardStyle>((profile.cardStyle as CardStyle) ?? "default");
+  const [edgeEffect, setEdgeEffect] = useState<EdgeEffect>((profile.edgeEffect as EdgeEffect) ?? "none");
   const [featuredItems, setFeaturedItems] = useState<FeaturedItem[]>(profile.featuredItems);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -361,7 +469,7 @@ function ProfileEditor({
   async function handleSave() {
     setError(null);
     try {
-      await update.mutateAsync({ tagline, bio, accentColor, bannerStyle, cardStyle, tradePreferences: tradePrefs, featuredItems });
+      await update.mutateAsync({ tagline, bio, accentColor, bannerStyle, cardStyle, edgeEffect, tradePreferences: tradePrefs, featuredItems });
       setSaved(true);
       setTimeout(() => { setSaved(false); onClose(); }, 1000);
     } catch (err) {
@@ -569,69 +677,105 @@ function ProfileEditor({
 
         {tab === "cards" && (
           <>
-            <div className="space-y-3">
-              <div>
-                <label className="text-[11px] text-muted-foreground uppercase tracking-wider font-semibold">Card Style</label>
-                <p className="text-[11px] text-muted-foreground mt-0.5">Choose how your listing cards look to everyone in the store.</p>
-              </div>
-              <div className="grid grid-cols-3 gap-2">
-                {CARD_STYLES.map((s) => {
-                  const previewStyle = (() => {
-                    const h = accentColor.replace("#", "");
-                    const r = parseInt(h.slice(0, 2), 16);
-                    const g = parseInt(h.slice(2, 4), 16);
-                    const b = parseInt(h.slice(4, 6), 16);
-                    const rgba = (a: number) => `rgba(${r},${g},${b},${a})`;
-                    switch (s.key) {
-                      case "neon":     return { border: `1px solid ${rgba(0.6)}`, boxShadow: `0 0 12px ${rgba(0.35)}` };
-                      case "minimal":  return { border: "1px solid rgba(255,255,255,0.05)" };
-                      case "frost":    return { border: "1px solid rgba(255,255,255,0.3)", background: "rgba(255,255,255,0.04)" };
-                      case "dark":     return { border: "1px solid rgba(255,255,255,0.06)", background: "rgba(0,0,0,0.5)" };
-                      case "gradient": return { border: "1px solid rgba(255,255,255,0.1)" };
-                      default:         return { border: "1px solid rgba(255,255,255,0.1)" };
-                    }
-                  })();
-                  return (
-                    <button key={s.key} onClick={() => setCardStyle(s.key)}
-                      className={cn("relative flex flex-col overflow-hidden rounded-xl transition-all",
-                        cardStyle === s.key ? "ring-2 ring-white scale-105" : "opacity-55 hover:opacity-85 hover:scale-[1.03]")}
-                      style={previewStyle}
-                    >
-                      {s.key === "gradient" && (
-                        <div className="absolute top-0 inset-x-0 h-0.5 z-10" style={{ background: accentColor }} />
-                      )}
-                      <div className="h-10 w-full flex items-center justify-center"
-                        style={{ background: s.key === "dark" ? "rgba(0,0,0,0.65)" : "rgba(0,0,0,0.42)" }}>
-                        <Box className="w-4 h-4 text-white/20" />
-                      </div>
-                      <div className="px-2 py-1.5 space-y-1"
-                        style={{ background: s.key === "frost" ? "rgba(255,255,255,0.03)" : undefined }}>
-                        <div className="w-10 h-1.5 rounded-full bg-white/25" />
-                        <div className="w-6 h-1 rounded-full bg-white/15" />
-                      </div>
-                      {cardStyle === s.key && (
-                        <div className="absolute inset-0 flex items-center justify-center bg-black/40">
-                          <Check className="w-4 h-4 text-white drop-shadow" />
-                        </div>
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-              <div className="grid grid-cols-3 gap-2">
-                {CARD_STYLES.map((s) => (
-                  <div key={s.key} className="text-center">
-                    <p className={cn("text-[10px] font-semibold transition-colors",
-                      cardStyle === s.key ? "text-white" : "text-muted-foreground")}>{s.label}</p>
-                    <p className={cn("text-[9px] transition-colors",
-                      cardStyle === s.key ? "text-white/60" : "text-muted-foreground/60")}>{s.desc}</p>
-                  </div>
-                ))}
-              </div>
+            {/* Live preview */}
+            <div>
+              <label className="text-[11px] text-muted-foreground uppercase tracking-wider font-semibold">Live Preview</label>
+              <p className="text-[11px] text-muted-foreground mt-0.5">How your listing cards appear in the store.</p>
             </div>
+            <div className="flex justify-center py-1">
+              <MockCard cardStyle={cardStyle} accentColor={accentColor} edgeEffect={edgeEffect} username={profile.username} />
+            </div>
+
+            {/* Card style picker */}
+            <div>
+              <label className="text-[11px] text-muted-foreground uppercase tracking-wider font-semibold">Card Style</label>
+            </div>
+            <div className="grid grid-cols-3 gap-2">
+              {CARD_STYLES.map((s) => {
+                const h = accentColor.replace("#", "");
+                const r = parseInt(h.slice(0, 2) || "ff", 16);
+                const g = parseInt(h.slice(2, 4) || "00", 16);
+                const b = parseInt(h.slice(4, 6) || "80", 16);
+                const ra = (a: number) => `rgba(${r},${g},${b},${a})`;
+                const thumbStyle = (() => {
+                  switch (s.key) {
+                    case "neon":     return { border: `1px solid ${ra(0.6)}`, boxShadow: `0 0 10px ${ra(0.35)}` };
+                    case "minimal":  return { border: "1px solid rgba(255,255,255,0.05)" };
+                    case "frost":    return { border: "1px solid rgba(255,255,255,0.3)", background: "rgba(255,255,255,0.04)" };
+                    case "dark":     return { border: "1px solid rgba(255,255,255,0.06)", background: "rgba(0,0,0,0.5)" };
+                    case "gradient": return { border: "1px solid rgba(255,255,255,0.1)" };
+                    default:         return { border: "1px solid rgba(255,255,255,0.1)" };
+                  }
+                })();
+                return (
+                  <button key={s.key} onClick={() => setCardStyle(s.key)}
+                    className={cn("relative flex flex-col overflow-hidden rounded-xl transition-all",
+                      cardStyle === s.key ? "ring-2 ring-white scale-105" : "opacity-55 hover:opacity-85 hover:scale-[1.03]")}
+                    style={thumbStyle}
+                  >
+                    {s.key === "gradient" && (
+                      <div className="absolute top-0 inset-x-0 h-0.5 z-10" style={{ background: accentColor }} />
+                    )}
+                    <div className="h-10 w-full flex items-center justify-center"
+                      style={{ background: s.key === "dark" ? "rgba(0,0,0,0.65)" : "rgba(0,0,0,0.42)" }}>
+                      <Box className="w-4 h-4 text-white/20" />
+                    </div>
+                    <div className="px-2 py-1.5 space-y-1"
+                      style={{ background: s.key === "frost" ? "rgba(255,255,255,0.03)" : undefined }}>
+                      <div className="w-10 h-1.5 rounded-full bg-white/25" />
+                      <div className="w-6 h-1 rounded-full bg-white/15" />
+                    </div>
+                    {cardStyle === s.key && (
+                      <div className="absolute inset-0 flex items-center justify-center bg-black/40">
+                        <Check className="w-4 h-4 text-white drop-shadow" />
+                      </div>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+            <div className="grid grid-cols-3 gap-1">
+              {CARD_STYLES.map((s) => (
+                <div key={s.key} className="text-center">
+                  <p className={cn("text-[10px] font-semibold transition-colors",
+                    cardStyle === s.key ? "text-white" : "text-muted-foreground")}>{s.label}</p>
+                  <p className={cn("text-[9px] transition-colors",
+                    cardStyle === s.key ? "text-white/60" : "text-muted-foreground/60")}>{s.desc}</p>
+                </div>
+              ))}
+            </div>
+
+            {/* Edge effect picker */}
+            <div>
+              <label className="text-[11px] text-muted-foreground uppercase tracking-wider font-semibold">Edge Effect</label>
+              <p className="text-[11px] text-muted-foreground mt-0.5">Adds a special border animation around your cards.</p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {EDGE_EFFECTS.map((e) => (
+                <button
+                  key={e.key}
+                  onClick={() => setEdgeEffect(e.key)}
+                  className={cn(
+                    "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition-all",
+                    edgeEffect === e.key
+                      ? "bg-white/15 border-white/50 text-white"
+                      : "bg-white/5 border-white/10 text-muted-foreground hover:text-white hover:border-white/20"
+                  )}
+                >
+                  <span>{e.icon}</span>
+                  {e.label}
+                </button>
+              ))}
+            </div>
+            {edgeEffect !== "none" && (
+              <p className="text-[10px] text-muted-foreground/70 italic px-1">
+                {EDGE_EFFECTS.find((e) => e.key === edgeEffect)?.desc} — preview updates above.
+              </p>
+            )}
+
             <div className="px-3 py-2.5 rounded-xl bg-white/5 border border-white/10">
               <p className="text-[11px] text-muted-foreground leading-relaxed">
-                <span className="text-white/70 font-semibold">Tip:</span> Your accent color (set in Style) is used for the glow and border colors in Neon, Dark, and Gradient styles.
+                <span className="text-white/70 font-semibold">Tip:</span> Accent color (set in Style tab) controls the glow color for Neon, Glow, Pulse, and Shimmer effects.
               </p>
             </div>
           </>

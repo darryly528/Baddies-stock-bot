@@ -12,6 +12,7 @@ export type FeaturedItem = {
 
 export type BannerStyle = "default" | "sunset" | "ocean" | "forest" | "midnight" | "fire" | "aurora" | "gold";
 export type CardStyle = "default" | "neon" | "minimal" | "frost" | "dark" | "gradient";
+export type EdgeEffect = "none" | "glow" | "pulse" | "shimmer" | "corner";
 
 export const CARD_STYLES: { key: CardStyle; label: string; desc: string }[] = [
   { key: "default",  label: "Default",  desc: "Classic dark glass" },
@@ -20,6 +21,14 @@ export const CARD_STYLES: { key: CardStyle; label: string; desc: string }[] = [
   { key: "frost",    label: "Frost",    desc: "Icy frosted glass" },
   { key: "dark",     label: "Dark",     desc: "Deep dark panel" },
   { key: "gradient", label: "Gradient", desc: "Accent top stripe" },
+];
+
+export const EDGE_EFFECTS: { key: EdgeEffect; label: string; desc: string; icon: string }[] = [
+  { key: "none",    label: "None",    desc: "No extra effect",    icon: "⬜" },
+  { key: "glow",    label: "Glow",    desc: "Always-on soft glow", icon: "🌟" },
+  { key: "pulse",   label: "Pulse",   desc: "Rhythmic glow pulse", icon: "💓" },
+  { key: "shimmer", label: "Shimmer", desc: "Moving light sweep",  icon: "✨" },
+  { key: "corner",  label: "Corner",  desc: "Lit corner accents",  icon: "📐" },
 ];
 
 export type Profile = {
@@ -31,6 +40,7 @@ export type Profile = {
   accentColor: string;
   bannerStyle: BannerStyle;
   cardStyle: CardStyle;
+  edgeEffect: EdgeEffect;
   tradePreferences: string;
   featuredItems: FeaturedItem[];
   siteRole: string | null;
@@ -97,7 +107,16 @@ export function useProfile(userId: string | undefined) {
 export function useUpdateProfile() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (data: { tagline?: string; bio?: string; accentColor?: string; bannerStyle?: BannerStyle; cardStyle?: CardStyle; tradePreferences?: string; featuredItems?: FeaturedItem[] }) =>
+    mutationFn: (data: {
+      tagline?: string;
+      bio?: string;
+      accentColor?: string;
+      bannerStyle?: BannerStyle;
+      cardStyle?: CardStyle;
+      edgeEffect?: EdgeEffect;
+      tradePreferences?: string;
+      featuredItems?: FeaturedItem[];
+    }) =>
       fetch(`${apiBase}/api/profile`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },

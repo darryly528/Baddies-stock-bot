@@ -93,6 +93,7 @@ router.get("/listings", (req, res) => {
       isVerifiedReseller: l.discordUserId ? getRole(l.discordUserId) === "verified_reseller" : false,
       cardStyle: p?.cardStyle ?? "default",
       sellerAccentColor: p?.accentColor ?? "#ff0080",
+      sellerEdgeEffect: p?.edgeEffect ?? "none",
     };
   });
   res.setHeader("Cache-Control", "public, max-age=5, stale-while-revalidate=10");

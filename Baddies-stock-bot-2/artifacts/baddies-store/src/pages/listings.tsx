@@ -593,6 +593,48 @@ function getCardStyleProps(cardStyle: string | undefined, accent: string | undef
   }
 }
 
+function getEdgeEffectProps(effect?: string, accent?: string) {
+  if (!effect || effect === "none") return { addStyle: {} as React.CSSProperties, pulseAnimate: undefined as undefined | Record<string, string[]>, overlayKind: "none" as "none" | "shimmer" | "corner" };
+  const a = accent && /^#[0-9a-fA-F]{6}$/.test(accent) ? accent : "#ff0080";
+  const rgb = accentRgb(a);
+  const rgba = (o: number) => `rgba(${rgb},${o})`;
+  if (effect === "glow") return { addStyle: { boxShadow: `0 0 24px ${rgba(0.42)}` } as React.CSSProperties, pulseAnimate: undefined, overlayKind: "none" as const };
+  if (effect === "pulse") return { addStyle: {} as React.CSSProperties, pulseAnimate: { boxShadow: [`0 0 0px ${rgba(0)}`, `0 0 30px ${rgba(0.55)}`, `0 0 0px ${rgba(0)}`] }, overlayKind: "none" as const };
+  if (effect === "shimmer") return { addStyle: {} as React.CSSProperties, pulseAnimate: undefined, overlayKind: "shimmer" as const };
+  if (effect === "corner") return { addStyle: {} as React.CSSProperties, pulseAnimate: undefined, overlayKind: "corner" as const };
+  return { addStyle: {} as React.CSSProperties, pulseAnimate: undefined, overlayKind: "none" as const };
+}
+
+function EdgeEffectOverlay({ effect, accent }: { effect?: string; accent?: string }) {
+  const a = accent && /^#[0-9a-fA-F]{6}$/.test(accent) ? accent : "#ff0080";
+  const rgb = accentRgb(a);
+  const rgba = (o: number) => `rgba(${rgb},${o})`;
+  if (effect === "shimmer") {
+    return (
+      <div className="absolute inset-0 z-40 pointer-events-none overflow-hidden rounded-2xl">
+        <motion.div
+          className="absolute top-0 bottom-0 w-20 -skew-x-12"
+          style={{ background: `linear-gradient(90deg, transparent, ${rgba(0.16)}, transparent)` }}
+          animate={{ x: ["-100%", "500%"] }}
+          transition={{ repeat: Infinity, duration: 2.5, ease: "linear", repeatDelay: 1.5 }}
+        />
+      </div>
+    );
+  }
+  if (effect === "corner") {
+    const cs: React.CSSProperties = { position: "absolute", width: 8, height: 8, background: a, boxShadow: `0 0 10px ${rgba(0.9)}, 0 0 20px ${rgba(0.5)}`, zIndex: 40, pointerEvents: "none" };
+    return (
+      <>
+        <div style={{ ...cs, top: 0, left: 0, borderRadius: "2px 0 2px 0" }} />
+        <div style={{ ...cs, top: 0, right: 0, borderRadius: "0 2px 0 2px" }} />
+        <div style={{ ...cs, bottom: 0, left: 0, borderRadius: "0 2px 0 2px" }} />
+        <div style={{ ...cs, bottom: 0, right: 0, borderRadius: "2px 0 2px 0" }} />
+      </>
+    );
+  }
+  return null;
+}
+
 function AuctionCard({
   flat,
   isOwn,
@@ -616,6 +658,7 @@ function AuctionCard({
   const stProps = (!ended && !isDefaultStyle)
     ? getCardStyleProps(listing.cardStyle, listing.sellerAccentColor)
     : null;
+  const edgeProps = ended ? { addStyle: {} as React.CSSProperties, pulseAnimate: undefined, overlayKind: "none" as const } : getEdgeEffectProps(listing.sellerEdgeEffect, listing.sellerAccentColor);
 
   return (
     <motion.div
@@ -624,6 +667,8 @@ function AuctionCard({
         show: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 300, damping: 24 } },
       }}
       whileHover={{ y: -3, transition: { type: "spring", stiffness: 400, damping: 25 }, ...(stProps?.whileHover ?? {}) }}
+      animate={edgeProps.pulseAnimate}
+      transition={edgeProps.pulseAnimate ? { repeat: Infinity, duration: 2, ease: "easeInOut" } : undefined}
       className={cn(
         "group relative flex flex-col overflow-hidden rounded-2xl glass-panel",
         ended
@@ -632,11 +677,12 @@ function AuctionCard({
           ? "border border-amber-500/25 hover:border-amber-500/50 hover:shadow-[0_0_20px_rgba(245,158,11,0.2)] transition-all duration-200"
           : stProps!.baseClass
       )}
-      style={stProps?.style}
+      style={{ ...(stProps?.style ?? {}), ...edgeProps.addStyle }}
     >
       {stProps?.showStripe && !ended && (
         <div className="absolute top-0 inset-x-0 h-0.5 z-30" style={{ background: listing.sellerAccentColor ?? "#ff0080" }} />
       )}
+      <EdgeEffectOverlay effect={edgeProps.overlayKind} accent={listing.sellerAccentColor} />
       <div className="absolute inset-0 bg-gradient-to-t from-background via-background/20 to-transparent opacity-80 z-10 pointer-events-none" />
 
       <div className="relative h-32 sm:h-44 w-full p-3 sm:p-5 flex items-center justify-center bg-black/40">
@@ -750,6 +796,7 @@ function ListingItemCard({
     : null;
 
   const stProps = getCardStyleProps(listing.cardStyle, listing.sellerAccentColor);
+  const edgeProps = getEdgeEffectProps(listing.sellerEdgeEffect, listing.sellerAccentColor);
 
   return (
     <motion.div
@@ -758,12 +805,15 @@ function ListingItemCard({
         show: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 300, damping: 24 } },
       }}
       whileHover={{ y: -3, transition: { type: "spring", stiffness: 400, damping: 25 }, ...stProps.whileHover }}
+      animate={edgeProps.pulseAnimate}
+      transition={edgeProps.pulseAnimate ? { repeat: Infinity, duration: 2, ease: "easeInOut" } : undefined}
       className={cn("group relative flex flex-col overflow-hidden rounded-2xl glass-panel", stProps.baseClass)}
-      style={stProps.style}
+      style={{ ...stProps.style, ...edgeProps.addStyle }}
     >
       {stProps.showStripe && (
         <div className="absolute top-0 inset-x-0 h-0.5 z-30" style={{ background: listing.sellerAccentColor ?? "#ff0080" }} />
       )}
+      <EdgeEffectOverlay effect={edgeProps.overlayKind} accent={listing.sellerAccentColor} />
       <div className="absolute inset-0 bg-gradient-to-t from-background via-background/20 to-transparent opacity-80 z-10 pointer-events-none" />
 
       <div className="relative h-32 sm:h-44 w-full p-3 sm:p-5 flex items-center justify-center bg-black/40">
