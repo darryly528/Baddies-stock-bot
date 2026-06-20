@@ -472,12 +472,31 @@ export default function ListPage() {
                             {PAYMENT_EMOJI[method] && <img src={PAYMENT_EMOJI[method]} alt="" className="w-3.5 h-3.5 object-contain" />}
                             {method} details
                           </p>
-                          <input
-                            value={d.info}
-                            onChange={(e) => updatePaymentDetail(method, "info", e.target.value)}
-                            placeholder={method === "PayPal" ? "PayPal link or username (e.g. paypal.me/you)" : "Cash App cashtag (e.g. $name)"}
-                            className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-1.5 text-sm text-white placeholder:text-muted-foreground/60 outline-none focus:border-primary/50 transition"
-                          />
+                          {!d.useMiddleMan && (
+                            <input
+                              value={d.info}
+                              onChange={(e) => updatePaymentDetail(method, "info", e.target.value)}
+                              placeholder={method === "PayPal" ? "PayPal link or username (e.g. paypal.me/you)" : "Cash App cashtag (e.g. $name)"}
+                              className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-1.5 text-sm text-white placeholder:text-muted-foreground/60 outline-none focus:border-primary/50 transition"
+                            />
+                          )}
+                          {d.useMiddleMan && (
+                            <div className="px-3 py-2 rounded-lg bg-amber-500/10 border border-amber-500/20 text-xs text-amber-300">
+                              Buyers will use a middle man for this payment method.
+                            </div>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => updatePaymentDetail(method, "useMiddleMan", !d.useMiddleMan)}
+                            className={cn(
+                              "text-xs px-2.5 py-1 rounded-lg border transition-colors font-medium",
+                              d.useMiddleMan
+                                ? "bg-amber-500/20 border-amber-500/40 text-amber-300 hover:bg-amber-500/30"
+                                : "bg-white/5 border-white/10 text-muted-foreground hover:text-white hover:border-white/20"
+                            )}
+                          >
+                            {d.useMiddleMan ? "✓ Use Middle Man" : "Use Middle Man"}
+                          </button>
                         </div>
                       );
                     })}
