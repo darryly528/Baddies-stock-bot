@@ -50,6 +50,22 @@ router.get("/vouches/user/:userId", (req: Request, res: Response) => {
   res.json({ vouches: userVouches, count: userVouches.length, avgRating });
 });
 
+// ── Get vouches that mention a user by @username ──────────────────────────────
+
+router.get("/vouches/mentions/:userId", (req: Request, res: Response) => {
+  const { userId } = req.params as { userId: string };
+  const username = (req.query["username"] as string | undefined)?.trim().toLowerCase();
+  if (!username) { res.status(400).json({ error: "username query param required" }); return; }
+
+  const vouches = loadVouches();
+  const pattern = `@${username}`;
+  const mentions = vouches
+    .filter((v) => v.message.toLowerCase().includes(pattern) && v.toUserId !== userId && v.fromUserId !== userId)
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+  res.json({ vouches: mentions, count: mentions.length });
+});
+
 // ── Post a vouch ──────────────────────────────────────────────────────────────
 
 router.post("/vouches", (req: Request, res: Response) => {

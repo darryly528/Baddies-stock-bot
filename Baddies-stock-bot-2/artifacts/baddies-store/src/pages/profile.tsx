@@ -5,7 +5,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Pencil, Check, X, Plus, Trash2, Search, Loader2, Box,
   ArrowLeft, ShoppingBag, LayoutList, Sparkles, BadgeCheck,
-  ExternalLink, AlertTriangle, Upload, Heart, Flag, Crop as CropIcon,
+  ExternalLink, AlertTriangle, Upload, Heart, Flag, Crop as CropIcon, Star, AtSign,
 } from "lucide-react";
 import ReactCrop, { centerCrop, makeAspectCrop, type Crop, type PixelCrop } from "react-image-crop";
 import "react-image-crop/dist/ReactCrop.css";
@@ -1056,6 +1056,31 @@ function ProfileVouchModal({
 
 // ── Profile view ──────────────────────────────────────────────────────────────
 
+type MentionVouch = {
+  id: string;
+  fromUserId: string;
+  fromUsername: string;
+  fromAvatar: string | null;
+  toUserId: string;
+  toUsername: string;
+  message: string;
+  rating: number;
+  createdAt: string;
+};
+
+function HighlightedMessage({ text, username }: { text: string; username: string }) {
+  const tag = `@${username}`;
+  const idx = text.toLowerCase().indexOf(tag.toLowerCase());
+  if (idx === -1) return <span className="text-sm text-white/85 leading-relaxed">{text}</span>;
+  return (
+    <span className="text-sm text-white/85 leading-relaxed">
+      {text.slice(0, idx)}
+      <span className="font-bold text-pink-400">{text.slice(idx, idx + tag.length)}</span>
+      {text.slice(idx + tag.length)}
+    </span>
+  );
+}
+
 function ProfileView({ profile, isOwn, onEdit, onVouch, onReport }: { profile: Profile; isOwn: boolean; onEdit: () => void; onVouch?: () => void; onReport?: () => void }) {
   const discordAvatarUrl = profile.avatarHash
     ? `https://cdn.discordapp.com/avatars/${profile.userId}/${profile.avatarHash}.png?size=128`
@@ -1063,6 +1088,15 @@ function ProfileView({ profile, isOwn, onEdit, onVouch, onReport }: { profile: P
   const avatarUrl = profile.customAvatarUrl ?? discordAvatarUrl;
   const bannerClass = getBannerClass(profile.bannerStyle);
   const accent = profile.accentColor || "#ff0080";
+
+  const { data: mentionData } = useQuery<{ vouches: MentionVouch[]; count: number }>({
+    queryKey: ["vouch-mentions", profile.userId, profile.username],
+    queryFn: () =>
+      fetch(`/api/vouches/mentions/${profile.userId}?username=${encodeURIComponent(profile.username)}`, { credentials: "include" })
+        .then((r) => r.json()),
+    staleTime: 60_000,
+  });
+  const mentionVouches = mentionData?.vouches ?? [];
 
   return (
     <div className="space-y-6">
@@ -1214,6 +1248,56 @@ function ProfileView({ profile, isOwn, onEdit, onVouch, onReport }: { profile: P
           <div className="space-y-2">
             {(profile.activeListings ?? []).slice(0, 5).map((l) => (
               <MiniListingCard key={l.id as string} listing={l as Listing} />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Tagged In (vouches that @mention this user) */}
+      {mentionVouches.length > 0 && (
+        <div className="px-5 sm:px-8 space-y-3">
+          <div className="flex items-center gap-2">
+            <AtSign className="w-4 h-4" style={{ color: accent }} />
+            <h2 className="font-display font-bold text-base text-white">
+              Tagged In <span className="text-muted-foreground font-normal text-sm">({mentionVouches.length})</span>
+            </h2>
+          </div>
+          <div className="space-y-3">
+            {mentionVouches.map((v) => (
+              <div key={v.id} className="glass-panel border border-white/10 rounded-2xl p-4 space-y-2.5" style={{ borderColor: `${accent}18` }}>
+                <div className="flex items-start gap-3">
+                  {/* Voucher avatar */}
+                  <Link href={`/profile/${v.fromUserId}`}>
+                    {v.fromAvatar ? (
+                      <img src={v.fromAvatar} alt={v.fromUsername} className="w-8 h-8 rounded-full ring-1 ring-white/20 shrink-0 hover:ring-white/40 transition-all" />
+                    ) : (
+                      <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-xs font-bold text-white shrink-0">
+                        {v.fromUsername[0]?.toUpperCase()}
+                      </div>
+                    )}
+                  </Link>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <Link href={`/profile/${v.fromUserId}`} className="text-sm font-bold text-white hover:text-primary transition-colors">
+                        {v.fromUsername}
+                      </Link>
+                      <span className="text-[11px] text-muted-foreground">vouched for</span>
+                      <Link href={`/profile/${v.toUserId}`} className="text-[11px] font-semibold text-muted-foreground hover:text-white transition-colors">
+                        {v.toUsername}
+                      </Link>
+                      <div className="flex items-center gap-0.5 ml-auto shrink-0">
+                        {[1,2,3,4,5].map((n) => (
+                          <Star key={n} className={cn("w-3 h-3", n <= v.rating ? "fill-amber-400 text-amber-400" : "text-white/10 fill-white/10")} />
+                        ))}
+                      </div>
+                    </div>
+                    <p className="text-[11px] text-muted-foreground/50 mt-0.5">
+                      {new Date(v.createdAt).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}
+                    </p>
+                  </div>
+                </div>
+                <HighlightedMessage text={v.message} username={profile.username} />
+              </div>
             ))}
           </div>
         </div>

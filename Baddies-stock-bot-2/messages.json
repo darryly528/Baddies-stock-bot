@@ -159,12 +159,10 @@
         "senderId": "718222852918083615",
         "senderName": "Admin",
         "senderAvatar": null,
-        "content": "",
-        "imageUrl": "/api/uploads/dms/718222852918083615_1781996117198.png",
-        "imagePending": false,
+        "content": "###",
         "isAdmin": true,
         "timestamp": "2026-06-20T22:55:18.253Z",
-        "filtered": false
+        "filtered": true
       }
     ],
     "createdAt": "2026-04-03T10:21:41.750Z",
