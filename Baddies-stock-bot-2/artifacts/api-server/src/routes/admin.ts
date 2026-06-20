@@ -238,6 +238,8 @@ router.get("/admin/members/search", requireMinRole("admin"), async (req, res) =>
 });
 
 // ── Discord user lookup by ID (for staff assignment) ─────────────────────────
+// Uses the Discord REST API directly so it works even when the gateway bot
+// client is not connected — only requires DISCORD_BOT_TOKEN to be set.
 
 router.get("/admin/members/lookup", requireMinRole("admin"), async (req, res) => {
   const userId = ((req.query as Record<string, string>).userId ?? "").trim();
@@ -245,27 +247,43 @@ router.get("/admin/members/lookup", requireMinRole("admin"), async (req, res) =>
     res.status(400).json({ error: "Invalid Discord user ID format — must be a numeric snowflake ID" }); return;
   }
 
-  const bot = getBotClient();
-  if (!bot) {
-    res.status(503).json({ error: "Bot is offline — cannot look up user right now. You can still add staff manually." });
+  const token = process.env["DISCORD_BOT_TOKEN"];
+  if (!token) {
+    res.status(503).json({ error: "No bot token configured — add DISCORD_BOT_TOKEN to enable lookup. You can still add staff manually." });
     return;
   }
 
   try {
-    const user = await bot.users.fetch(userId, { force: true });
+    const apiRes = await fetch(`https://discord.com/api/v10/users/${userId}`, {
+      headers: { Authorization: `Bot ${token}`, "User-Agent": "Baddies-Store/1.0" },
+    });
+
+    if (apiRes.status === 404) {
+      res.status(404).json({ error: "User not found on Discord — verify the ID is correct" }); return;
+    }
+    if (!apiRes.ok) {
+      const body = await apiRes.json().catch(() => ({})) as Record<string, unknown>;
+      res.status(apiRes.status).json({ error: `Discord API error: ${(body["message"] as string | undefined) ?? apiRes.statusText}` }); return;
+    }
+
+    const user = await apiRes.json() as { id: string; username: string; avatar: string | null; global_name: string | null };
     const avatarUrl = user.avatar
       ? `https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png?size=64`
       : `https://cdn.discordapp.com/embed/avatars/${Number(BigInt(user.id) >> 22n) % 6}.png`;
 
+    // Check guild membership via the live bot client if available
     let inGuild = false;
-    for (const guild of bot.guilds.cache.values()) {
-      const m = await guild.members.fetch({ user: userId, force: false }).catch(() => null);
-      if (m) { inGuild = true; break; }
+    const bot = getBotClient();
+    if (bot) {
+      for (const guild of bot.guilds.cache.values()) {
+        const m = await guild.members.fetch({ user: userId, force: false }).catch(() => null);
+        if (m) { inGuild = true; break; }
+      }
     }
 
-    res.json({ id: user.id, username: user.username, avatar: avatarUrl, inGuild });
-  } catch {
-    res.status(404).json({ error: "User not found on Discord — verify the ID is correct" });
+    res.json({ id: user.id, username: user.global_name ?? user.username, avatar: avatarUrl, inGuild });
+  } catch (err) {
+    res.status(500).json({ error: `Lookup failed: ${String(err)}` });
   }
 });
 
