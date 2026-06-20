@@ -428,20 +428,6 @@ export async function startBot() {
         }
         return;
       }
-      // ── Site-role gate (mod or above required) ───────────────────────────
-      const actorId = interaction.user.id;
-      const actorUsername = interaction.user.username;
-      const siteRole = getRole(actorId, actorUsername);
-      if (!hasMinRole(siteRole, "mod")) {
-        if ("reply" in interaction) {
-          await (interaction as { reply: Function }).reply({
-            content: "❌ You need to be a **mod** or above on the Baddies site to use this bot.",
-            ephemeral: true,
-          });
-        }
-        return;
-      }
-
       // ── /list ───────────────────────────────────────────────────────────
       if (interaction.isChatInputCommand() && interaction.commandName === "list") {
         const embed = new EmbedBuilder()
