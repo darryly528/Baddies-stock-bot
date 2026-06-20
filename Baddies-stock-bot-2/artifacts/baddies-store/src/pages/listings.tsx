@@ -1511,76 +1511,80 @@ function ShopsView({ listings, onMessage, user, onLoginPrompt, approvedShops, my
             layout
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
-            className="glass-panel border border-white/10 rounded-2xl overflow-hidden"
-            style={{ borderColor: isVerified ? `${accent}50` : `${accent}22` }}
+            className="relative rounded-2xl overflow-hidden border"
+            style={{ borderColor: isVerified ? `${accent}60` : `${accent}22` }}
           >
-            {/* Banner image or gradient */}
-            <div className="relative h-20 overflow-hidden">
+            {/* Full-card background image */}
+            <div className="absolute inset-0 z-0">
               {verifiedShop?.bannerUrl ? (
-                <img src={verifiedShop.bannerUrl} alt="banner" className="w-full h-full object-cover" />
+                <img src={verifiedShop.bannerUrl} alt="" className="w-full h-full object-cover" />
+              ) : verifiedShop?.logoUrl ? (
+                <img src={verifiedShop.logoUrl} alt="" className="w-full h-full object-cover scale-110 blur-sm" />
               ) : (
-                <div className="w-full h-full" style={{ background: `linear-gradient(135deg, ${accent}30 0%, ${accent}08 100%)` }} />
+                <div className="w-full h-full" style={{ background: `linear-gradient(135deg, ${accent}40 0%, #0a0a0f 100%)` }} />
               )}
-              {isVerified && (
-                <div className="absolute top-2 right-2 flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold tracking-wide backdrop-blur-sm border"
-                  style={{ background: `${accent}30`, color: accent, borderColor: `${accent}50` }}>
-                  <CheckCircle2 className="w-2.5 h-2.5" />
-                  Verified Shop
-                </div>
-              )}
-              {/* Avatar overlapping banner */}
-              <div className="absolute -bottom-5 left-4">
+              {/* Dark overlay so content stays readable */}
+              <div className="absolute inset-0" style={{ background: "linear-gradient(to bottom, rgba(0,0,0,0.45) 0%, rgba(0,0,0,0.75) 55%, rgba(0,0,0,0.92) 100%)" }} />
+            </div>
+
+            {/* Card content — all z-10 to sit above background */}
+            <div className="relative z-10 p-4 space-y-3">
+
+              {/* Top row: avatar + name + verified badge + profile link */}
+              <div className="flex items-center gap-2.5">
                 <Link href={`/profile/${shop.sellerId}`}>
                   <img
                     src={displayAvatar}
                     alt={displayName}
-                    className="w-11 h-11 rounded-full border-2 object-cover hover:opacity-80 transition-opacity bg-black"
+                    className="w-10 h-10 rounded-full border-2 object-cover shrink-0 hover:opacity-80 transition-opacity bg-black"
                     style={{ borderColor: accent }}
                     onError={(e) => { (e.target as HTMLImageElement).src = `https://cdn.discordapp.com/embed/avatars/0.png`; }}
                   />
                 </Link>
-              </div>
-            </div>
-
-            {/* Shop header */}
-            <div className="pt-7 px-4 pb-4 space-y-3">
-              <div className="flex items-start gap-2">
                 <div className="flex-1 min-w-0">
-                  <Link href={`/profile/${shop.sellerId}`} className="font-bold text-white hover:text-primary transition-colors text-sm truncate block">
-                    {displayName}
-                  </Link>
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <Link href={`/profile/${shop.sellerId}`} className="font-bold text-white hover:opacity-80 transition-opacity text-sm truncate">
+                      {displayName}
+                    </Link>
+                    {isVerified && (
+                      <span className="flex items-center gap-0.5 text-[9px] font-bold tracking-wide px-1.5 py-0.5 rounded-full border"
+                        style={{ background: `${accent}30`, color: accent, borderColor: `${accent}60` }}>
+                        <CheckCircle2 className="w-2.5 h-2.5" />
+                        Verified
+                      </span>
+                    )}
+                  </div>
                   {verifiedShop?.tagline ? (
-                    <p className="text-[11px] text-muted-foreground truncate">{verifiedShop.tagline}</p>
+                    <p className="text-[11px] text-white/60 truncate">{verifiedShop.tagline}</p>
                   ) : (
-                    <p className="text-[11px] text-muted-foreground">
-                      {totalItems} item{totalItems !== 1 ? "s" : ""} · {shop.listings.length} listing{shop.listings.length !== 1 ? "s" : ""}
-                    </p>
+                    <p className="text-[11px] text-white/50">{totalItems} item{totalItems !== 1 ? "s" : ""}</p>
                   )}
                 </div>
                 <Link
                   href={`/profile/${shop.sellerId}`}
-                  className="shrink-0 flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-semibold border transition-all hover:opacity-90"
-                  style={{ borderColor: `${accent}50`, color: accent, background: `${accent}14` }}
+                  className="shrink-0 p-1.5 rounded-lg border transition-all hover:opacity-90"
+                  style={{ borderColor: `${accent}50`, color: accent, background: `${accent}20` }}
                 >
-                  <ExternalLink className="w-3 h-3" />
-                  Profile
+                  <ExternalLink className="w-3.5 h-3.5" />
                 </Link>
               </div>
 
-              {/* Item thumbnails */}
+              {/* Item thumbnails — on top of everything */}
               {shop.sampleImages.length > 0 && (
-                <div className="flex gap-1.5">
+                <div className="flex gap-2">
                   {shop.sampleImages.slice(0, 4).map((img, i) => (
                     img ? (
-                      <img key={i} src={img} alt="" className="w-12 h-12 rounded-lg object-contain bg-black/30 p-0.5" />
+                      <img key={i} src={img} alt=""
+                        className="w-14 h-14 rounded-xl object-contain drop-shadow-xl"
+                        style={{ background: "rgba(0,0,0,0.5)", padding: "2px" }} />
                     ) : (
-                      <div key={i} className="w-12 h-12 rounded-lg bg-white/5 flex items-center justify-center">
-                        <Box className="w-5 h-5 text-muted-foreground/20" />
+                      <div key={i} className="w-14 h-14 rounded-xl bg-black/40 flex items-center justify-center border border-white/10">
+                        <Box className="w-5 h-5 text-white/20" />
                       </div>
                     )
                   ))}
                   {totalItems > 4 && (
-                    <div className="w-12 h-12 rounded-lg bg-white/5 flex items-center justify-center text-xs font-bold text-muted-foreground">
+                    <div className="w-14 h-14 rounded-xl bg-black/40 border border-white/10 flex items-center justify-center text-xs font-bold text-white/50">
                       +{totalItems - 4}
                     </div>
                   )}
@@ -1591,7 +1595,7 @@ function ShopsView({ listings, onMessage, user, onLoginPrompt, approvedShops, my
               {shop.paymentMethods.length > 0 && (
                 <div className="flex flex-wrap gap-1.5">
                   {shop.paymentMethods.slice(0, 5).map((m) => (
-                    <div key={m} className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-white/5 border border-white/10 text-[10px] text-muted-foreground">
+                    <div key={m} className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-black/40 border border-white/15 text-[10px] text-white/70 backdrop-blur-sm">
                       {PAYMENT_EMOJI[m] ? (
                         <img src={PAYMENT_EMOJI[m]} alt={m} className="w-3 h-3 object-contain" />
                       ) : null}
@@ -1604,11 +1608,11 @@ function ShopsView({ listings, onMessage, user, onLoginPrompt, approvedShops, my
               {/* Toggle items button */}
               <button
                 onClick={() => setExpanded(isExpanded ? null : shop.sellerId)}
-                className="w-full flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-semibold border transition-all"
+                className="w-full flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-semibold border transition-all backdrop-blur-sm"
                 style={{
-                  borderColor: isExpanded ? `${accent}50` : "rgba(255,255,255,0.1)",
-                  color: isExpanded ? accent : "var(--muted-foreground)",
-                  background: isExpanded ? `${accent}12` : "transparent",
+                  borderColor: isExpanded ? `${accent}60` : "rgba(255,255,255,0.15)",
+                  color: isExpanded ? accent : "rgba(255,255,255,0.7)",
+                  background: isExpanded ? `${accent}20` : "rgba(0,0,0,0.3)",
                 }}
               >
                 <Tag className="w-3 h-3" />
