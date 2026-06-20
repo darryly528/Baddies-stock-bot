@@ -28,6 +28,7 @@ type ProfileData = {
   updatedAt: string;
   customAvatarUrl: string | null;
   bannerImageUrl: string | null;
+  profileBgUrl: string | null;
 };
 
 type ProfilesStore = Record<string, ProfileData>;
@@ -61,6 +62,7 @@ router.get("/profile", (req: Request, res: Response) => {
     siteRole: getRole(u.id, u.username), updatedAt: p.updatedAt ?? null,
     customAvatarUrl: p.customAvatarUrl ?? null,
     bannerImageUrl: p.bannerImageUrl ?? null,
+    profileBgUrl: p.profileBgUrl ?? null,
   });
 });
 
@@ -84,6 +86,7 @@ router.patch("/profile", (req: Request, res: Response) => {
     updatedAt: new Date().toISOString(),
     customAvatarUrl: ex.customAvatarUrl ?? null,
     bannerImageUrl: ex.bannerImageUrl ?? null,
+    profileBgUrl: ex.profileBgUrl ?? null,
   };
 
   saveProfiles(profiles);
@@ -121,6 +124,7 @@ router.get("/profiles/:userId", (req: Request, res: Response) => {
     listingCount: userListings.length, activeListings: userListings, updatedAt: p.updatedAt,
     customAvatarUrl: p.customAvatarUrl ?? null,
     bannerImageUrl: p.bannerImageUrl ?? null,
+    profileBgUrl: p.profileBgUrl ?? null,
   });
 });
 

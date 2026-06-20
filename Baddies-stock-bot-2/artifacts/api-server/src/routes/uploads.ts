@@ -16,8 +16,9 @@ import { createPendingImage, type PendingImage } from "../imageReview";
 const UPLOADS_DIR = path.resolve(process.cwd(), "../../uploads");
 const AVATAR_DIR = path.join(UPLOADS_DIR, "avatars");
 const BANNER_DIR = path.join(UPLOADS_DIR, "banners");
+const BG_DIR = path.join(UPLOADS_DIR, "backgrounds");
 const DM_DIR = path.join(UPLOADS_DIR, "dms");
-[UPLOADS_DIR, AVATAR_DIR, BANNER_DIR, DM_DIR].forEach((d) => { if (!fs.existsSync(d)) fs.mkdirSync(d, { recursive: true }); });
+[UPLOADS_DIR, AVATAR_DIR, BANNER_DIR, BG_DIR, DM_DIR].forEach((d) => { if (!fs.existsSync(d)) fs.mkdirSync(d, { recursive: true }); });
 
 const PROFILES_PATH = process.env["PROFILES_PATH"] ?? path.resolve(process.cwd(), "../../profiles.json");
 function loadProfiles(): Record<string, Record<string, unknown>> {
@@ -128,7 +129,8 @@ router.post("/uploads/profile-image", upload.single("image"), async (req: Reques
   if (!user) { res.status(401).json({ error: "Not authenticated" }); return; }
   if (!req.file) { res.status(400).json({ error: "No image uploaded or invalid file type (JPEG/PNG/WebP/GIF only)" }); return; }
 
-  const imageType = (req.query["type"] as string) === "banner" ? "banner" : "avatar";
+  const rawType = req.query["type"] as string;
+  const imageType = rawType === "banner" ? "banner" : rawType === "profileBg" ? "profileBg" : "avatar";
 
   // AI moderation
   const { safe, reason } = await moderateImage(req.file.buffer, req.file.mimetype);
@@ -137,8 +139,8 @@ router.post("/uploads/profile-image", upload.single("image"), async (req: Reques
     "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp", "image/gif": "gif",
   };
   const ext = extMap[req.file.mimetype] ?? "jpg";
-  const dir = imageType === "banner" ? BANNER_DIR : AVATAR_DIR;
-  const urlField = imageType === "banner" ? "bannerImageUrl" : "customAvatarUrl";
+  const dir = imageType === "banner" ? BANNER_DIR : imageType === "profileBg" ? BG_DIR : AVATAR_DIR;
+  const urlField = imageType === "banner" ? "bannerImageUrl" : imageType === "profileBg" ? "profileBgUrl" : "customAvatarUrl";
 
   if (!safe) {
     // Send to mod review instead of auto-blocking
@@ -146,7 +148,7 @@ router.post("/uploads/profile-image", upload.single("image"), async (req: Reques
     const filePath = path.join(dir, filename);
     fs.writeFileSync(filePath, req.file.buffer);
 
-    const url = `/api/uploads/${imageType}s/${filename}`;
+    const url = imageType === "profileBg" ? `/api/uploads/backgrounds/${filename}` : `/api/uploads/${imageType}s/${filename}`;
     const pending = createPendingImage({
       type: imageType as "avatar" | "banner",
       filePath,
@@ -176,7 +178,7 @@ router.post("/uploads/profile-image", upload.single("image"), async (req: Reques
 
   fs.writeFileSync(filePath, req.file.buffer);
 
-  const url = `/api/uploads/${imageType}s/${filename}`;
+  const url = imageType === "profileBg" ? `/api/uploads/backgrounds/${filename}` : `/api/uploads/${imageType}s/${filename}`;
 
   const profiles = loadProfiles();
   profiles[user.id] = { ...(profiles[user.id] ?? {}), [urlField]: url };
@@ -222,9 +224,10 @@ router.delete("/uploads/profile-image", (req: Request, res: Response) => {
   const user = req.session?.discordUser;
   if (!user) { res.status(401).json({ error: "Not authenticated" }); return; }
 
-  const imageType = (req.query["type"] as string) === "banner" ? "banner" : "avatar";
-  const dir = imageType === "banner" ? BANNER_DIR : AVATAR_DIR;
-  const urlField = imageType === "banner" ? "bannerImageUrl" : "customAvatarUrl";
+  const rawType2 = req.query["type"] as string;
+  const imageType = rawType2 === "banner" ? "banner" : rawType2 === "profileBg" ? "profileBg" : "avatar";
+  const dir = imageType === "banner" ? BANNER_DIR : imageType === "profileBg" ? BG_DIR : AVATAR_DIR;
+  const urlField = imageType === "banner" ? "bannerImageUrl" : imageType === "profileBg" ? "profileBgUrl" : "customAvatarUrl";
 
   for (const ext of ["jpg", "png", "webp", "gif"]) {
     for (const variant of [`${user.id}.${ext}`, `${user.id}_pending_*.${ext}`]) {

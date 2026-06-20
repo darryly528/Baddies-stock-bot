@@ -397,12 +397,16 @@ function ProfileEditor({
 
   const [currentAvatarUrl, setCurrentAvatarUrl] = useState<string | null>(profile.customAvatarUrl ?? null);
   const [currentBannerUrl, setCurrentBannerUrl] = useState<string | null>(profile.bannerImageUrl ?? null);
+  const [currentBgUrl, setCurrentBgUrl] = useState<string | null>(profile.profileBgUrl ?? null);
   const [avatarUploading, setAvatarUploading] = useState(false);
   const [bannerUploading, setBannerUploading] = useState(false);
+  const [bgUploading, setBgUploading] = useState(false);
   const [avatarUploadError, setAvatarUploadError] = useState<string | null>(null);
   const [bannerUploadError, setBannerUploadError] = useState<string | null>(null);
+  const [bgUploadError, setBgUploadError] = useState<string | null>(null);
   const avatarInputRef = useRef<HTMLInputElement>(null);
   const bannerInputRef = useRef<HTMLInputElement>(null);
+  const bgInputRef = useRef<HTMLInputElement>(null);
 
   const [cropState, setCropState] = useState<{
     type: "avatar" | "banner";
@@ -436,10 +440,10 @@ function ProfileEditor({
     setCropState(null);
   }
 
-  async function handleImageUpload(type: "avatar" | "banner", file: File) {
-    const setUploading = type === "avatar" ? setAvatarUploading : setBannerUploading;
-    const setUploadError = type === "avatar" ? setAvatarUploadError : setBannerUploadError;
-    const setUrl = type === "avatar" ? setCurrentAvatarUrl : setCurrentBannerUrl;
+  async function handleImageUpload(type: "avatar" | "banner" | "profileBg", file: File) {
+    const setUploading = type === "avatar" ? setAvatarUploading : type === "banner" ? setBannerUploading : setBgUploading;
+    const setUploadError = type === "avatar" ? setAvatarUploadError : type === "banner" ? setBannerUploadError : setBgUploadError;
+    const setUrl = type === "avatar" ? setCurrentAvatarUrl : type === "banner" ? setCurrentBannerUrl : setCurrentBgUrl;
     setUploading(true);
     setUploadError(null);
     try {
@@ -465,8 +469,8 @@ function ProfileEditor({
     }
   }
 
-  async function handleRemoveImage(type: "avatar" | "banner") {
-    const setUrl = type === "avatar" ? setCurrentAvatarUrl : setCurrentBannerUrl;
+  async function handleRemoveImage(type: "avatar" | "banner" | "profileBg") {
+    const setUrl = type === "avatar" ? setCurrentAvatarUrl : type === "banner" ? setCurrentBannerUrl : setCurrentBgUrl;
     try {
       const r = await fetch(`/api/uploads/profile-image?type=${type}`, { method: "DELETE", credentials: "include" });
       if (r.ok) { setUrl(null); qc.invalidateQueries({ queryKey: ["profile-own"] }); }
@@ -678,6 +682,38 @@ function ProfileEditor({
               <p className="text-[11px] text-muted-foreground/70">Max 5MB · JPEG, PNG, WebP, GIF · GIFs upload as-is, others can be cropped</p>
               <input ref={bannerInputRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif" className="hidden"
                 onChange={(e) => { const f = e.target.files?.[0]; if (f) openCropOrUpload("banner", f); e.target.value = ""; }} />
+            </div>
+
+            {/* Full Page Background Upload */}
+            <div className="space-y-2">
+              <label className="text-[11px] text-muted-foreground uppercase tracking-wider font-semibold">Full Page Background</label>
+              <p className="text-[11px] text-muted-foreground/70 -mt-1">Fills your entire profile page. GIFs are supported.</p>
+              <div className="flex items-center gap-3">
+                {currentBgUrl ? (
+                  <div className="w-28 h-14 rounded-lg bg-cover bg-center ring-1 ring-white/20 shrink-0 overflow-hidden">
+                    <img src={currentBgUrl} alt="Profile background" className="w-full h-full object-cover" />
+                  </div>
+                ) : (
+                  <div className="w-28 h-14 rounded-lg bg-white/10 border border-dashed border-white/15 flex items-center justify-center text-[10px] text-muted-foreground shrink-0">No BG</div>
+                )}
+                <div className="flex gap-2">
+                  <button type="button" onClick={() => bgInputRef.current?.click()} disabled={bgUploading}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/5 border border-white/15 text-xs font-semibold text-white hover:bg-white/10 transition-colors disabled:opacity-50">
+                    {bgUploading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Upload className="w-3 h-3" />}
+                    {bgUploading ? "Uploading…" : "Upload"}
+                  </button>
+                  {currentBgUrl && (
+                    <button type="button" onClick={() => handleRemoveImage("profileBg")}
+                      className="px-3 py-1.5 rounded-xl bg-red-500/10 border border-red-500/20 text-xs font-semibold text-red-400 hover:bg-red-500/20 transition-colors">
+                      Remove
+                    </button>
+                  )}
+                </div>
+              </div>
+              {bgUploadError && <p className="text-xs text-red-400">{bgUploadError}</p>}
+              <p className="text-[11px] text-muted-foreground/70">Max 5MB · JPEG, PNG, WebP, GIF · Uploaded as-is (no crop)</p>
+              <input ref={bgInputRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif" className="hidden"
+                onChange={(e) => { const f = e.target.files?.[0]; if (f) handleImageUpload("profileBg", f); e.target.value = ""; }} />
             </div>
           </>
         )}
@@ -1272,7 +1308,14 @@ export default function ProfilePage() {
   if (!profile) return null;
 
   return (
-    <div className="min-h-screen pb-20">
+    <div className="relative min-h-screen pb-20">
+      {/* Full-page background */}
+      {profile.profileBgUrl && (
+        <div className="fixed inset-0 z-0 pointer-events-none">
+          <img src={profile.profileBgUrl} alt="" className="w-full h-full object-cover" />
+          <div className="absolute inset-0 bg-black/55" />
+        </div>
+      )}
       {/* Back arrow for non-own profiles */}
       {!isOwn && (
         <div className="max-w-4xl mx-auto px-3 sm:px-6 lg:px-8 pt-4">

@@ -49,6 +49,7 @@ export type Profile = {
   updatedAt: string | null;
   customAvatarUrl: string | null;
   bannerImageUrl: string | null;
+  profileBgUrl: string | null;
 };
 
 export const BANNER_STYLES: { key: BannerStyle; label: string; from: string; via: string; to: string }[] = [
