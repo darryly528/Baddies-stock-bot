@@ -26,6 +26,8 @@ export type Profile = {
   listingCount?: number;
   activeListings?: Record<string, unknown>[];
   updatedAt: string | null;
+  customAvatarUrl: string | null;
+  bannerImageUrl: string | null;
 };
 
 export const BANNER_STYLES: { key: BannerStyle; label: string; from: string; via: string; to: string }[] = [

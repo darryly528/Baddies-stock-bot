@@ -10,6 +10,8 @@ import staffRouter from "./staff";
 import profilesRouter from "./profiles";
 import ticketsRouter from "./tickets";
 import presenceRouter from "./presence";
+import uploadsRouter from "./uploads";
+import vouchesRouter from "./vouches";
 
 const router: IRouter = Router();
 
@@ -24,5 +26,7 @@ router.use(staffRouter);
 router.use(profilesRouter);
 router.use(ticketsRouter);
 router.use(presenceRouter);
+router.use(uploadsRouter);
+router.use(vouchesRouter);
 
 export default router;

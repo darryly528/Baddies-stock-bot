@@ -6,7 +6,8 @@ import ListingsPage from "./pages/listings";
 import MessagesPage from "./pages/messages";
 import AdminPage from "./pages/admin";
 import ProfilePage from "./pages/profile";
-import { PackagePlus, ShoppingBag, LogOut, LayoutList, Inbox, Shield, UserCircle2 } from "lucide-react";
+import CommunityPage from "./pages/community";
+import { PackagePlus, ShoppingBag, LogOut, LayoutList, Inbox, Shield, UserCircle2, Heart } from "lucide-react";
 import { cn } from "./lib/utils";
 import { AuthProvider, useAuth } from "./contexts/auth-context";
 import { useConversations } from "./hooks/use-messages";
@@ -55,6 +56,11 @@ function NavBar() {
           className={cn("flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all",
             location === "/list" ? "bg-white/10 text-white" : "text-muted-foreground hover:text-white hover:bg-white/5")}>
           <PackagePlus className="w-4 h-4" />List Items
+        </Link>
+        <Link href="/community"
+          className={cn("flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all",
+            location === "/community" ? "bg-white/10 text-white" : "text-muted-foreground hover:text-white hover:bg-white/5")}>
+          <Heart className="w-4 h-4" />Community
         </Link>
         {user && (
           <Link href="/messages"
@@ -138,6 +144,7 @@ function MobileBottomNav() {
     { href: "/", label: "Catalog", icon: ShoppingBag },
     { href: "/listings", label: "Listings", icon: LayoutList },
     { href: "/list", label: "List", icon: PackagePlus },
+    { href: "/community", label: "Community", icon: Heart },
     ...(user ? [{ href: "/messages", label: "Inbox", icon: Inbox, badge: unreadCount }] : []),
   ];
 
@@ -218,6 +225,7 @@ function AppRouter() {
           <Route path="/messages" component={MessagesPage} />
           <Route path="/admin" component={AdminPage} />
           <Route path="/profile/:userId" component={ProfilePage} />
+          <Route path="/community" component={CommunityPage} />
           <Route component={NotFound} />
         </Switch>
       </div>

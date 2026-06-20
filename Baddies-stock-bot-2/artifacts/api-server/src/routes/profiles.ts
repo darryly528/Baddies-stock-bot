@@ -24,6 +24,8 @@ type ProfileData = {
   username: string;
   avatarHash: string | null;
   updatedAt: string;
+  customAvatarUrl: string | null;
+  bannerImageUrl: string | null;
 };
 
 type ProfilesStore = Record<string, ProfileData>;
@@ -52,6 +54,8 @@ router.get("/profile", (req: Request, res: Response) => {
     accentColor: p.accentColor ?? "#ff0080", bannerStyle: p.bannerStyle ?? "default",
     tradePreferences: p.tradePreferences ?? "", featuredItems: p.featuredItems ?? [],
     siteRole: getRole(u.id, u.username), updatedAt: p.updatedAt ?? null,
+    customAvatarUrl: p.customAvatarUrl ?? null,
+    bannerImageUrl: p.bannerImageUrl ?? null,
   });
 });
 
@@ -71,6 +75,8 @@ router.patch("/profile", (req: Request, res: Response) => {
     tradePreferences: typeof tradePreferences === "string" ? tradePreferences.slice(0, 200) : (ex.tradePreferences ?? ""),
     featuredItems:    Array.isArray(featuredItems) ? (featuredItems as FeaturedItem[]).slice(0, 6) : (ex.featuredItems ?? []),
     updatedAt: new Date().toISOString(),
+    customAvatarUrl: ex.customAvatarUrl ?? null,
+    bannerImageUrl: ex.bannerImageUrl ?? null,
   };
 
   saveProfiles(profiles);
@@ -105,6 +111,8 @@ router.get("/profiles/:userId", (req: Request, res: Response) => {
     bannerStyle: p.bannerStyle, tradePreferences: p.tradePreferences,
     featuredItems: p.featuredItems, siteRole,
     listingCount: userListings.length, activeListings: userListings, updatedAt: p.updatedAt,
+    customAvatarUrl: p.customAvatarUrl ?? null,
+    bannerImageUrl: p.bannerImageUrl ?? null,
   });
 });
 

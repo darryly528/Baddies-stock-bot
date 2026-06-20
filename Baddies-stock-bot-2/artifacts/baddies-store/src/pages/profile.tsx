@@ -1,11 +1,11 @@
 import { useState, useRef, useEffect } from "react";
 import { useParams, Link } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Pencil, Check, X, Plus, Trash2, Search, Loader2, Box,
   ArrowLeft, ShoppingBag, LayoutList, Sparkles, BadgeCheck,
-  ExternalLink, AlertTriangle,
+  ExternalLink, AlertTriangle, Upload, Heart,
 } from "lucide-react";
 import { useAuth } from "@/contexts/auth-context";
 import {
@@ -139,6 +139,7 @@ function ProfileEditor({
   profile: Profile;
   onClose: () => void;
 }) {
+  const qc = useQueryClient();
   const [tab, setTab] = useState<"about" | "style" | "items">("about");
   const [tagline, setTagline] = useState(profile.tagline);
   const [bio, setBio] = useState(profile.bio);
@@ -149,7 +150,49 @@ function ProfileEditor({
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const [currentAvatarUrl, setCurrentAvatarUrl] = useState<string | null>(profile.customAvatarUrl ?? null);
+  const [currentBannerUrl, setCurrentBannerUrl] = useState<string | null>(profile.bannerImageUrl ?? null);
+  const [avatarUploading, setAvatarUploading] = useState(false);
+  const [bannerUploading, setBannerUploading] = useState(false);
+  const [avatarUploadError, setAvatarUploadError] = useState<string | null>(null);
+  const [bannerUploadError, setBannerUploadError] = useState<string | null>(null);
+  const avatarInputRef = useRef<HTMLInputElement>(null);
+  const bannerInputRef = useRef<HTMLInputElement>(null);
+
   const update = useUpdateProfile();
+
+  async function handleImageUpload(type: "avatar" | "banner", file: File) {
+    const setUploading = type === "avatar" ? setAvatarUploading : setBannerUploading;
+    const setUploadError = type === "avatar" ? setAvatarUploadError : setBannerUploadError;
+    const setUrl = type === "avatar" ? setCurrentAvatarUrl : setCurrentBannerUrl;
+    setUploading(true);
+    setUploadError(null);
+    try {
+      const form = new FormData();
+      form.append("image", file);
+      const r = await fetch(`/api/uploads/profile-image?type=${type}`, {
+        method: "POST",
+        credentials: "include",
+        body: form,
+      });
+      const data = await r.json() as { ok?: boolean; url?: string; error?: string };
+      if (!r.ok) throw new Error(data.error ?? "Upload failed");
+      setUrl(data.url ?? null);
+      qc.invalidateQueries({ queryKey: ["profile-own"] });
+    } catch (err) {
+      setUploadError(err instanceof Error ? err.message : "Upload failed");
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  async function handleRemoveImage(type: "avatar" | "banner") {
+    const setUrl = type === "avatar" ? setCurrentAvatarUrl : setCurrentBannerUrl;
+    try {
+      const r = await fetch(`/api/uploads/profile-image?type=${type}`, { method: "DELETE", credentials: "include" });
+      if (r.ok) { setUrl(null); qc.invalidateQueries({ queryKey: ["profile-own"] }); }
+    } catch { /* ignore */ }
+  }
 
   async function handleSave() {
     setError(null);
@@ -183,7 +226,11 @@ function ProfileEditor({
       </div>
 
       {/* Mini preview */}
-      <div className={cn("h-10 w-full opacity-60", bannerClass)} style={{ background: undefined }} />
+      {currentBannerUrl ? (
+        <div className="h-10 w-full opacity-60 bg-cover bg-center" style={{ backgroundImage: `url(${currentBannerUrl})` }} />
+      ) : (
+        <div className={cn("h-10 w-full opacity-60", bannerClass)} />
+      )}
 
       {/* Tabs */}
       <div className="flex gap-1 p-2 bg-black/30 border-b border-white/10 shrink-0">
@@ -294,6 +341,64 @@ function ProfileEditor({
                 <div className="w-6 h-6 rounded-full border border-white/20" style={{ backgroundColor: accentColor }} />
               </div>
             </div>
+
+            {/* Custom Avatar Upload */}
+            <div className="space-y-2 pt-3 border-t border-white/10">
+              <label className="text-[11px] text-muted-foreground uppercase tracking-wider font-semibold">Custom Avatar Image</label>
+              <div className="flex items-center gap-3">
+                {currentAvatarUrl ? (
+                  <img src={currentAvatarUrl} alt="Custom avatar" className="w-12 h-12 rounded-full object-cover ring-2 ring-primary/40 shrink-0" />
+                ) : (
+                  <div className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center text-[10px] text-muted-foreground shrink-0">None</div>
+                )}
+                <div className="flex gap-2">
+                  <button type="button" onClick={() => avatarInputRef.current?.click()} disabled={avatarUploading}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/5 border border-white/15 text-xs font-semibold text-white hover:bg-white/10 transition-colors disabled:opacity-50">
+                    {avatarUploading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Upload className="w-3 h-3" />}
+                    {avatarUploading ? "Uploading…" : "Upload"}
+                  </button>
+                  {currentAvatarUrl && (
+                    <button type="button" onClick={() => handleRemoveImage("avatar")}
+                      className="px-3 py-1.5 rounded-xl bg-red-500/10 border border-red-500/20 text-xs font-semibold text-red-400 hover:bg-red-500/20 transition-colors">
+                      Remove
+                    </button>
+                  )}
+                </div>
+              </div>
+              {avatarUploadError && <p className="text-xs text-red-400">{avatarUploadError}</p>}
+              <p className="text-[11px] text-muted-foreground/70">Max 5MB · JPEG, PNG, WebP · AI-moderated for safety</p>
+              <input ref={avatarInputRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif" className="hidden"
+                onChange={(e) => { const f = e.target.files?.[0]; if (f) handleImageUpload("avatar", f); e.target.value = ""; }} />
+            </div>
+
+            {/* Custom Banner Upload */}
+            <div className="space-y-2">
+              <label className="text-[11px] text-muted-foreground uppercase tracking-wider font-semibold">Custom Banner Image</label>
+              <div className="flex items-center gap-3">
+                {currentBannerUrl ? (
+                  <div className="w-28 h-10 rounded-lg bg-cover bg-center ring-1 ring-white/20 shrink-0" style={{ backgroundImage: `url(${currentBannerUrl})` }} />
+                ) : (
+                  <div className="w-28 h-10 rounded-lg bg-white/10 flex items-center justify-center text-[10px] text-muted-foreground shrink-0">None</div>
+                )}
+                <div className="flex gap-2">
+                  <button type="button" onClick={() => bannerInputRef.current?.click()} disabled={bannerUploading}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/5 border border-white/15 text-xs font-semibold text-white hover:bg-white/10 transition-colors disabled:opacity-50">
+                    {bannerUploading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Upload className="w-3 h-3" />}
+                    {bannerUploading ? "Uploading…" : "Upload"}
+                  </button>
+                  {currentBannerUrl && (
+                    <button type="button" onClick={() => handleRemoveImage("banner")}
+                      className="px-3 py-1.5 rounded-xl bg-red-500/10 border border-red-500/20 text-xs font-semibold text-red-400 hover:bg-red-500/20 transition-colors">
+                      Remove
+                    </button>
+                  )}
+                </div>
+              </div>
+              {bannerUploadError && <p className="text-xs text-red-400">{bannerUploadError}</p>}
+              <p className="text-[11px] text-muted-foreground/70">Max 5MB · JPEG, PNG, WebP · Recommended 1280×360px</p>
+              <input ref={bannerInputRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif" className="hidden"
+                onChange={(e) => { const f = e.target.files?.[0]; if (f) handleImageUpload("banner", f); e.target.value = ""; }} />
+            </div>
           </>
         )}
 
@@ -357,12 +462,135 @@ function ProfileEditor({
   );
 }
 
+// ── Quick vouch modal (shown from profile view) ───────────────────────────────
+
+function ProfileVouchModal({
+  seller,
+  onClose,
+}: {
+  seller: { userId: string; username: string; avatarHash: string | null; customAvatarUrl?: string | null };
+  onClose: () => void;
+}) {
+  const qc = useQueryClient();
+  const sellerAvatar = seller.customAvatarUrl
+    ?? (seller.avatarHash ? `https://cdn.discordapp.com/avatars/${seller.userId}/${seller.avatarHash}.png?size=64` : null);
+
+  const [rating, setRating] = useState(5);
+  const [hovered, setHovered] = useState(0);
+  const [message, setMessage] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
+
+  const submit = useMutation({
+    mutationFn: () => fetch("/api/vouches", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({
+        toUserId: seller.userId,
+        toUsername: seller.username,
+        toAvatar: sellerAvatar,
+        message: message.trim(),
+        rating,
+      }),
+    }).then(async (r) => {
+      const d = await r.json() as { ok?: boolean; error?: string };
+      if (!r.ok) throw new Error(d.error ?? "Failed");
+      return d;
+    }),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["vouches"] }); setSuccess(true); setTimeout(onClose, 1400); },
+    onError: (err) => setError(err instanceof Error ? err.message : "Failed"),
+  });
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm px-4"
+      onClick={onClose}
+    >
+      <motion.div
+        initial={{ scale: 0.94, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.94, opacity: 0 }}
+        className="glass-panel border border-white/15 rounded-2xl w-full max-w-sm overflow-hidden"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center gap-3 px-5 py-4 border-b border-white/10 bg-white/5">
+          <Heart className="w-4 h-4 text-primary" />
+          <span className="font-bold text-white text-sm flex-1">Vouch for Seller</span>
+          <button onClick={onClose} className="p-1.5 rounded-lg text-muted-foreground hover:text-white hover:bg-white/5 transition-colors">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+        <div className="p-5 space-y-4">
+          {success ? (
+            <div className="text-center py-6 space-y-2">
+              <Check className="w-10 h-10 text-green-400 mx-auto" />
+              <p className="text-white font-bold">Vouch submitted!</p>
+            </div>
+          ) : (
+            <>
+              {/* Seller preview */}
+              <div className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-white/5 border border-primary/20">
+                {sellerAvatar ? (
+                  <img src={sellerAvatar} alt={seller.username} className="w-8 h-8 rounded-full shrink-0" />
+                ) : (
+                  <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-xs font-bold text-primary shrink-0">
+                    {seller.username[0]?.toUpperCase()}
+                  </div>
+                )}
+                <span className="text-sm font-bold text-white">{seller.username}</span>
+              </div>
+
+              {/* Stars */}
+              <div className="space-y-1.5">
+                <label className="text-[11px] text-muted-foreground uppercase tracking-wider font-semibold">Rating</label>
+                <div className="flex gap-1">
+                  {[1,2,3,4,5].map((n) => (
+                    <button key={n} type="button" onClick={() => setRating(n)}
+                      onMouseEnter={() => setHovered(n)} onMouseLeave={() => setHovered(0)}
+                      className="transition-transform hover:scale-110">
+                      <svg viewBox="0 0 24 24" className={cn("w-7 h-7 transition-colors",
+                        (hovered || rating) >= n ? "text-amber-400 fill-amber-400" : "text-muted-foreground/30 fill-none")}>
+                        <polygon points="12,2 15.09,8.26 22,9.27 17,14.14 18.18,21.02 12,17.77 5.82,21.02 7,14.14 2,9.27 8.91,8.26" stroke="currentColor" strokeWidth="1.5" />
+                      </svg>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Message */}
+              <div className="space-y-1.5">
+                <label className="text-[11px] text-muted-foreground uppercase tracking-wider font-semibold flex justify-between">
+                  <span>Your Vouch</span><span className={message.length > 250 ? "text-orange-400" : ""}>{message.length}/300</span>
+                </label>
+                <textarea value={message} onChange={(e) => setMessage(e.target.value.slice(0, 300))}
+                  placeholder="Share your experience trading with this seller…"
+                  rows={3}
+                  className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-sm text-white placeholder-muted-foreground focus:outline-none focus:border-primary/50 transition resize-none" />
+              </div>
+
+              {error && <p className="text-xs text-red-400 flex items-center gap-1.5"><AlertTriangle className="w-3 h-3" />{error}</p>}
+
+              <button onClick={() => submit.mutate()}
+                disabled={!message.trim() || message.trim().length < 10 || submit.isPending}
+                className="w-full py-2.5 rounded-xl bg-primary/20 border border-primary/40 text-primary hover:bg-primary/30 text-sm font-bold transition-colors disabled:opacity-40 flex items-center justify-center gap-2">
+                {submit.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Heart className="w-4 h-4" />}
+                {submit.isPending ? "Submitting…" : "Submit Vouch"}
+              </button>
+            </>
+          )}
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+}
+
 // ── Profile view ──────────────────────────────────────────────────────────────
 
-function ProfileView({ profile, isOwn, onEdit }: { profile: Profile; isOwn: boolean; onEdit: () => void }) {
-  const avatarUrl = profile.avatarHash
+function ProfileView({ profile, isOwn, onEdit, onVouch }: { profile: Profile; isOwn: boolean; onEdit: () => void; onVouch?: () => void }) {
+  const discordAvatarUrl = profile.avatarHash
     ? `https://cdn.discordapp.com/avatars/${profile.userId}/${profile.avatarHash}.png?size=128`
     : null;
+  const avatarUrl = profile.customAvatarUrl ?? discordAvatarUrl;
   const bannerClass = getBannerClass(profile.bannerStyle);
   const accent = profile.accentColor || "#ff0080";
 
@@ -371,12 +599,19 @@ function ProfileView({ profile, isOwn, onEdit }: { profile: Profile; isOwn: bool
       {/* Banner + Avatar */}
       <div className="relative">
         {/* Banner */}
-        <div className={cn("h-36 sm:h-44 w-full rounded-2xl overflow-hidden", bannerClass)}>
-          <div className="absolute inset-0 bg-black/10" />
-          <div className="absolute inset-0" style={{
-            backgroundImage: `radial-gradient(circle at 20% 50%, ${accent}30 0%, transparent 60%), radial-gradient(circle at 80% 50%, ${accent}20 0%, transparent 60%)`,
-          }} />
-        </div>
+        {profile.bannerImageUrl ? (
+          <div className="h-36 sm:h-44 w-full rounded-2xl overflow-hidden bg-cover bg-center"
+            style={{ backgroundImage: `url(${profile.bannerImageUrl})` }}>
+            <div className="absolute inset-0 bg-black/10 rounded-2xl" />
+          </div>
+        ) : (
+          <div className={cn("h-36 sm:h-44 w-full rounded-2xl overflow-hidden", bannerClass)}>
+            <div className="absolute inset-0 bg-black/10" />
+            <div className="absolute inset-0" style={{
+              backgroundImage: `radial-gradient(circle at 20% 50%, ${accent}30 0%, transparent 60%), radial-gradient(circle at 80% 50%, ${accent}20 0%, transparent 60%)`,
+            }} />
+          </div>
+        )}
 
         {/* Avatar */}
         <div className="absolute -bottom-10 left-5 sm:left-8">
@@ -392,14 +627,23 @@ function ProfileView({ profile, isOwn, onEdit }: { profile: Profile; isOwn: bool
           )}
         </div>
 
-        {/* Edit button */}
-        {isOwn && (
-          <button onClick={onEdit}
-            className="absolute top-3 right-3 flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-black/50 border border-white/20 backdrop-blur-sm text-xs font-semibold text-white hover:bg-black/70 transition-colors">
-            <Pencil className="w-3 h-3" />
-            Edit Profile
-          </button>
-        )}
+        {/* Action buttons */}
+        <div className="absolute top-3 right-3 flex items-center gap-2">
+          {!isOwn && onVouch && (
+            <button onClick={onVouch}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-black/50 border border-primary/30 backdrop-blur-sm text-xs font-semibold text-primary hover:bg-primary/20 transition-colors">
+              <Heart className="w-3 h-3" />
+              Vouch
+            </button>
+          )}
+          {isOwn && (
+            <button onClick={onEdit}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-black/50 border border-white/20 backdrop-blur-sm text-xs font-semibold text-white hover:bg-black/70 transition-colors">
+              <Pencil className="w-3 h-3" />
+              Edit Profile
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Name row */}
@@ -534,6 +778,7 @@ export default function ProfilePage() {
   const isLoading = publicLoading;
 
   const [editing, setEditing] = useState(false);
+  const [vouchOpen, setVouchOpen] = useState(false);
 
   if (isLoading) {
     return (
@@ -580,7 +825,12 @@ export default function ProfilePage() {
       <div className={cn("max-w-4xl mx-auto pt-3", editing ? "grid grid-cols-1 lg:grid-cols-[1fr_380px] gap-6 px-3 sm:px-6" : "")}>
         {/* Profile view */}
         <div className="overflow-hidden">
-          <ProfileView profile={profile} isOwn={isOwn} onEdit={() => setEditing(true)} />
+          <ProfileView
+            profile={profile}
+            isOwn={isOwn}
+            onEdit={() => setEditing(true)}
+            onVouch={!isOwn && !!user ? () => setVouchOpen(true) : undefined}
+          />
         </div>
 
         {/* Editor panel */}
@@ -592,6 +842,16 @@ export default function ProfilePage() {
           )}
         </AnimatePresence>
       </div>
+
+      {/* Vouch modal */}
+      <AnimatePresence>
+        {vouchOpen && profile && (
+          <ProfileVouchModal
+            seller={{ userId: profile.userId, username: profile.username, avatarHash: profile.avatarHash ?? null, customAvatarUrl: profile.customAvatarUrl }}
+            onClose={() => setVouchOpen(false)}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }

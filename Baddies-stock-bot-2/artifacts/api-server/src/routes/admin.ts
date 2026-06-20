@@ -230,6 +230,35 @@ router.get("/admin/members/search", requireMinRole("admin"), async (req, res) =>
   }
 });
 
+// ── Discord user lookup by ID (for staff assignment) ─────────────────────────
+
+router.get("/admin/members/lookup", requireMinRole("admin"), async (req, res) => {
+  const userId = ((req.query as Record<string, string>).userId ?? "").trim();
+  if (!/^\d{17,20}$/.test(userId)) {
+    res.status(400).json({ error: "Invalid Discord user ID (must be 17–20 digits)" }); return;
+  }
+
+  const bot = getBotClient();
+  if (!bot) { res.status(503).json({ error: "Bot is offline" }); return; }
+
+  try {
+    const user = await bot.users.fetch(userId);
+    const avatarUrl = user.avatar
+      ? `https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png?size=64`
+      : `https://cdn.discordapp.com/embed/avatars/${Number(BigInt(user.id) >> 22n) % 6}.png`;
+
+    let inGuild = false;
+    for (const guild of bot.guilds.cache.values()) {
+      const m = await guild.members.fetch({ user: userId, force: false }).catch(() => null);
+      if (m) { inGuild = true; break; }
+    }
+
+    res.json({ id: user.id, username: user.username, avatar: avatarUrl, inGuild });
+  } catch {
+    res.status(404).json({ error: "User not found" });
+  }
+});
+
 // ── Guilds ────────────────────────────────────────────────────────────────────
 
 router.get("/admin/guilds", requireMinRole("admin"), (_req, res) => {
