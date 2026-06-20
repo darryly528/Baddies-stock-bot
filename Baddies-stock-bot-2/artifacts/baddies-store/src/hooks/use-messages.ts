@@ -115,6 +115,42 @@ export function useMiddleman(conversationId: string | null) {
   });
 }
 
+export function useBlocks() {
+  return useQuery({
+    queryKey: ["blocks"],
+    queryFn: async () => {
+      const res = await fetch(`${apiBase}/api/blocks`, { credentials: "include" });
+      if (!res.ok) return { blocked: [] as string[] };
+      return res.json() as Promise<{ blocked: string[] }>;
+    },
+    staleTime: 30_000,
+  });
+}
+
+export function useBlock() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (userId: string) => {
+      const res = await fetch(`${apiBase}/api/blocks/${userId}`, { method: "POST", credentials: "include" });
+      if (!res.ok) throw new Error("Failed to block user");
+      return res.json();
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["blocks"] }),
+  });
+}
+
+export function useUnblock() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (userId: string) => {
+      const res = await fetch(`${apiBase}/api/blocks/${userId}`, { method: "DELETE", credentials: "include" });
+      if (!res.ok) throw new Error("Failed to unblock user");
+      return res.json();
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["blocks"] }),
+  });
+}
+
 export function useSendMessage(conversationId: string | null) {
   const qc = useQueryClient();
   return useMutation({

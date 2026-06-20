@@ -13,6 +13,7 @@ import presenceRouter from "./presence";
 import uploadsRouter from "./uploads";
 import vouchesRouter from "./vouches";
 import reportsRouter from "./reports";
+import blocksRouter from "./blocks";
 
 const router: IRouter = Router();
 
@@ -30,5 +31,6 @@ router.use(presenceRouter);
 router.use(uploadsRouter);
 router.use(vouchesRouter);
 router.use(reportsRouter);
+router.use(blocksRouter);
 
 export default router;

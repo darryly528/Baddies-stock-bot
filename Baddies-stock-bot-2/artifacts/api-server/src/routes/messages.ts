@@ -6,6 +6,7 @@ import { filterContent } from "../contentFilter";
 import { getBotClient, createMiddlemanTicket } from "../bot";
 import { linkPendingToMessage } from "../imageReview";
 import { getRole, hasMinRole } from "../permissions";
+import { loadBlocks } from "./blocks";
 
 const router: IRouter = Router();
 
@@ -202,6 +203,13 @@ router.post("/messages/:conversationId", requireSession, async (req: any, res: a
     return;
   }
 
+  const recipientId = userId === conv.buyerId ? conv.sellerId : conv.buyerId;
+  const blocks = loadBlocks();
+  if ((blocks[userId] ?? []).includes(recipientId) || (blocks[recipientId] ?? []).includes(userId)) {
+    res.status(403).json({ error: "You cannot send messages to this user." });
+    return;
+  }
+
   const sender = req.session.discordUser;
   const senderRole = getRole(userId, sender.username);
   const isAdminSender = hasMinRole(senderRole, "mod");
@@ -228,7 +236,6 @@ router.post("/messages/:conversationId", requireSession, async (req: any, res: a
     try { linkPendingToMessage(pendingId, conv.id, msg.id); } catch {}
   }
 
-  const recipientId = userId === conv.buyerId ? conv.sellerId : conv.buyerId;
   const recipientName = userId === conv.buyerId ? conv.sellerName : conv.buyerName;
   notifySellerDM(recipientId, sender.username, conv.listingTitle, filter.filtered);
 

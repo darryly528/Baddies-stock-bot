@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef } from "react";
-import { useConversations, useConversation, useSendMessage, useIsMod, useMiddleman } from "@/hooks/use-messages";
+import { useConversations, useConversation, useSendMessage, useIsMod, useMiddleman, useBlocks, useBlock, useUnblock } from "@/hooks/use-messages";
 import { useAuth } from "@/contexts/auth-context";
 import { motion, AnimatePresence } from "framer-motion";
-import { Inbox, X, Send, AlertTriangle, Loader2, MessageCircle, ImageIcon, Flag, Shield } from "lucide-react";
+import { Inbox, X, Send, AlertTriangle, Loader2, MessageCircle, ImageIcon, Flag, Shield, UserX } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ReportModal, type ReportTarget } from "@/components/report-modal";
 
@@ -15,6 +15,11 @@ export default function MessagesPage() {
   const mmTicket = useMiddleman(openConvId);
   const { data: modData } = useIsMod();
   const isMod = modData?.isMod ?? false;
+  const { data: blocksData } = useBlocks();
+  const blockMutation = useBlock();
+  const unblockMutation = useUnblock();
+  const otherId = openConv ? (user?.id === openConv.sellerId ? openConv.buyerId : openConv.sellerId) : null;
+  const isBlocked = !!otherId && (blocksData?.blocked ?? []).includes(otherId);
   const [replyDraft, setReplyDraft] = useState("");
   const [imageUploading, setImageUploading] = useState(false);
   const [reportTarget, setReportTarget] = useState<ReportTarget | null>(null);
@@ -208,9 +213,30 @@ export default function MessagesPage() {
                   </button>
                   <button
                     onClick={() => {
-                      const otherId = user?.id === openConv.sellerId ? openConv.buyerId : openConv.sellerId;
-                      const otherName = user?.id === openConv.sellerId ? openConv.buyerName : openConv.sellerName;
-                      setReportTarget({ type: "user", id: otherId, name: otherName });
+                      const targetId = user?.id === openConv.sellerId ? openConv.buyerId : openConv.sellerId;
+                      if (isBlocked) {
+                        unblockMutation.mutate(targetId);
+                      } else {
+                        blockMutation.mutate(targetId);
+                      }
+                    }}
+                    disabled={blockMutation.isPending || unblockMutation.isPending}
+                    className={cn(
+                      "flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium transition-colors disabled:opacity-40",
+                      isBlocked
+                        ? "text-orange-400 bg-orange-500/10 hover:bg-orange-500/20"
+                        : "text-muted-foreground hover:text-orange-400 hover:bg-orange-500/10"
+                    )}
+                    title={isBlocked ? "Unblock user" : "Block user"}
+                  >
+                    <UserX className="w-3 h-3" />
+                    <span>{isBlocked ? "Unblock" : "Block"}</span>
+                  </button>
+                  <button
+                    onClick={() => {
+                      const targetId = user?.id === openConv.sellerId ? openConv.buyerId : openConv.sellerId;
+                      const targetName = user?.id === openConv.sellerId ? openConv.buyerName : openConv.sellerName;
+                      setReportTarget({ type: "user", id: targetId, name: targetName });
                     }}
                     className="p-1.5 rounded-lg text-muted-foreground hover:text-red-400 hover:bg-red-500/10 transition-colors"
                     title="Report user"
@@ -291,48 +317,63 @@ export default function MessagesPage() {
                     e.target.value = "";
                   }}
                 />
-                <button
-                  onClick={() => imgInputRef.current?.click()}
-                  disabled={imageUploading || sendMsg.isPending}
-                  className="p-2 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 disabled:opacity-40 transition-colors flex-shrink-0"
-                  title="Send image"
-                >
-                  {imageUploading ? <Loader2 className="w-4 h-4 animate-spin text-white" /> : <ImageIcon className="w-4 h-4 text-muted-foreground" />}
-                </button>
-                <div className="flex-1 flex flex-col gap-1">
-                  {isMod && (
-                    <div className="flex items-center gap-1.5 px-1">
-                      <img src="/admin-avatar.jpg" alt="Admin" className="w-3.5 h-3.5 rounded-full object-cover" />
-                      <span className="text-[10px] text-primary font-semibold">Sending as Admin</span>
+                {isBlocked ? (
+                  <div className="flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-orange-500/10 border border-orange-500/20">
+                    <UserX className="w-4 h-4 text-orange-400 flex-shrink-0" />
+                    <span className="text-sm text-orange-300">You've blocked this user. </span>
+                    <button
+                      onClick={() => otherId && unblockMutation.mutate(otherId)}
+                      className="text-sm text-orange-400 underline hover:text-orange-300 transition-colors"
+                    >
+                      Unblock
+                    </button>
+                  </div>
+                ) : (
+                  <>
+                    <button
+                      onClick={() => imgInputRef.current?.click()}
+                      disabled={imageUploading || sendMsg.isPending}
+                      className="p-2 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 disabled:opacity-40 transition-colors flex-shrink-0"
+                      title="Send image"
+                    >
+                      {imageUploading ? <Loader2 className="w-4 h-4 animate-spin text-white" /> : <ImageIcon className="w-4 h-4 text-muted-foreground" />}
+                    </button>
+                    <div className="flex-1 flex flex-col gap-1">
+                      {isMod && (
+                        <div className="flex items-center gap-1.5 px-1">
+                          <img src="/admin-avatar.jpg" alt="Admin" className="w-3.5 h-3.5 rounded-full object-cover" />
+                          <span className="text-[10px] text-primary font-semibold">Sending as Admin</span>
+                        </div>
+                      )}
+                      <input
+                        value={replyDraft}
+                        onChange={(e) => setReplyDraft(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" && !e.shiftKey && replyDraft.trim()) {
+                            e.preventDefault();
+                            sendMsg.mutate(replyDraft.trim(), { onSuccess: () => setReplyDraft("") });
+                          }
+                        }}
+                        placeholder={isMod ? "Type as Admin…" : "Type a message…"}
+                        className={cn(
+                          "flex-1 bg-white/5 border rounded-xl px-3 py-2 text-sm text-white placeholder:text-muted-foreground focus:outline-none transition-colors",
+                          isMod ? "border-primary/30 focus:border-primary/60" : "border-white/10 focus:border-primary/40"
+                        )}
+                      />
                     </div>
-                  )}
-                  <input
-                    value={replyDraft}
-                    onChange={(e) => setReplyDraft(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" && !e.shiftKey && replyDraft.trim()) {
-                        e.preventDefault();
-                        sendMsg.mutate(replyDraft.trim(), { onSuccess: () => setReplyDraft("") });
-                      }
-                    }}
-                    placeholder={isMod ? "Type as Admin…" : "Type a message…"}
-                    className={cn(
-                      "flex-1 bg-white/5 border rounded-xl px-3 py-2 text-sm text-white placeholder:text-muted-foreground focus:outline-none transition-colors",
-                      isMod ? "border-primary/30 focus:border-primary/60" : "border-white/10 focus:border-primary/40"
-                    )}
-                  />
-                </div>
-                <button
-                  onClick={() => {
-                    if (replyDraft.trim()) {
-                      sendMsg.mutate(replyDraft.trim(), { onSuccess: () => setReplyDraft("") });
-                    }
-                  }}
-                  disabled={!replyDraft.trim() || sendMsg.isPending}
-                  className="p-2 rounded-xl bg-primary hover:bg-primary/80 disabled:opacity-40 transition-colors"
-                >
-                  {sendMsg.isPending ? <Loader2 className="w-4 h-4 animate-spin text-white" /> : <Send className="w-4 h-4 text-white" />}
-                </button>
+                    <button
+                      onClick={() => {
+                        if (replyDraft.trim()) {
+                          sendMsg.mutate(replyDraft.trim(), { onSuccess: () => setReplyDraft("") });
+                        }
+                      }}
+                      disabled={!replyDraft.trim() || sendMsg.isPending}
+                      className="p-2 rounded-xl bg-primary hover:bg-primary/80 disabled:opacity-40 transition-colors"
+                    >
+                      {sendMsg.isPending ? <Loader2 className="w-4 h-4 animate-spin text-white" /> : <Send className="w-4 h-4 text-white" />}
+                    </button>
+                  </>
+                )}
               </div>
             </motion.div>
           ) : (
