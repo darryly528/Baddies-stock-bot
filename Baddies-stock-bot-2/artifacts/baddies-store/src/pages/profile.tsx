@@ -1,12 +1,14 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { useParams, Link } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Pencil, Check, X, Plus, Trash2, Search, Loader2, Box,
   ArrowLeft, ShoppingBag, LayoutList, Sparkles, BadgeCheck,
-  ExternalLink, AlertTriangle, Upload, Heart, Flag,
+  ExternalLink, AlertTriangle, Upload, Heart, Flag, Crop as CropIcon,
 } from "lucide-react";
+import ReactCrop, { centerCrop, makeAspectCrop, type Crop, type PixelCrop } from "react-image-crop";
+import "react-image-crop/dist/ReactCrop.css";
 import { ReportModal, type ReportTarget } from "@/components/report-modal";
 import { useAuth } from "@/contexts/auth-context";
 import {
@@ -16,6 +18,132 @@ import {
 } from "@/hooks/use-profile";
 import { ROLE_LABEL, ROLE_COLOR, type AnyRole } from "@/hooks/use-staff";
 import { cn } from "@/lib/utils";
+
+// ── Crop modal ────────────────────────────────────────────────────────────────
+
+function getCroppedBlob(image: HTMLImageElement, pixelCrop: PixelCrop, mimeType: string): Promise<Blob> {
+  const canvas = document.createElement("canvas");
+  const scaleX = image.naturalWidth / image.width;
+  const scaleY = image.naturalHeight / image.height;
+  canvas.width = Math.floor(pixelCrop.width * scaleX);
+  canvas.height = Math.floor(pixelCrop.height * scaleY);
+  const ctx = canvas.getContext("2d")!;
+  ctx.drawImage(
+    image,
+    Math.floor(pixelCrop.x * scaleX),
+    Math.floor(pixelCrop.y * scaleY),
+    Math.floor(pixelCrop.width * scaleX),
+    Math.floor(pixelCrop.height * scaleY),
+    0, 0, canvas.width, canvas.height,
+  );
+  return new Promise((resolve, reject) => {
+    canvas.toBlob((blob) => blob ? resolve(blob) : reject(new Error("Canvas is empty")), mimeType, 0.92);
+  });
+}
+
+function CropModal({
+  src,
+  mimeType,
+  aspect,
+  label,
+  onConfirm,
+  onCancel,
+}: {
+  src: string;
+  mimeType: string;
+  aspect: number;
+  label: string;
+  onConfirm: (blob: Blob) => void;
+  onCancel: () => void;
+}) {
+  const [crop, setCrop] = useState<Crop>();
+  const [completedCrop, setCompletedCrop] = useState<PixelCrop>();
+  const imgRef = useRef<HTMLImageElement>(null);
+  const [processing, setProcessing] = useState(false);
+
+  const onImageLoad = useCallback((e: React.SyntheticEvent<HTMLImageElement>) => {
+    const { width, height } = e.currentTarget;
+    const initial = centerCrop(
+      makeAspectCrop({ unit: "%", width: 90 }, aspect, width, height),
+      width, height,
+    );
+    setCrop(initial);
+  }, [aspect]);
+
+  async function handleConfirm() {
+    if (!completedCrop || !imgRef.current) return;
+    setProcessing(true);
+    try {
+      const blob = await getCroppedBlob(imgRef.current, completedCrop, mimeType);
+      onConfirm(blob);
+    } catch {
+      setProcessing(false);
+    }
+  }
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
+      onClick={onCancel}
+    >
+      <motion.div
+        initial={{ scale: 0.93, opacity: 0, y: 14 }}
+        animate={{ scale: 1, opacity: 1, y: 0 }}
+        exit={{ scale: 0.93, opacity: 0, y: 14 }}
+        transition={{ type: "spring", duration: 0.3 }}
+        onClick={(e) => e.stopPropagation()}
+        className="w-full max-w-lg rounded-2xl bg-[#18181b] border border-white/10 shadow-2xl flex flex-col overflow-hidden"
+      >
+        <div className="flex items-center gap-2 px-5 py-4 border-b border-white/10">
+          <CropIcon className="w-4 h-4 text-primary" />
+          <span className="font-bold text-white text-sm flex-1">Crop {label}</span>
+          <button onClick={onCancel} className="p-1.5 rounded-lg text-muted-foreground hover:text-white hover:bg-white/5 transition-colors">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+        <div className="p-4 flex items-center justify-center bg-black/40 max-h-[60vh] overflow-auto">
+          <ReactCrop
+            crop={crop}
+            onChange={(c) => setCrop(c)}
+            onComplete={(c) => setCompletedCrop(c)}
+            aspect={aspect}
+            circularCrop={aspect === 1}
+            className="max-w-full max-h-full"
+          >
+            <img
+              ref={imgRef}
+              src={src}
+              alt="Crop preview"
+              onLoad={onImageLoad}
+              className="max-w-full max-h-[55vh] object-contain"
+            />
+          </ReactCrop>
+        </div>
+        <div className="px-5 py-4 border-t border-white/10 flex items-center justify-between gap-3">
+          <p className="text-xs text-muted-foreground">
+            {aspect === 1 ? "Square crop — drag to reposition" : "Wide crop — drag to reposition"}
+          </p>
+          <div className="flex gap-2">
+            <button onClick={onCancel} className="px-4 py-2 rounded-xl text-sm font-medium text-muted-foreground bg-white/5 hover:bg-white/10 transition-colors">
+              Cancel
+            </button>
+            <button
+              onClick={handleConfirm}
+              disabled={!completedCrop || processing}
+              className="px-4 py-2 rounded-xl text-sm font-bold text-white bg-primary hover:bg-primary/80 disabled:opacity-40 transition-colors flex items-center gap-2"
+            >
+              {processing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CropIcon className="w-3.5 h-3.5" />}
+              {processing ? "Processing…" : "Crop & Upload"}
+            </button>
+          </div>
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+}
 
 // ── Listing card (mini) ────────────────────────────────────────────────────────
 
@@ -160,7 +288,37 @@ function ProfileEditor({
   const avatarInputRef = useRef<HTMLInputElement>(null);
   const bannerInputRef = useRef<HTMLInputElement>(null);
 
+  const [cropState, setCropState] = useState<{
+    type: "avatar" | "banner";
+    src: string;
+    mimeType: string;
+  } | null>(null);
+
   const update = useUpdateProfile();
+
+  function openCropOrUpload(type: "avatar" | "banner", file: File) {
+    if (file.type === "image/gif") {
+      handleImageUpload(type, file);
+      return;
+    }
+    const src = URL.createObjectURL(file);
+    setCropState({ type, src, mimeType: file.type || "image/jpeg" });
+  }
+
+  async function handleCropConfirm(blob: Blob) {
+    if (!cropState) return;
+    const { type, src, mimeType } = cropState;
+    URL.revokeObjectURL(src);
+    setCropState(null);
+    const ext = mimeType === "image/png" ? "png" : mimeType === "image/webp" ? "webp" : "jpg";
+    const file = new File([blob], `cropped.${ext}`, { type: mimeType });
+    await handleImageUpload(type, file);
+  }
+
+  function handleCropCancel() {
+    if (cropState) URL.revokeObjectURL(cropState.src);
+    setCropState(null);
+  }
 
   async function handleImageUpload(type: "avatar" | "banner", file: File) {
     const setUploading = type === "avatar" ? setAvatarUploading : setBannerUploading;
@@ -213,6 +371,7 @@ function ProfileEditor({
   const bannerClass = getBannerClass(bannerStyle);
 
   return (
+    <>
     <motion.div
       initial={{ opacity: 0, x: 40 }}
       animate={{ opacity: 1, x: 0 }}
@@ -371,9 +530,9 @@ function ProfileEditor({
                 </div>
               </div>
               {avatarUploadError && <p className="text-xs text-red-400">{avatarUploadError}</p>}
-              <p className="text-[11px] text-muted-foreground/70">Max 5MB · JPEG, PNG, WebP · AI-moderated for safety</p>
+              <p className="text-[11px] text-muted-foreground/70">Max 5MB · JPEG, PNG, WebP, GIF · GIFs upload as-is, others can be cropped</p>
               <input ref={avatarInputRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif" className="hidden"
-                onChange={(e) => { const f = e.target.files?.[0]; if (f) handleImageUpload("avatar", f); e.target.value = ""; }} />
+                onChange={(e) => { const f = e.target.files?.[0]; if (f) openCropOrUpload("avatar", f); e.target.value = ""; }} />
             </div>
 
             {/* Custom Banner Upload */}
@@ -400,9 +559,9 @@ function ProfileEditor({
                 </div>
               </div>
               {bannerUploadError && <p className="text-xs text-red-400">{bannerUploadError}</p>}
-              <p className="text-[11px] text-muted-foreground/70">Max 5MB · JPEG, PNG, WebP · Recommended 1280×360px</p>
+              <p className="text-[11px] text-muted-foreground/70">Max 5MB · JPEG, PNG, WebP, GIF · GIFs upload as-is, others can be cropped</p>
               <input ref={bannerInputRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif" className="hidden"
-                onChange={(e) => { const f = e.target.files?.[0]; if (f) handleImageUpload("banner", f); e.target.value = ""; }} />
+                onChange={(e) => { const f = e.target.files?.[0]; if (f) openCropOrUpload("banner", f); e.target.value = ""; }} />
             </div>
           </>
         )}
@@ -464,6 +623,20 @@ function ProfileEditor({
         </button>
       </div>
     </motion.div>
+
+    <AnimatePresence>
+      {cropState && (
+        <CropModal
+          src={cropState.src}
+          mimeType={cropState.mimeType}
+          aspect={cropState.type === "avatar" ? 1 : 1280 / 360}
+          label={cropState.type === "avatar" ? "Avatar" : "Banner"}
+          onConfirm={handleCropConfirm}
+          onCancel={handleCropCancel}
+        />
+      )}
+    </AnimatePresence>
+    </>
   );
 }
 

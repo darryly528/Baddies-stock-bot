@@ -72,5 +72,8 @@
     "vite": "^7.3.0",
     "wouter": "^3.3.5",
     "zod": "^3.25.76"
+  },
+  "dependencies": {
+    "react-image-crop": "^11.0.10"
   }
 }
