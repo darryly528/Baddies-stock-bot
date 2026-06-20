@@ -772,18 +772,34 @@ export default function ProfilePage() {
   const isOwn = !!user && user.id === userId;
 
   const { data: publicProfile, isLoading: publicLoading, isError } = useProfile(userId);
-  const { data: ownProfile } = useOwnProfile();
+  const { data: ownProfile, isLoading: ownLoading } = useOwnProfile();
 
-  const profile = isOwn && ownProfile ? ownProfile : publicProfile;
-  const isLoading = publicLoading;
+  // Own profile: prefer ownProfile (from /api/profile, always works when logged in)
+  // Other profile: use publicProfile
+  const profile = (isOwn && ownProfile) ? ownProfile : publicProfile;
+
+  // Only show loading if we don't have any data yet
+  const isLoading = isOwn ? ownLoading : publicLoading;
+
+  // Only show error if we truly have nothing to show
+  const showError = !isLoading && !profile && (isError || !isOwn);
 
   const [editing, setEditing] = useState(false);
   const [vouchOpen, setVouchOpen] = useState(false);
 
+  // Auto-open editor when own profile is fresh/empty
+  useEffect(() => {
+    if (isOwn && ownProfile && !editing) {
+      const isEmpty = !ownProfile.bio && !ownProfile.tagline && ownProfile.featuredItems.length === 0;
+      if (isEmpty) setEditing(true);
+    }
+  // Only run once when ownProfile first loads
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOwn, !!ownProfile]);
+
   if (isLoading) {
     return (
       <div className="min-h-screen max-w-4xl mx-auto px-3 sm:px-6 lg:px-8 pt-6 space-y-4">
-        {/* Skeleton */}
         <div className="h-36 sm:h-44 rounded-2xl bg-white/5 animate-pulse" />
         <div className="pt-8 px-5 space-y-3">
           <div className="h-7 w-40 rounded-xl bg-white/5 animate-pulse" />
@@ -796,7 +812,7 @@ export default function ProfilePage() {
     );
   }
 
-  if (isError || !profile) {
+  if (showError) {
     return (
       <div className="min-h-screen flex items-center justify-center px-4">
         <div className="text-center space-y-3">
@@ -811,6 +827,8 @@ export default function ProfilePage() {
     );
   }
 
+  if (!profile) return null;
+
   return (
     <div className="min-h-screen pb-20">
       {/* Back arrow for non-own profiles */}
@@ -819,6 +837,21 @@ export default function ProfilePage() {
           <button onClick={() => history.back()} className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-white transition-colors">
             <ArrowLeft className="w-3.5 h-3.5" />Back
           </button>
+        </div>
+      )}
+
+      {/* Own profile quick-edit header */}
+      {isOwn && !editing && (
+        <div className="max-w-4xl mx-auto px-3 sm:px-6 lg:px-8 pt-4 pb-1">
+          <motion.button
+            onClick={() => setEditing(true)}
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.97 }}
+            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-primary/10 border border-primary/25 text-sm font-semibold text-primary hover:bg-primary/20 transition-colors"
+          >
+            <Pencil className="w-4 h-4" />
+            Edit Profile
+          </motion.button>
         </div>
       )}
 
