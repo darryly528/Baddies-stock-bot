@@ -37,6 +37,40 @@ function getAllGuilds(): Guild[] {
   return [...bot.guilds.cache.values()];
 }
 
+// ── Discord role sync ─────────────────────────────────────────────────────────
+
+const DISCORD_ROLE_MAP: Partial<Record<AnyRole, string>> = {
+  admin:             "1517979822066761911",
+  mod:               "1517979581808902144",
+  verified_reseller: "1518009021930406131",
+};
+const ALL_STAFF_DISCORD_ROLE_IDS = Object.values(DISCORD_ROLE_MAP) as string[];
+
+async function syncDiscordRole(userId: string, siteRole: StaffRole | null): Promise<void> {
+  const client = getBotClient();
+  if (!client) return;
+
+  let member = null;
+  for (const guild of client.guilds.cache.values()) {
+    member = await guild.members.fetch({ user: userId, force: false }).catch(() => null);
+    if (member) break;
+  }
+  if (!member) return;
+
+  for (const roleId of ALL_STAFF_DISCORD_ROLE_IDS) {
+    if (member.roles.cache.has(roleId)) {
+      await member.roles.remove(roleId).catch(() => {});
+    }
+  }
+
+  if (siteRole) {
+    const discordRoleId = DISCORD_ROLE_MAP[siteRole];
+    if (discordRoleId) {
+      await member.roles.add(discordRoleId).catch(() => {});
+    }
+  }
+}
+
 // ── Staff CRUD (owner manages everything, co-owner can manage up to admin) ────
 
 router.get("/admin/staff", requireMinRole("mod"), (_req, res) => {
@@ -69,6 +103,7 @@ router.post("/admin/staff", requireMinRole("mod"), (req: Request, res: Response)
 
   const caller = req.session!.discordUser!;
   setStaffMember(userId, role, caller.id, username);
+  void syncDiscordRole(userId, role);
   void sendAuditLog({ action: "STAFF_ADD", actorId: caller.id, actorUsername: caller.username, targetId: userId, targetUsername: username, details: `Role: ${role}` });
   res.json({ ok: true, userId, role, username });
 });
@@ -94,6 +129,7 @@ router.patch("/admin/staff/:userId/role", requireMinRole("admin"), (req: Request
 
   const caller = req.session!.discordUser!;
   setStaffMember(userId, role, caller.id, target.username);
+  void syncDiscordRole(userId, role);
   void sendAuditLog({ action: "STAFF_ROLE_CHANGE", actorId: caller.id, actorUsername: caller.username, targetId: userId, targetUsername: target.username, details: `${target.role} → ${role}` });
   res.json({ ok: true, userId, role });
 });
@@ -116,6 +152,7 @@ router.delete("/admin/staff/:userId", requireMinRole("admin"), (req: Request, re
 
   const caller = req.session!.discordUser!;
   removeStaffMember(userId);
+  void syncDiscordRole(userId, null);
   void sendAuditLog({ action: "STAFF_REMOVE", actorId: caller.id, actorUsername: caller.username, targetId: userId, targetUsername: target.username, details: `Was: ${target.role}` });
   res.json({ ok: true });
 });
