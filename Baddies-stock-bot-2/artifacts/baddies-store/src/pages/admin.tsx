@@ -7,7 +7,7 @@ import {
   Crown, Hammer, Clock, Ban, UserX, ShieldCheck, Search,
   MessageSquare, ArrowLeft, Inbox, Eye, Plus, Check, UserCog,
   FileWarning, CheckCircle2, XCircle, BadgeCheck, Star,
-  Palette, Upload, ImageIcon, RotateCcw, EyeOff,
+  Palette, Upload, ImageIcon, RotateCcw, EyeOff, Pipette,
 } from "lucide-react";
 import { useAuth } from "../contexts/auth-context";
 import { Link } from "wouter";
@@ -863,6 +863,15 @@ function ThemeTab() {
     finally { setUploading(false); }
   }
 
+  async function pickColor(field: "primaryColor" | "secondaryColor") {
+    if (!("EyeDropper" in window)) return;
+    try {
+      const eyeDropper = new (window as { EyeDropper: new () => { open: () => Promise<{ sRGBHex: string }> } }).EyeDropper();
+      const { sRGBHex } = await eyeDropper.open();
+      setLocal((p) => ({ ...p, [field]: sRGBHex }));
+    } catch { /* user cancelled */ }
+  }
+
   const onDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     setDragging(false);
@@ -928,15 +937,26 @@ function ThemeTab() {
                 />
                 <div className="absolute inset-0 rounded-xl" style={{ background: local.primaryColor }} />
               </div>
-              <div className="flex-1">
-                <input
-                  type="text"
-                  value={local.primaryColor}
-                  onChange={(e) => setLocal((p) => ({ ...p, primaryColor: e.target.value }))}
-                  className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white font-mono focus:outline-none focus:border-primary/50"
-                  placeholder="#ff0080"
-                />
-                <p className="text-[10px] text-muted-foreground mt-1">Buttons, links, badges</p>
+              <div className="flex-1 space-y-1">
+                <div className="flex items-center gap-1.5">
+                  <input
+                    type="text"
+                    value={local.primaryColor}
+                    onChange={(e) => setLocal((p) => ({ ...p, primaryColor: e.target.value }))}
+                    className="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white font-mono focus:outline-none focus:border-primary/50"
+                    placeholder="#ff0080"
+                  />
+                  {"EyeDropper" in window && (
+                    <button
+                      onClick={() => pickColor("primaryColor")}
+                      title="Pick color from screen"
+                      className="p-2 rounded-lg border border-white/10 bg-white/5 text-muted-foreground hover:text-white hover:border-white/30 transition-colors shrink-0"
+                    >
+                      <Pipette className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
+                <p className="text-[10px] text-muted-foreground">Buttons, links, badges</p>
               </div>
             </div>
           </div>
@@ -954,15 +974,26 @@ function ThemeTab() {
                 />
                 <div className="absolute inset-0 rounded-xl" style={{ background: local.secondaryColor }} />
               </div>
-              <div className="flex-1">
-                <input
-                  type="text"
-                  value={local.secondaryColor}
-                  onChange={(e) => setLocal((p) => ({ ...p, secondaryColor: e.target.value }))}
-                  className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white font-mono focus:outline-none focus:border-primary/50"
-                  placeholder="#7c3aed"
-                />
-                <p className="text-[10px] text-muted-foreground mt-1">Gradients, accents</p>
+              <div className="flex-1 space-y-1">
+                <div className="flex items-center gap-1.5">
+                  <input
+                    type="text"
+                    value={local.secondaryColor}
+                    onChange={(e) => setLocal((p) => ({ ...p, secondaryColor: e.target.value }))}
+                    className="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white font-mono focus:outline-none focus:border-primary/50"
+                    placeholder="#7c3aed"
+                  />
+                  {"EyeDropper" in window && (
+                    <button
+                      onClick={() => pickColor("secondaryColor")}
+                      title="Pick color from screen"
+                      className="p-2 rounded-lg border border-white/10 bg-white/5 text-muted-foreground hover:text-white hover:border-white/30 transition-colors shrink-0"
+                    >
+                      <Pipette className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
+                <p className="text-[10px] text-muted-foreground">Gradients, accents</p>
               </div>
             </div>
           </div>
