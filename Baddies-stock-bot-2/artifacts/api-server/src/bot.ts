@@ -1,5 +1,6 @@
 import fs from "fs";
 import path from "path";
+import { getRole, hasMinRole } from "./permissions";
 
 import {
   Client,
@@ -337,12 +338,11 @@ export async function startBot() {
     }
   });
 
-  const MOD_ROLE_ID = process.env["MOD_ROLE_ID"] ?? "1441178708311281845";
   const LISTING_ROLE_PING = process.env["LISTING_ROLE_ID"] ?? "1441178708676448267";
 
   client.on(Events.InteractionCreate, async (interaction: Interaction) => {
     try {
-      // ── Mod-only gate ────────────────────────────────────────────────────
+      // ── Server-only gate ─────────────────────────────────────────────────
       if (!interaction.guild) {
         if ("reply" in interaction) {
           await (interaction as { reply: Function }).reply({
@@ -352,14 +352,14 @@ export async function startBot() {
         }
         return;
       }
-      const memberRoles = interaction.member?.roles;
-      const hasModRole = Array.isArray(memberRoles)
-        ? memberRoles.includes(MOD_ROLE_ID)
-        : (memberRoles as import("discord.js").GuildMemberRoleManager)?.cache.has(MOD_ROLE_ID) ?? false;
-      if (!hasModRole) {
+      // ── Site-role gate (mod or above required) ───────────────────────────
+      const actorId = interaction.user.id;
+      const actorUsername = interaction.user.username;
+      const siteRole = getRole(actorId, actorUsername);
+      if (!hasMinRole(siteRole, "mod")) {
         if ("reply" in interaction) {
           await (interaction as { reply: Function }).reply({
-            content: "❌ You need the **@mod** role to use this bot.",
+            content: "❌ You need to be a **mod** or above on the Baddies site to use this bot.",
             ephemeral: true,
           });
         }
