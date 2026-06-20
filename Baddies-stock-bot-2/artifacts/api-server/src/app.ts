@@ -1,5 +1,6 @@
 import express, { type Express } from "express";
 import cors from "cors";
+import compression from "compression";
 import path from "path";
 import fs from "fs";
 import { fileURLToPath } from "url";
@@ -10,6 +11,7 @@ const app: Express = express();
 
 app.set("trust proxy", 1);
 app.use(cors({ origin: true, credentials: true }));
+app.use(compression({ level: 6, threshold: 512 }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 

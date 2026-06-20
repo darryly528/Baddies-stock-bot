@@ -41,20 +41,53 @@ export type Listing = {
   bids?: Bid[];
 };
 
+// ── In-memory cache ───────────────────────────────────────────────────────────
+let _cache: Listing[] | null = null;
+let _cacheEtag = "";
+
+function _rebuildCache(listings: Listing[]): void {
+  _cache = listings;
+  // Cheap hash: length + first+last id
+  const ids = listings.map((l) => l.id).join(",");
+  _cacheEtag = `"${listings.length}-${Buffer.from(ids).toString("base64").slice(0, 16)}"`;
+}
+
+// Warm the cache on startup and watch for external changes
+try {
+  _rebuildCache(JSON.parse(fs.readFileSync(LISTINGS_PATH, "utf8")));
+} catch { _cache = []; _cacheEtag = '"empty"'; }
+
+try {
+  fs.watch(LISTINGS_PATH, () => {
+    try { _rebuildCache(JSON.parse(fs.readFileSync(LISTINGS_PATH, "utf8"))); }
+    catch { /* ignore transient write-in-progress reads */ }
+  });
+} catch { /* file might not exist yet */ }
+
 export function loadListings(): Listing[] {
+  if (_cache !== null) return _cache;
   try {
-    return JSON.parse(fs.readFileSync(LISTINGS_PATH, "utf8"));
+    const data = JSON.parse(fs.readFileSync(LISTINGS_PATH, "utf8"));
+    _rebuildCache(data);
+    return _cache!;
   } catch {
     return [];
   }
 }
 
 function saveListings(listings: Listing[]) {
+  _rebuildCache(listings);
   fs.writeFileSync(LISTINGS_PATH, JSON.stringify(listings, null, 2), "utf8");
 }
 
-router.get("/listings", (_req, res) => {
+router.get("/listings", (req, res) => {
   const listings = loadListings();
+  res.setHeader("Cache-Control", "public, max-age=5, stale-while-revalidate=10");
+  res.setHeader("ETag", _cacheEtag);
+  if (req.headers["if-none-match"] === _cacheEtag) {
+    res.status(304).end();
+    return;
+  }
   res.json(listings);
 });
 

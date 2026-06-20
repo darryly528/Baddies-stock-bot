@@ -44,6 +44,9 @@ export function useListings(refetchInterval?: number) {
       return res.json() as Promise<Listing[]>;
     },
     refetchInterval: refetchInterval ?? 60_000,
+    staleTime: 30_000,
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
   });
 }
 

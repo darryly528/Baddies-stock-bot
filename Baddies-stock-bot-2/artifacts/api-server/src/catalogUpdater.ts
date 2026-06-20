@@ -24,6 +24,11 @@ export type CatalogItem = {
 
 export const catalog: CatalogItem[] = [];
 
+const _updateCallbacks: Array<() => void> = [];
+export function onCatalogUpdate(cb: () => void): void {
+  _updateCallbacks.push(cb);
+}
+
 function loadFromDisk(): void {
   try {
     const raw = fs.readFileSync(CATALOG_PATH, "utf8");
@@ -93,6 +98,7 @@ async function runUpdate(): Promise<void> {
     }
     catalog.splice(0, catalog.length, ...items);
     fs.writeFileSync(CATALOG_PATH, JSON.stringify(items, null, 2));
+    for (const cb of _updateCallbacks) cb();
     console.log(`[catalog] Updated catalog with ${items.length} items.`);
   } catch (err) {
     console.error("[catalog] Update failed:", err);
