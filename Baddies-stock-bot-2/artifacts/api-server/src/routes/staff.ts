@@ -39,11 +39,11 @@ function getAllGuilds(): Guild[] {
 
 // ── Staff CRUD (owner manages everything, co-owner can manage up to admin) ────
 
-router.get("/admin/staff", requireMinRole("admin"), (_req, res) => {
+router.get("/admin/staff", requireMinRole("mod"), (_req, res) => {
   res.json(getStaff());
 });
 
-router.post("/admin/staff", requireMinRole("admin"), (req: Request, res: Response) => {
+router.post("/admin/staff", requireMinRole("mod"), (req: Request, res: Response) => {
   const callerRole = sessionRole(req)!;
   const { userId, username, role } = req.body as { userId: string; username: string; role: StaffRole };
 

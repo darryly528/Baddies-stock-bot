@@ -842,7 +842,7 @@ export default function AdminPage() {
   useEffect(() => {
     if (!callerRole) return;
     const ROLE_RANK: Record<string, number> = { owner: 4, "co-owner": 3, admin: 2, mod: 1, verified_reseller: 0 };
-    const minRoles: Record<TabKey, string> = { members: "mod", requests: "mod", listings: "admin", staff: "admin" };
+    const minRoles: Record<TabKey, string> = { members: "mod", requests: "mod", listings: "mod", staff: "mod" };
     const rank = ROLE_RANK[callerRole] ?? 0;
     if ((ROLE_RANK[minRoles[tab]] ?? 99) > rank) {
       const first = (["members", "requests", "listings", "staff"] as TabKey[]).find(
@@ -855,13 +855,13 @@ export default function AdminPage() {
   const { data: stats, isLoading: statsLoading } = useQuery<Stats>({
     queryKey: ["admin-stats"],
     queryFn: () => fetch("/api/admin/stats", { credentials: "include" }).then((r) => { if (!r.ok) throw new Error("Forbidden"); return r.json(); }),
-    enabled: isAdmin,
+    enabled: isModOrAbove,
   });
 
   const { data: listings = [], isLoading: listingsLoading } = useQuery<Listing[]>({
     queryKey: ["admin-listings"],
     queryFn: () => fetch("/api/admin/listings", { credentials: "include" }).then((r) => r.json()),
-    enabled: isAdmin,
+    enabled: isModOrAbove,
   });
 
   const [debouncedSearch, setDebouncedSearch] = useState("");
@@ -963,8 +963,8 @@ export default function AdminPage() {
   const tabs: { key: TabKey; label: string; icon: any; minRole: AnyRole }[] = [
     { key: "members", label: "Members", icon: Users, minRole: "mod" },
     { key: "requests", label: `Requests${banRequests.length > 0 ? ` (${banRequests.length})` : ""}`, icon: Ban, minRole: "mod" },
-    { key: "listings", label: "Listings", icon: ShoppingBag, minRole: "admin" },
-    { key: "staff", label: "Staff", icon: UserCog, minRole: "admin" },
+    { key: "listings", label: "Listings", icon: ShoppingBag, minRole: "mod" },
+    { key: "staff", label: "Staff", icon: UserCog, minRole: "mod" },
   ];
 
   const visibleTabs = tabs.filter((t) => hasMinRole(callerRole, t.minRole));

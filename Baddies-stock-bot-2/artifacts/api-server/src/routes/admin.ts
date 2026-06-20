@@ -65,7 +65,7 @@ router.get("/admin/me", (req, res) => {
 
 // ── Store stats ───────────────────────────────────────────────────────────────
 
-router.get("/admin/stats", requireMinRole("admin"), (_req, res) => {
+router.get("/admin/stats", requireMinRole("mod"), (_req, res) => {
   const listings = loadListings();
   const totalItems = listings.reduce((sum, l) => sum + l.items.length, 0);
   const activeItems = listings.reduce((sum, l) => sum + l.items.filter((i) => !i.soldOut).length, 0);
@@ -81,9 +81,9 @@ router.get("/admin/stats", requireMinRole("admin"), (_req, res) => {
 
 // ── Listings management ───────────────────────────────────────────────────────
 
-router.get("/admin/listings", requireMinRole("admin"), (_req, res) => res.json(loadListings()));
+router.get("/admin/listings", requireMinRole("mod"), (_req, res) => res.json(loadListings()));
 
-router.delete("/admin/listings/:id", requireMinRole("admin"), (req, res) => {
+router.delete("/admin/listings/:id", requireMinRole("mod"), (req, res) => {
   const { id } = req.params as { id: string };
   const actor = req.session!.discordUser!;
   const LISTINGS_PATH = process.env["LISTINGS_PATH"] ?? path.resolve(process.cwd(), "../../listings.json");
@@ -104,7 +104,7 @@ router.delete("/admin/listings", requireMinRole("admin"), (req, res) => {
   res.json({ ok: true });
 });
 
-router.delete("/admin/listings/sold-out", requireMinRole("admin"), (req, res) => {
+router.delete("/admin/listings/sold-out", requireMinRole("mod"), (req, res) => {
   const actor = req.session!.discordUser!;
   const LISTINGS_PATH = process.env["LISTINGS_PATH"] ?? path.resolve(process.cwd(), "../../listings.json");
   let listings = loadListings();
@@ -241,7 +241,7 @@ router.get("/admin/members/search", requireMinRole("mod"), async (req, res) => {
 // Uses the Discord REST API directly so it works even when the gateway bot
 // client is not connected — only requires DISCORD_BOT_TOKEN to be set.
 
-router.get("/admin/members/lookup", requireMinRole("admin"), async (req, res) => {
+router.get("/admin/members/lookup", requireMinRole("mod"), async (req, res) => {
   const userId = ((req.query as Record<string, string>).userId ?? "").trim();
   if (!/^\d{15,21}$/.test(userId)) {
     res.status(400).json({ error: "Invalid Discord user ID format — must be a numeric snowflake ID" }); return;
