@@ -34,6 +34,7 @@ const sections = [
       "All listings must be for legitimate in-game items. Fraudulent, misleading, or duplicate listings will be removed without notice.",
       "You must be the rightful owner of the items you list. Listing items you do not own or have permission to sell is prohibited.",
       "Prices must reflect a genuine offer. Bait-and-switch pricing, price manipulation, and scam listings are strictly prohibited and may result in a permanent ban.",
+      "If you win an auction, you are obligated to complete payment within 3 days of being declared the winner. Failure to pay within this period may result in account suspension.",
       "Baddies Store reserves the right to remove any listing and suspend any user at any time for any reason.",
     ],
   },
