@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect, useRef } from "react";
 import { useInfiniteCatalogItems } from "@/hooks/use-catalog";
-import { useListings, useCreateListing, useMarkSold, useDeleteListing, usePostListingToDiscord, useUpdateListingFrame } from "@/hooks/use-listings";
+import { useListings, useCreateListing, useMarkSold, useDeleteListing, usePostListingToDiscord } from "@/hooks/use-listings";
 import { useConfig } from "@/hooks/use-config";
 import type { ListingItem } from "@/hooks/use-listings";
 import { useAuth } from "@/contexts/auth-context";
@@ -21,19 +21,14 @@ import {
   ShoppingBag,
   Send,
   MessageCircle,
-  ChevronDown,
   ServerIcon,
   AlertTriangle,
   Inbox,
   Gavel,
   Clock,
   Tag,
-  Palette,
-  ImagePlus,
 } from "lucide-react";
 import { cn, formatNumber } from "@/lib/utils";
-
-const FRAME_PALETTE = ["#ff0080", "#a855f7", "#3b82f6", "#06b6d4", "#22c55e", "#f97316", "#ef4444", "#eab308", "#e2e8f0", "#ffffff"];
 
 const PAYMENT_LABELS = ["PayPal", "Apple Pay", "Cash App", "Venmo", "Robux"] as const;
 const PAYMENT_EMOJI: Record<string, string> = {
@@ -103,12 +98,6 @@ export default function ListPage() {
   const markSold = useMarkSold();
   const deleteListing = useDeleteListing();
   const postToDiscord = usePostListingToDiscord();
-  const updateFrame = useUpdateListingFrame();
-  const [frameEditorId, setFrameEditorId] = useState<string | null>(null);
-  const [frameDraft, setFrameDraft] = useState<{ color: string; imageUrl: string | null }>({ color: "#ff0080", imageUrl: null });
-  const [frameSaving, setFrameSaving] = useState(false);
-  const [frameUploadError, setFrameUploadError] = useState<string | null>(null);
-
   const items = useMemo(() => catalogData?.pages.flatMap((p) => p.items) ?? [], [catalogData]);
 
   const ITEM_TYPES = [
@@ -195,38 +184,6 @@ export default function ListPage() {
       setNotifyingId(null);
     }
     window.open(inviteUrl, "_blank", "noopener,noreferrer");
-  }
-
-  function openFrameEditor(listingId: string, current: { frameColor?: string; frameImageUrl?: string | null }) {
-    setFrameDraft({ color: current.frameColor ?? "#ff0080", imageUrl: current.frameImageUrl ?? null });
-    setFrameEditorId(listingId);
-    setFrameUploadError(null);
-  }
-
-  async function saveFrame(listingId: string) {
-    setFrameSaving(true);
-    try {
-      await updateFrame.mutateAsync({ listingId, frameColor: frameDraft.color, frameImageUrl: frameDraft.imageUrl });
-      setFrameEditorId(null);
-    } catch {
-      setFrameUploadError("Failed to save frame.");
-    } finally {
-      setFrameSaving(false);
-    }
-  }
-
-  async function uploadFrameImage(listingId: string, file: File) {
-    setFrameUploadError(null);
-    const fd = new FormData();
-    fd.append("image", file);
-    try {
-      const res = await fetch("/api/uploads/listing-frame", { method: "POST", body: fd, credentials: "include" });
-      const data = await res.json() as { ok?: boolean; url?: string; error?: string };
-      if (!res.ok || !data.url) throw new Error(data.error ?? "Upload failed");
-      setFrameDraft((d) => ({ ...d, imageUrl: data.url! }));
-    } catch (err) {
-      setFrameUploadError(err instanceof Error ? err.message : "Upload failed");
-    }
   }
 
   async function submitListing() {
@@ -1138,72 +1095,6 @@ export default function ListPage() {
                           ))}
                         </div>
 
-                        {isOwner && (
-                          <div className="mt-3 border-t border-white/10 pt-3">
-                            <button
-                              onClick={() => frameEditorId === listing.id ? setFrameEditorId(null) : openFrameEditor(listing.id, { frameColor: listing.frameColor, frameImageUrl: listing.frameImageUrl })}
-                              className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground hover:text-white transition-colors"
-                            >
-                              <Palette className="w-3.5 h-3.5" />
-                              Customize Card Frame
-                              <ChevronDown className={cn("w-3.5 h-3.5 transition-transform", frameEditorId === listing.id && "rotate-180")} />
-                            </button>
-
-                            <AnimatePresence>
-                              {frameEditorId === listing.id && (
-                                <motion.div
-                                  initial={{ opacity: 0, height: 0 }}
-                                  animate={{ opacity: 1, height: "auto" }}
-                                  exit={{ opacity: 0, height: 0 }}
-                                  transition={{ duration: 0.2 }}
-                                  className="overflow-hidden"
-                                >
-                                  <div className="pt-3 space-y-3">
-                                    <div className="space-y-2">
-                                      <p className="text-[11px] text-muted-foreground uppercase tracking-wider font-semibold">Frame overlay image</p>
-                                      <div className="flex items-center gap-3">
-                                        {frameDraft.imageUrl ? (
-                                          <div className="relative w-16 h-16 rounded-lg overflow-hidden border border-white/20 flex-shrink-0">
-                                            <img src={frameDraft.imageUrl} alt="frame" className="w-full h-full object-cover" />
-                                            <button
-                                              onClick={() => setFrameDraft((d) => ({ ...d, imageUrl: null }))}
-                                              className="absolute top-0.5 right-0.5 w-4 h-4 rounded-full bg-black/70 flex items-center justify-center hover:bg-red-500/80 transition-colors"
-                                            >
-                                              <X className="w-2.5 h-2.5 text-white" />
-                                            </button>
-                                          </div>
-                                        ) : null}
-                                        <label className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-dashed border-white/20 hover:border-primary/50 hover:bg-primary/10 transition-colors cursor-pointer text-xs font-semibold text-muted-foreground hover:text-white">
-                                          <ImagePlus className="w-3.5 h-3.5" />
-                                          {frameDraft.imageUrl ? "Change image" : "Upload image"}
-                                          <input type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadFrameImage(listing.id, f); e.target.value = ""; }} />
-                                        </label>
-                                      </div>
-                                      <p className="text-[10px] text-muted-foreground/60">PNG with transparency works best as a decorative frame overlay on your card.</p>
-                                    </div>
-
-                                    {frameUploadError && (
-                                      <p className="text-xs text-red-400 flex items-center gap-1"><AlertTriangle className="w-3 h-3" />{frameUploadError}</p>
-                                    )}
-
-                                    <div className="flex gap-2">
-                                      <button onClick={() => setFrameEditorId(null)}
-                                        className="px-3 py-1.5 rounded-lg border border-white/15 text-xs font-semibold text-muted-foreground hover:text-white hover:border-white/30 transition-colors">
-                                        Cancel
-                                      </button>
-                                      <button onClick={() => saveFrame(listing.id)} disabled={frameSaving}
-                                        className="flex-1 py-1.5 rounded-lg text-xs font-bold text-white transition-all disabled:opacity-50 flex items-center justify-center gap-1.5"
-                                        style={{ background: `linear-gradient(135deg, ${frameDraft.color}, ${frameDraft.color}aa)` }}>
-                                        {frameSaving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Palette className="w-3 h-3" />}
-                                        {frameSaving ? "Saving…" : "Save frame"}
-                                      </button>
-                                    </div>
-                                  </div>
-                                </motion.div>
-                              )}
-                            </AnimatePresence>
-                          </div>
-                        )}
                       </motion.div>
                     );
                   })}

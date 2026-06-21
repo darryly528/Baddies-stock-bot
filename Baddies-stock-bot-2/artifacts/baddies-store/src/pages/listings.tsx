@@ -699,10 +699,6 @@ function AuctionCard({
         ) : (
           <Box className="w-12 h-12 text-muted-foreground/40 relative z-0" />
         )}
-        {listing.frameImageUrl && (
-          <img src={listing.frameImageUrl} alt="" aria-hidden className="absolute inset-0 w-full h-full object-fill pointer-events-none z-10" />
-        )}
-
         {/* Auction badge */}
         <div className="absolute top-2 left-2 z-20 flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-500/20 border border-amber-500/40 backdrop-blur-md">
           <Gavel className="w-3 h-3 text-amber-400" />
@@ -833,9 +829,6 @@ function ListingItemCard({
           />
         ) : (
           <Box className="w-12 h-12 text-muted-foreground/40 relative z-0" />
-        )}
-        {listing.frameImageUrl && (
-          <img src={listing.frameImageUrl} alt="" aria-hidden className="absolute inset-0 w-full h-full object-fill pointer-events-none z-10" />
         )}
         <div className="absolute top-2 left-2 z-20">
           <span className="px-1.5 sm:px-2 py-0.5 text-[9px] sm:text-[10px] font-bold rounded-md uppercase tracking-wider backdrop-blur-md bg-white/10 border border-white/20 text-white/80">
