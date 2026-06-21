@@ -34,6 +34,7 @@ import {
   Image as ImageIcon,
   Store,
   Tag,
+  Pencil,
 } from "lucide-react";
 import { Link } from "wouter";
 import { cn, formatNumber } from "@/lib/utils";
@@ -1372,6 +1373,152 @@ function CreateShopModal({ onClose, onSuccess }: { onClose: () => void; onSucces
   );
 }
 
+// ── Edit shop modal ────────────────────────────────────────────────────────────
+
+function EditShopModal({ shop, onClose, onSuccess }: { shop: ShopApplication; onClose: () => void; onSuccess: (updated: ShopApplication) => void }) {
+  const [shopName, setShopName] = useState(shop.shopName);
+  const [tagline, setTagline] = useState(shop.tagline ?? "");
+  const [bannerUrl, setBannerUrl] = useState(shop.bannerUrl ?? "");
+  const [logoUrl, setLogoUrl] = useState(shop.logoUrl ?? "");
+  const [accentColor, setAccentColor] = useState(shop.accentColor ?? "#a855f7");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleSave() {
+    if (!shopName.trim()) return;
+    setSaving(true); setError(null);
+    try {
+      const r = await fetch("/api/shops/mine", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ shopName: shopName.trim(), tagline: tagline.trim(), bannerUrl: bannerUrl || undefined, logoUrl: logoUrl || undefined, accentColor }),
+      });
+      const d = await r.json() as { ok?: boolean; shop?: ShopApplication; error?: string };
+      if (!r.ok) throw new Error(d.error ?? "Failed to save");
+      onSuccess(d.shop!);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Save failed");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <motion.div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+      initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+      <motion.div className="w-full max-w-lg glass-panel border border-white/15 rounded-2xl overflow-hidden"
+        initial={{ scale: 0.92, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.92, opacity: 0 }}>
+
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 pt-5 pb-4 border-b border-white/8">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-xl bg-violet-500/20 border border-violet-500/30 flex items-center justify-center">
+              <Pencil className="w-4 h-4 text-violet-400" />
+            </div>
+            <div>
+              <h2 className="font-bold text-white text-base">Edit My Shop</h2>
+              <p className="text-[11px] text-muted-foreground">Changes go live immediately — no re-review needed</p>
+            </div>
+          </div>
+          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-white/10 text-muted-foreground hover:text-white transition-colors">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        <div className="p-6 space-y-5">
+          {/* Live preview */}
+          <div className="rounded-xl overflow-hidden border" style={{ borderColor: `${accentColor}40` }}>
+            <div className="h-16 bg-white/5 relative overflow-hidden">
+              {bannerUrl ? (
+                <img src={bannerUrl} alt="banner" className="w-full h-full object-cover" />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center" style={{ background: `linear-gradient(135deg, ${accentColor}30, ${accentColor}10)` }}>
+                  <p className="text-[10px] text-white/30">Banner preview</p>
+                </div>
+              )}
+            </div>
+            <div className="px-3 py-2.5 flex items-center gap-2.5" style={{ background: `${accentColor}08` }}>
+              <div className="w-8 h-8 rounded-full border-2 overflow-hidden shrink-0" style={{ borderColor: accentColor }}>
+                {logoUrl ? (
+                  <img src={logoUrl} alt="logo" className="w-full h-full object-cover" />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-[10px] font-bold" style={{ background: `${accentColor}30`, color: accentColor }}>
+                    {shopName[0]?.toUpperCase()}
+                  </div>
+                )}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-bold text-white truncate">{shopName || "Shop Name"}</p>
+                {tagline && <p className="text-[10px] text-muted-foreground truncate">{tagline}</p>}
+              </div>
+              <div className="flex items-center gap-1 text-[9px] font-bold uppercase tracking-wide shrink-0" style={{ color: accentColor }}>
+                <CheckCircle2 className="w-2.5 h-2.5" />
+                Verified
+              </div>
+            </div>
+          </div>
+
+          {/* Name + tagline */}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <label className="text-[11px] text-muted-foreground uppercase tracking-wider font-semibold">Shop name</label>
+              <input value={shopName} onChange={(e) => setShopName(e.target.value.slice(0, 40))}
+                className="w-full px-3 py-2.5 rounded-xl bg-white/5 border border-white/10 text-sm font-semibold text-white placeholder-muted-foreground focus:outline-none focus:border-violet-500/50 transition" />
+              <p className="text-[10px] text-muted-foreground/50 text-right">{shopName.length}/40</p>
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-[11px] text-muted-foreground uppercase tracking-wider font-semibold">Tagline</label>
+              <input value={tagline} onChange={(e) => setTagline(e.target.value.slice(0, 80))}
+                placeholder="A sentence about what you sell…"
+                className="w-full px-3 py-2.5 rounded-xl bg-white/5 border border-white/10 text-sm text-white placeholder-muted-foreground focus:outline-none focus:border-violet-500/50 transition" />
+            </div>
+          </div>
+
+          {/* Images */}
+          <div className="grid grid-cols-[1fr_auto] gap-4 items-start">
+            <ShopImageUpload label="Banner (image or GIF)" type="banner" value={bannerUrl} onChange={setBannerUrl} />
+            <ShopImageUpload label="Logo" type="logo" value={logoUrl} onChange={setLogoUrl} />
+          </div>
+
+          {/* Color picker */}
+          <div className="space-y-2">
+            <label className="text-[11px] text-muted-foreground uppercase tracking-wider font-semibold">Brand color</label>
+            <div className="flex items-center gap-2 flex-wrap">
+              {SHOP_PALETTE.map((c) => (
+                <button key={c} onClick={() => setAccentColor(c)}
+                  className="w-6 h-6 rounded-full border-2 transition-transform hover:scale-110"
+                  style={{ background: c, borderColor: accentColor === c ? "white" : "transparent" }} />
+              ))}
+              <label className="relative w-6 h-6 rounded-full overflow-hidden cursor-pointer border-2 border-white/20 hover:scale-110 transition-transform" title="Custom color">
+                <input type="color" value={accentColor} onChange={(e) => setAccentColor(e.target.value)}
+                  className="absolute inset-0 opacity-0 w-full h-full cursor-pointer" />
+                <div className="w-full h-full flex items-center justify-center text-[8px] font-bold"
+                  style={{ background: accentColor, color: "white", textShadow: "0 0 4px rgba(0,0,0,0.8)" }}>+</div>
+              </label>
+            </div>
+          </div>
+
+          {error && <p className="text-xs text-red-400 flex items-center gap-1.5"><AlertTriangle className="w-3 h-3" />{error}</p>}
+
+          <div className="flex gap-2">
+            <button onClick={onClose} className="px-4 py-2.5 rounded-xl border border-white/15 text-sm font-semibold text-muted-foreground hover:text-white hover:border-white/30 transition-colors">
+              Cancel
+            </button>
+            <button onClick={handleSave} disabled={saving || !shopName.trim()}
+              className="flex-1 py-2.5 rounded-xl text-sm font-bold text-white transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+              style={{ background: "linear-gradient(135deg, #7c3aed, #4f46e5)" }}>
+              {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Pencil className="w-4 h-4" />}
+              {saving ? "Saving…" : "Save changes"}
+            </button>
+          </div>
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+}
+
 // ── Shops view ────────────────────────────────────────────────────────────────
 
 interface SellerShop {
@@ -1385,7 +1532,7 @@ interface SellerShop {
   sampleImages: (string | null)[];
 }
 
-function ShopsView({ listings, onMessage, user, onLoginPrompt, approvedShops, myShop, onCreateShop }: {
+function ShopsView({ listings, onMessage, user, onLoginPrompt, approvedShops, myShop, onCreateShop, onEditShop }: {
   listings: Listing[];
   onMessage: (listing: Listing, item: ListingItem) => void;
   user: { id: string } | null;
@@ -1393,6 +1540,7 @@ function ShopsView({ listings, onMessage, user, onLoginPrompt, approvedShops, my
   approvedShops: ShopApplication[];
   myShop: ShopApplication | null;
   onCreateShop: () => void;
+  onEditShop: () => void;
 }) {
   const [expanded, setExpanded] = useState<string | null>(null);
   const approvedIds = new Set(approvedShops.map((s) => s.userId));
@@ -1454,9 +1602,16 @@ function ShopsView({ listings, onMessage, user, onLoginPrompt, approvedShops, my
           Log in to open your own shop
         </button>
       ) : myShop?.status === "approved" ? (
-        <div className="flex items-center justify-center gap-2 py-3 rounded-2xl border border-green-500/30 bg-green-500/10 text-sm font-semibold text-green-400">
-          <CheckCircle2 className="w-4 h-4" />
-          Your shop is approved and live!
+        <div className="flex items-center gap-2">
+          <div className="flex-1 flex items-center justify-center gap-2 py-3 rounded-2xl border border-green-500/30 bg-green-500/10 text-sm font-semibold text-green-400">
+            <CheckCircle2 className="w-4 h-4" />
+            Your shop is live!
+          </div>
+          <button onClick={onEditShop}
+            className="flex items-center gap-1.5 px-4 py-3 rounded-2xl border border-violet-500/30 bg-violet-500/10 text-sm font-semibold text-violet-400 hover:bg-violet-500/20 hover:border-violet-500/50 transition-colors shrink-0">
+            <Pencil className="w-3.5 h-3.5" />
+            Edit my shop
+          </button>
         </div>
       ) : myShop?.status === "pending" ? (
         <div className="flex items-center justify-center gap-2 py-3 rounded-2xl border border-amber-500/30 bg-amber-500/10 text-sm font-semibold text-amber-400">
@@ -1732,6 +1887,7 @@ export default function ListingsPage() {
   const [onboardingModal, setOnboardingModal] = useState<{ pendingEntries: CartEntry[]; inviteUrl: string } | null>(null);
   const [loginPrompt, setLoginPrompt] = useState(false);
   const [createShopModal, setCreateShopModal] = useState(false);
+  const [editShopModal, setEditShopModal] = useState(false);
   const [approvedShops, setApprovedShops] = useState<ShopApplication[]>([]);
   const [myShop, setMyShop] = useState<ShopApplication | null>(null);
 
@@ -1992,6 +2148,7 @@ export default function ListingsPage() {
               if (!user) { setLoginPrompt(true); return; }
               setCreateShopModal(true);
             }}
+            onEditShop={() => setEditShopModal(true)}
           />
         ) : flatItems.length === 0 ? (
           <div className="text-center py-24 glass-panel rounded-3xl">
@@ -2359,6 +2516,20 @@ export default function ListingsPage() {
             onSuccess={() => {
               setCreateShopModal(false);
               refreshShopStatus();
+            }}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Edit shop modal */}
+      <AnimatePresence>
+        {editShopModal && myShop?.status === "approved" && (
+          <EditShopModal
+            shop={myShop}
+            onClose={() => setEditShopModal(false)}
+            onSuccess={(updated) => {
+              setMyShop(updated);
+              setEditShopModal(false);
             }}
           />
         )}

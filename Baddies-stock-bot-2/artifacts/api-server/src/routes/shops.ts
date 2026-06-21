@@ -1,7 +1,7 @@
 import { Router, type Request, type Response } from "express";
 import { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder } from "discord.js";
 import { getBotClient } from "../bot";
-import { upsertShopApplication, loadShops, type ShopApplication } from "../shopReview";
+import { upsertShopApplication, loadShops, saveShops, type ShopApplication } from "../shopReview";
 
 const SHOP_REVIEW_CHANNEL_ID = process.env["SHOP_REVIEW_CHANNEL_ID"] ?? process.env["IMAGE_REVIEW_CHANNEL_ID"] ?? "1517999979224895549";
 
@@ -75,6 +75,37 @@ router.get("/shops/mine", (req: Request, res: Response) => {
   if (!user) { res.status(401).json({ error: "Not authenticated" }); return; }
   const shops = loadShops();
   res.json(shops[user.id] ?? null);
+});
+
+router.put("/shops/mine", (req: Request, res: Response) => {
+  const user = req.session?.discordUser;
+  if (!user) { res.status(401).json({ error: "Not authenticated" }); return; }
+
+  const shops = loadShops();
+  const existing = shops[user.id];
+  if (!existing || existing.status !== "approved") {
+    res.status(403).json({ error: "Only approved shops can be edited" }); return;
+  }
+
+  const { shopName, tagline, bannerUrl, logoUrl, accentColor } = req.body as {
+    shopName?: string; tagline?: string;
+    bannerUrl?: string; logoUrl?: string; accentColor?: string;
+  };
+
+  if (shopName !== undefined) {
+    if (!shopName.trim()) { res.status(400).json({ error: "Shop name cannot be empty" }); return; }
+    if (shopName.trim().length > 40) { res.status(400).json({ error: "Shop name must be 40 characters or less" }); return; }
+    existing.shopName = shopName.trim();
+  }
+  if (tagline !== undefined) existing.tagline = tagline.trim().slice(0, 100);
+  if (bannerUrl !== undefined) existing.bannerUrl = bannerUrl || undefined;
+  if (logoUrl !== undefined) existing.logoUrl = logoUrl || undefined;
+  if (accentColor !== undefined) existing.accentColor = accentColor || undefined;
+  existing.updatedAt = new Date().toISOString();
+
+  shops[user.id] = existing;
+  saveShops(shops);
+  res.json({ ok: true, shop: existing });
 });
 
 router.get("/shops", (_req: Request, res: Response) => {

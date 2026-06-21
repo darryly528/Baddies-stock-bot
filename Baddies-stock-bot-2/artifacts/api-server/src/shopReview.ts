@@ -27,7 +27,7 @@ type ShopsStore = Record<string, ShopApplication>;
 export function loadShops(): ShopsStore {
   try { return JSON.parse(fs.readFileSync(SHOPS_PATH, "utf8")); } catch { return {}; }
 }
-function saveShops(s: ShopsStore): void {
+export function saveShops(s: ShopsStore): void {
   fs.writeFileSync(SHOPS_PATH, JSON.stringify(s, null, 2), "utf8");
 }
 
