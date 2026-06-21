@@ -1758,27 +1758,21 @@ function ShopsView({ listings, onMessage, user, onLoginPrompt, approvedShops, my
                 </div>
               </div>
 
-              {/* Item thumbnails — on top of everything */}
-              {shop.sampleImages.length > 0 && (
-                <div className="flex gap-2">
-                  {shop.sampleImages.slice(0, 4).map((img, i) => (
-                    img ? (
-                      <img key={i} src={img} alt=""
-                        className="w-14 h-14 rounded-xl object-contain drop-shadow-xl"
-                        style={{ background: "rgba(0,0,0,0.5)", padding: "2px" }} />
-                    ) : (
-                      <div key={i} className="w-14 h-14 rounded-xl bg-black/40 flex items-center justify-center border border-white/10">
-                        <Box className="w-5 h-5 text-white/20" />
-                      </div>
-                    )
-                  ))}
-                  {totalItems > 4 && (
-                    <div className="w-14 h-14 rounded-xl bg-black/40 border border-white/10 flex items-center justify-center text-xs font-bold text-white/50">
-                      +{totalItems - 4}
+              {/* Item thumbnails — always 6 slots */}
+              <div className="grid grid-cols-6 gap-1.5">
+                {Array.from({ length: 6 }).map((_, i) => {
+                  const img = shop.sampleImages[i];
+                  return img ? (
+                    <img key={i} src={img} alt=""
+                      className="w-full aspect-square rounded-xl object-contain drop-shadow-xl"
+                      style={{ background: "rgba(0,0,0,0.5)", padding: "3px" }} />
+                  ) : (
+                    <div key={i} className="w-full aspect-square rounded-xl bg-black/30 flex items-center justify-center border border-white/8">
+                      <Box className="w-5 h-5 text-white/15" />
                     </div>
-                  )}
-                </div>
-              )}
+                  );
+                })}
+              </div>
 
               {/* Payment methods */}
               {shop.paymentMethods.length > 0 && (
