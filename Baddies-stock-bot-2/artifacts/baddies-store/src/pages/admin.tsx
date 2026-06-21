@@ -8,10 +8,17 @@ import {
   MessageSquare, ArrowLeft, Inbox, Eye, Plus, Check, UserCog,
   FileWarning, CheckCircle2, XCircle, BadgeCheck, Star,
   Palette, Upload, ImageIcon, RotateCcw, EyeOff, Pipette,
+  Pencil, Loader2, User,
 } from "lucide-react";
 import { useAuth } from "../contexts/auth-context";
 import { Link } from "wouter";
 import { cn } from "@/lib/utils";
+import { applyThemeColors } from "@/lib/theme-colors";
+import {
+  useOwnProfile, useUpdateProfile,
+  BANNER_STYLES, getBannerClass, ACCENT_COLORS,
+  type BannerStyle,
+} from "@/hooks/use-profile";
 import {
   useStaff, useAddStaff, useChangeRole, useRemoveStaff,
   useBanRequests, useApproveBanRequest, useRejectBanRequest,
@@ -840,6 +847,72 @@ function ThemeTab() {
   const [local, setLocal] = useState<SiteTheme>(DEFAULT_THEME);
   useEffect(() => { if (saved) setLocal(saved); }, [saved]);
 
+  // Sub-tab: "site" or "profile"
+  const [section, setSection] = useState<"site" | "profile">("site");
+
+  // Profile state
+  const { data: ownProfile } = useOwnProfile();
+  const updateProfile = useUpdateProfile();
+  const [pTagline, setPTagline] = useState("");
+  const [pBio, setPBio] = useState("");
+  const [pTradePrefs, setPTradePrefs] = useState("");
+  const [pAccentColor, setPAccentColor] = useState("#ff0080");
+  const [pBannerStyle, setPBannerStyle] = useState<BannerStyle>("default");
+  const [profileSaving, setProfileSaving] = useState(false);
+  const [profileSaved, setProfileSaved] = useState(false);
+  const [currentAvatarUrl, setCurrentAvatarUrl] = useState<string | null>(null);
+  const [currentBannerUrl, setCurrentBannerUrl] = useState<string | null>(null);
+  const [avatarUploading, setAvatarUploading] = useState(false);
+  const [bannerUploading, setBannerUploading] = useState(false);
+  const [avatarUploadError, setAvatarUploadError] = useState<string | null>(null);
+  const [bannerUploadError, setBannerUploadError] = useState<string | null>(null);
+  const avatarInputRef = useRef<HTMLInputElement>(null);
+  const bannerInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (!ownProfile) return;
+    setPTagline(ownProfile.tagline ?? "");
+    setPBio(ownProfile.bio ?? "");
+    setPTradePrefs(ownProfile.tradePreferences ?? "");
+    setPAccentColor(ownProfile.accentColor ?? "#ff0080");
+    setPBannerStyle((ownProfile.bannerStyle as BannerStyle) ?? "default");
+    setCurrentAvatarUrl(ownProfile.customAvatarUrl ?? null);
+    setCurrentBannerUrl(ownProfile.bannerImageUrl ?? null);
+  }, [ownProfile?.userId]);
+
+  async function handleProfileSave() {
+    setProfileSaving(true);
+    try {
+      await updateProfile.mutateAsync({ tagline: pTagline, bio: pBio, tradePreferences: pTradePrefs, accentColor: pAccentColor, bannerStyle: pBannerStyle });
+      setProfileSaved(true);
+      setTimeout(() => setProfileSaved(false), 2500);
+    } catch { /* handled by mutation */ }
+    finally { setProfileSaving(false); }
+  }
+
+  async function handleProfileImageUpload(type: "avatar" | "banner", file: File) {
+    const setUploading = type === "avatar" ? setAvatarUploading : setBannerUploading;
+    const setError = type === "avatar" ? setAvatarUploadError : setBannerUploadError;
+    const setUrl = type === "avatar" ? setCurrentAvatarUrl : setCurrentBannerUrl;
+    setUploading(true); setError(null);
+    try {
+      const form = new FormData();
+      form.append("image", file);
+      const r = await fetch(`/api/uploads/profile-image?type=${type}`, { method: "POST", credentials: "include", body: form });
+      const data = await r.json() as { ok?: boolean; url?: string; error?: string; pending?: boolean };
+      if (!r.ok) throw new Error(data.error ?? "Upload failed");
+      if (data.pending) setError("✅ Submitted for review — will appear once approved");
+      else setUrl(data.url ?? null);
+    } catch (err) { setError(err instanceof Error ? err.message : "Upload failed"); }
+    finally { setUploading(false); }
+  }
+
+  async function handleRemoveProfileImage(type: "avatar" | "banner") {
+    const setUrl = type === "avatar" ? setCurrentAvatarUrl : setCurrentBannerUrl;
+    const r = await fetch(`/api/uploads/profile-image?type=${type}`, { method: "DELETE", credentials: "include" });
+    if (r.ok) setUrl(null);
+  }
+
   function showToast(msg: string, ok = true) {
     setToast({ msg, ok });
     setTimeout(() => setToast(null), 3500);
@@ -891,17 +964,7 @@ function ThemeTab() {
       const data = await r.json();
       if (data.ok) {
         qc.setQueryData(["site-theme"], data.theme);
-        document.documentElement.style.setProperty("--color-primary", data.theme.primaryColor);
-        document.documentElement.style.setProperty("--color-ring", data.theme.primaryColor);
-        document.documentElement.style.setProperty("--color-accent-foreground", data.theme.primaryColor);
-        const hex = data.theme.primaryColor.replace("#", "");
-        if (hex.length === 6) {
-          const r = parseInt(hex.slice(0, 2), 16);
-          const g = parseInt(hex.slice(2, 4), 16);
-          const b = parseInt(hex.slice(4, 6), 16);
-          document.documentElement.style.setProperty("--color-accent", `rgba(${r}, ${g}, ${b}, 0.15)`);
-        }
-        document.documentElement.style.setProperty("--color-secondary", data.theme.secondaryColor);
+        applyThemeColors(data.theme.primaryColor, data.theme.secondaryColor);
         showToast("Theme saved! Changes are live.");
       } else {
         showToast(data.error ?? "Failed to save", false);
@@ -924,6 +987,151 @@ function ThemeTab() {
 
   return (
     <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="space-y-5">
+
+      {/* Sub-tab navigation */}
+      <div className="flex gap-1 p-1 glass-panel rounded-xl border border-white/10">
+        <button onClick={() => setSection("site")}
+          className={cn("flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-semibold transition-colors",
+            section === "site" ? "bg-primary/20 text-primary border border-primary/30" : "text-muted-foreground hover:text-white")}>
+          <Palette className="w-3.5 h-3.5" /> Site Theme
+        </button>
+        <button onClick={() => setSection("profile")}
+          className={cn("flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-semibold transition-colors",
+            section === "profile" ? "bg-primary/20 text-primary border border-primary/30" : "text-muted-foreground hover:text-white")}>
+          <User className="w-3.5 h-3.5" /> My Profile
+        </button>
+      </div>
+
+      {section === "profile" ? (
+        <div className="space-y-5">
+          {/* About */}
+          <div className="glass-panel border border-white/10 rounded-2xl p-5 space-y-4">
+            <h3 className="font-display font-bold text-white flex items-center gap-2"><Pencil className="w-4 h-4 text-primary" /> About You</h3>
+            <div className="space-y-1.5">
+              <label className="text-[11px] text-muted-foreground uppercase tracking-wider font-semibold flex justify-between">
+                <span>Tagline</span><span className={pTagline.length > 70 ? "text-orange-400" : ""}>{pTagline.length}/80</span>
+              </label>
+              <input value={pTagline} onChange={(e) => setPTagline(e.target.value.slice(0, 80))}
+                placeholder="Your short tagline…"
+                className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-sm text-white placeholder-muted-foreground focus:outline-none focus:border-primary/50 transition" />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-[11px] text-muted-foreground uppercase tracking-wider font-semibold flex justify-between">
+                <span>Bio</span><span className={pBio.length > 450 ? "text-orange-400" : ""}>{pBio.length}/500</span>
+              </label>
+              <textarea value={pBio} onChange={(e) => setPBio(e.target.value.slice(0, 500))}
+                placeholder="Tell people about yourself, your trade history, what you sell…"
+                rows={4}
+                className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-sm text-white placeholder-muted-foreground focus:outline-none focus:border-primary/50 transition resize-none" />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-[11px] text-muted-foreground uppercase tracking-wider font-semibold flex justify-between">
+                <span>Trade Preferences</span><span className={pTradePrefs.length > 180 ? "text-orange-400" : ""}>{pTradePrefs.length}/200</span>
+              </label>
+              <textarea value={pTradePrefs} onChange={(e) => setPTradePrefs(e.target.value.slice(0, 200))}
+                placeholder="e.g. Looking to buy limiteds, selling for PayPal / Cash App…"
+                rows={2}
+                className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-sm text-white placeholder-muted-foreground focus:outline-none focus:border-primary/50 transition resize-none" />
+            </div>
+          </div>
+
+          {/* Style */}
+          <div className="glass-panel border border-white/10 rounded-2xl p-5 space-y-4">
+            <h3 className="font-display font-bold text-white flex items-center gap-2"><Palette className="w-4 h-4 text-primary" /> Style</h3>
+
+            {/* Banner style */}
+            <div className="space-y-2">
+              <label className="text-[11px] text-muted-foreground uppercase tracking-wider font-semibold">Banner Style</label>
+              <div className="grid grid-cols-4 gap-2">
+                {BANNER_STYLES.map((s) => (
+                  <button key={s.key} onClick={() => setPBannerStyle(s.key)}
+                    className={cn("h-10 rounded-xl transition-all relative overflow-hidden", getBannerClass(s.key),
+                      pBannerStyle === s.key ? "ring-2 ring-white scale-105" : "opacity-60 hover:opacity-90")}>
+                    {pBannerStyle === s.key && <div className="absolute inset-0 flex items-center justify-center"><Check className="w-4 h-4 text-white drop-shadow" /></div>}
+                  </button>
+                ))}
+              </div>
+              <div className="grid grid-cols-4 gap-2">
+                {BANNER_STYLES.map((s) => (
+                  <p key={s.key} className={cn("text-center text-[10px]", pBannerStyle === s.key ? "text-white font-bold" : "text-muted-foreground")}>{s.label}</p>
+                ))}
+              </div>
+            </div>
+
+            {/* Accent color */}
+            <div className="space-y-2">
+              <label className="text-[11px] text-muted-foreground uppercase tracking-wider font-semibold">Profile Accent Color</label>
+              <div className="flex flex-wrap gap-2">
+                {ACCENT_COLORS.map((c) => (
+                  <button key={c.hex} onClick={() => setPAccentColor(c.hex)} title={c.label}
+                    className={cn("w-8 h-8 rounded-full border-2 transition-all", pAccentColor === c.hex ? "border-white scale-110 shadow-lg" : "border-transparent hover:scale-105")}
+                    style={{ backgroundColor: c.hex }} />
+                ))}
+              </div>
+              <div className="flex items-center gap-2">
+                <label className="text-xs text-muted-foreground">Custom:</label>
+                <input type="text" value={pAccentColor}
+                  onChange={(e) => { const v = e.target.value; if (/^#[0-9a-fA-F]{0,6}$/.test(v)) setPAccentColor(v); }}
+                  maxLength={7}
+                  className="w-28 px-2 py-1 rounded-lg bg-white/5 border border-white/10 text-xs font-mono text-white focus:outline-none focus:border-primary/50 transition" />
+                <div className="w-6 h-6 rounded-full border border-white/20" style={{ backgroundColor: pAccentColor }} />
+              </div>
+            </div>
+
+            {/* Avatar */}
+            <div className="space-y-2 pt-3 border-t border-white/10">
+              <label className="text-[11px] text-muted-foreground uppercase tracking-wider font-semibold">Avatar Image</label>
+              <div className="flex items-center gap-3">
+                {currentAvatarUrl
+                  ? <img src={currentAvatarUrl} alt="avatar" className="w-12 h-12 rounded-full object-cover ring-2 ring-primary/40" />
+                  : <div className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center text-[10px] text-muted-foreground">None</div>}
+                <div className="flex gap-2">
+                  <button onClick={() => avatarInputRef.current?.click()} disabled={avatarUploading}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/5 border border-white/15 text-xs font-semibold text-white hover:bg-white/10 transition disabled:opacity-50">
+                    {avatarUploading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Upload className="w-3 h-3" />}
+                    {avatarUploading ? "Uploading…" : "Upload"}
+                  </button>
+                  {currentAvatarUrl && <button onClick={() => handleRemoveProfileImage("avatar")}
+                    className="px-3 py-1.5 rounded-xl bg-red-500/10 border border-red-500/20 text-xs font-semibold text-red-400 hover:bg-red-500/20 transition">Remove</button>}
+                </div>
+              </div>
+              {avatarUploadError && <p className="text-xs text-amber-400">{avatarUploadError}</p>}
+              <input ref={avatarInputRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif" className="hidden"
+                onChange={(e) => { const f = e.target.files?.[0]; if (f) handleProfileImageUpload("avatar", f); e.target.value = ""; }} />
+            </div>
+
+            {/* Banner */}
+            <div className="space-y-2">
+              <label className="text-[11px] text-muted-foreground uppercase tracking-wider font-semibold">Banner Image</label>
+              <div className="flex items-center gap-3">
+                {currentBannerUrl
+                  ? <div className="w-28 h-10 rounded-lg bg-cover bg-center ring-1 ring-white/20" style={{ backgroundImage: `url(${currentBannerUrl})` }} />
+                  : <div className="w-28 h-10 rounded-lg bg-white/10 flex items-center justify-center text-[10px] text-muted-foreground">None</div>}
+                <div className="flex gap-2">
+                  <button onClick={() => bannerInputRef.current?.click()} disabled={bannerUploading}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/5 border border-white/15 text-xs font-semibold text-white hover:bg-white/10 transition disabled:opacity-50">
+                    {bannerUploading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Upload className="w-3 h-3" />}
+                    {bannerUploading ? "Uploading…" : "Upload"}
+                  </button>
+                  {currentBannerUrl && <button onClick={() => handleRemoveProfileImage("banner")}
+                    className="px-3 py-1.5 rounded-xl bg-red-500/10 border border-red-500/20 text-xs font-semibold text-red-400 hover:bg-red-500/20 transition">Remove</button>}
+                </div>
+              </div>
+              {bannerUploadError && <p className="text-xs text-amber-400">{bannerUploadError}</p>}
+              <input ref={bannerInputRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif" className="hidden"
+                onChange={(e) => { const f = e.target.files?.[0]; if (f) handleProfileImageUpload("banner", f); e.target.value = ""; }} />
+            </div>
+          </div>
+
+          {/* Save profile */}
+          <button onClick={handleProfileSave} disabled={profileSaving}
+            className="w-full flex items-center justify-center gap-2 py-3 rounded-xl font-semibold text-sm transition-all disabled:opacity-40 text-white"
+            style={{ background: `linear-gradient(135deg, ${local.primaryColor}, ${local.secondaryColor})` }}>
+            {profileSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : profileSaved ? <Check className="w-4 h-4" /> : <Pencil className="w-4 h-4" />}
+            {profileSaving ? "Saving…" : profileSaved ? "Saved!" : "Save Profile"}
+          </button>
+        </div>
+      ) : (<>
 
       {/* Color pickers */}
       <div className="glass-panel border border-white/10 rounded-2xl p-5 space-y-4">
@@ -1152,6 +1360,7 @@ function ThemeTab() {
           </motion.div>
         )}
       </AnimatePresence>
+      </>)}
     </motion.div>
   );
 }

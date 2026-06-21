@@ -1282,7 +1282,7 @@ function CreateShopModal({ onClose, onSuccess }: { onClose: () => void; onSucces
                 onClick={() => { if (!shopName.trim()) return; setStep(2); }}
                 disabled={!shopName.trim()}
                 className="w-full py-3 rounded-xl text-sm font-bold text-white disabled:opacity-40 transition-all flex items-center justify-center gap-2"
-                style={{ background: "linear-gradient(135deg, #7c3aed, #4f46e5)" }}>
+                style={{ background: "linear-gradient(135deg, var(--color-primary), var(--gradient-end, var(--color-secondary)))" }}>
                 Next — Design your shop →
               </button>
             </motion.div>
@@ -1359,7 +1359,7 @@ function CreateShopModal({ onClose, onSuccess }: { onClose: () => void; onSucces
                 </button>
                 <button onClick={handleSubmit} disabled={submitting}
                   className="flex-1 py-2.5 rounded-xl text-sm font-bold text-white transition-all disabled:opacity-50 flex items-center justify-center gap-2"
-                  style={{ background: "linear-gradient(135deg, #7c3aed, #4f46e5)" }}>
+                  style={{ background: "linear-gradient(135deg, var(--color-primary), var(--gradient-end, var(--color-secondary)))" }}>
                   {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Store className="w-4 h-4" />}
                   {submitting ? "Submitting…" : "Submit for Review"}
                 </button>
@@ -1508,7 +1508,7 @@ function EditShopModal({ shop, onClose, onSuccess }: { shop: ShopApplication; on
             </button>
             <button onClick={handleSave} disabled={saving || !shopName.trim()}
               className="flex-1 py-2.5 rounded-xl text-sm font-bold text-white transition-all disabled:opacity-50 flex items-center justify-center gap-2"
-              style={{ background: "linear-gradient(135deg, #7c3aed, #4f46e5)" }}>
+              style={{ background: "linear-gradient(135deg, var(--color-primary), var(--gradient-end, var(--color-secondary)))" }}>
               {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Pencil className="w-4 h-4" />}
               {saving ? "Saving…" : "Save changes"}
             </button>

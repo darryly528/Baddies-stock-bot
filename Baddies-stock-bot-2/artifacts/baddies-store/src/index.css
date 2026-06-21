@@ -59,8 +59,8 @@
   body {
     @apply font-sans antialiased bg-background text-foreground min-h-screen selection:bg-primary/30 selection:text-white;
     background-image: 
-      radial-gradient(circle at 15% 50%, rgba(200, 0, 255, 0.05), transparent 25%),
-      radial-gradient(circle at 85% 30%, rgba(255, 0, 128, 0.05), transparent 25%);
+      radial-gradient(circle at 15% 50%, rgba(var(--accent-r, 200), var(--accent-g, 0), var(--accent-b, 255), 0.05), transparent 25%),
+      radial-gradient(circle at 85% 30%, rgba(var(--accent-r, 255), var(--accent-g, 0), var(--accent-b, 128), 0.05), transparent 25%);
     background-attachment: fixed;
   }
 
@@ -89,7 +89,7 @@
   }
   
   .text-glow {
-    text-shadow: 0 0 20px rgba(255, 0, 128, 0.5);
+    text-shadow: 0 0 20px rgba(var(--accent-r, 255), var(--accent-g, 0), var(--accent-b, 128), 0.5);
   }
 
   .hide-scrollbar {
