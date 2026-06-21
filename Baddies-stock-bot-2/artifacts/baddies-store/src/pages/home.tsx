@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useState, useEffect } from "react";
+import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { useInfiniteCatalogItems, useCatalogCategories } from "@/hooks/use-catalog";
 import { ItemCard } from "@/components/item-card";
 import { ItemDetailModal } from "@/components/item-detail-modal";
@@ -10,6 +10,7 @@ import { motion } from "framer-motion";
 import { Search, Loader2, MessageSquare, FilterX, Sparkles, Box, RefreshCw, Scale } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useConfig } from "@/hooks/use-config";
+import { useAuth } from "@/contexts/auth-context";
 
 const apiBase = import.meta.env.VITE_API_URL ?? "";
 
@@ -20,9 +21,21 @@ const ITEM_TYPES = [
   { label: "Skins", value: "Skin", emoji: "🎨" },
 ];
 
+type SiteTheme = { bgUrl: string | null };
+type UserTheme = { bgUrl: string | null };
+
+function readUserTheme(userId: string | undefined): UserTheme | null {
+  if (!userId) return null;
+  try {
+    const s = localStorage.getItem(`user-theme-${userId}`);
+    return s ? (JSON.parse(s) as UserTheme) : null;
+  } catch { return null; }
+}
+
 export default function Home() {
   const queryClient = useQueryClient();
   const { data: config } = useConfig();
+  const { user } = useAuth();
   const [search, setSearch] = useState("");
   const [searchInput, setSearchInput] = useState(""); // Debounced visually
   const [itemType, setItemType] = useState("All");
@@ -30,6 +43,21 @@ export default function Home() {
   const [refreshing, setRefreshing] = useState(false);
   const [lastRefreshAt, setLastRefreshAt] = useState<string | null>(null);
   const [selectedItem, setSelectedItem] = useState<CatalogItem | null>(null);
+  const [userTheme, setUserTheme] = useState<UserTheme | null>(() => readUserTheme(user?.id));
+  const { data: siteTheme } = useQuery<SiteTheme>({
+    queryKey: ["site-theme"],
+    queryFn: () => fetch("/api/theme").then((r) => r.json()),
+    staleTime: 60_000,
+  });
+
+  useEffect(() => {
+    function reload() { setUserTheme(readUserTheme(user?.id)); }
+    reload();
+    window.addEventListener("user-theme-changed", reload);
+    return () => window.removeEventListener("user-theme-changed", reload);
+  }, [user?.id]);
+
+  const hasBackground = !!(userTheme?.bgUrl ?? siteTheme?.bgUrl);
 
   async function handleRefresh() {
     if (refreshing) return;
@@ -75,51 +103,55 @@ export default function Home() {
 
   return (
     <div className="min-h-screen pb-24 relative overflow-x-hidden">
-      {/* Background Hero Image */}
-      <div className="absolute top-0 left-0 w-full h-[600px] z-0 pointer-events-none">
-        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-background/80 to-background z-10" />
-        <img 
-          src={`${import.meta.env.BASE_URL}images/hero-bg.png`}
-          alt="Baddies Neon Background" 
-          className="w-full h-full object-cover opacity-60"
-        />
-      </div>
-
-      {/* Hero Content */}
-      <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-12 sm:pt-24 pb-10 sm:pb-16 text-center">
-        <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, ease: "easeOut" }}
-          className="flex flex-col items-center"
-        >
-          <div className="inline-flex items-center gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full glass-panel border-primary/30 text-primary mb-5 sm:mb-8 shadow-[0_0_30px_rgba(255,0,128,0.2)]">
-            <Sparkles className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-            <span className="text-[10px] sm:text-sm font-semibold tracking-wide uppercase">Official Stock Explorer</span>
+      {!hasBackground && (
+        <>
+          {/* Background Hero Image */}
+          <div className="absolute top-0 left-0 w-full h-[600px] z-0 pointer-events-none">
+            <div className="absolute inset-0 bg-gradient-to-b from-transparent via-background/80 to-background z-10" />
+            <img 
+              src={`${import.meta.env.BASE_URL}images/hero-bg.png`}
+              alt="Baddies Neon Background" 
+              className="w-full h-full object-cover opacity-60"
+            />
           </div>
 
-          <img
-            src="/logo.png"
-            alt="Baddies Store"
-            className="w-24 h-24 sm:w-32 sm:h-32 object-contain mb-4 sm:mb-6 drop-shadow-[0_0_32px_rgba(255,0,128,0.7)]"
-          />
-          
-          <h1 className="text-4xl sm:text-5xl md:text-7xl font-display font-extrabold text-transparent bg-clip-text bg-gradient-to-br from-white via-white to-white/40 mb-4 sm:mb-6 drop-shadow-sm">
-            Baddies <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-secondary text-glow">Store</span>
-          </h1>
-          
-          <p className="text-base sm:text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto mb-6 sm:mb-10 leading-relaxed px-2">
-            Browse our complete catalog of Weapons, Fighting Styles, and exclusive Skins. Find exactly what you need to dominate.
-          </p>
+          {/* Hero Content */}
+          <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-12 sm:pt-24 pb-10 sm:pb-16 text-center">
+            <motion.div
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8, ease: "easeOut" }}
+              className="flex flex-col items-center"
+            >
+              <div className="inline-flex items-center gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full glass-panel border-primary/30 text-primary mb-5 sm:mb-8 shadow-[0_0_30px_rgba(255,0,128,0.2)]">
+                <Sparkles className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                <span className="text-[10px] sm:text-sm font-semibold tracking-wide uppercase">Official Stock Explorer</span>
+              </div>
 
-          <a href={config?.discordInviteUrl ?? "https://discord.gg/eB6ksCQPWP"} target="_blank" rel="noopener noreferrer" className="w-full sm:w-auto">
-            <Button variant="discord" size="lg" className="group w-full sm:w-auto">
-              <MessageSquare className="w-5 h-5 mr-2 group-hover:animate-bounce" />
-              <span className="text-sm sm:text-base">Join Discord for Middle Man service</span>
-            </Button>
-          </a>
-        </motion.div>
-      </div>
+              <img
+                src="/logo.png"
+                alt="Baddies Store"
+                className="w-24 h-24 sm:w-32 sm:h-32 object-contain mb-4 sm:mb-6 drop-shadow-[0_0_32px_rgba(255,0,128,0.7)]"
+              />
+              
+              <h1 className="text-4xl sm:text-5xl md:text-7xl font-display font-extrabold text-transparent bg-clip-text bg-gradient-to-br from-white via-white to-white/40 mb-4 sm:mb-6 drop-shadow-sm">
+                Baddies <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-secondary text-glow">Store</span>
+              </h1>
+              
+              <p className="text-base sm:text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto mb-6 sm:mb-10 leading-relaxed px-2">
+                Browse our complete catalog of Weapons, Fighting Styles, and exclusive Skins. Find exactly what you need to dominate.
+              </p>
+
+              <a href={config?.discordInviteUrl ?? "https://discord.gg/eB6ksCQPWP"} target="_blank" rel="noopener noreferrer" className="w-full sm:w-auto">
+                <Button variant="discord" size="lg" className="group w-full sm:w-auto">
+                  <MessageSquare className="w-5 h-5 mr-2 group-hover:animate-bounce" />
+                  <span className="text-sm sm:text-base">Join Discord for Middle Man service</span>
+                </Button>
+              </a>
+            </motion.div>
+          </div>
+        </>
+      )}
 
       {/* Interactive Filters Section */}
       <div className="relative z-20 max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 mb-8 sm:mb-12">
