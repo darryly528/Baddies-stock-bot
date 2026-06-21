@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Baddies Store</string>
+    <string name="title_activity_main">Baddies Store</string>
+    <string name="package_name">com.baddies.store</string>
+    <string name="custom_url_scheme">com.baddies.store</string>
+</resources>
