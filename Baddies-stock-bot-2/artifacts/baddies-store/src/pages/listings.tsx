@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { useListings, Listing, ListingItem, Bid, usePlaceBid, useRetractBid } from "@/hooks/use-listings";
 import { useConfig } from "@/hooks/use-config";
 import { useAuth } from "@/contexts/auth-context";
@@ -36,6 +36,8 @@ import {
   Tag,
   Pencil,
   Users,
+  Star,
+  Heart,
 } from "lucide-react";
 import { Link } from "wouter";
 import { cn, formatNumber } from "@/lib/utils";
@@ -1562,6 +1564,47 @@ function EditShopModal({ shop, onClose, onSuccess }: { shop: ShopApplication; on
 
 // ── Shops view ────────────────────────────────────────────────────────────────
 
+type ShopVouch = {
+  id: string;
+  fromUserId: string;
+  fromUsername: string;
+  fromAvatar: string | null;
+  toUserId: string;
+  message: string;
+  rating: number;
+  createdAt: string;
+  updatedAt?: string;
+};
+
+function ShopStars({ rating, size = "sm" }: { rating: number; size?: "sm" | "xs" }) {
+  return (
+    <div className="flex gap-0.5">
+      {[1, 2, 3, 4, 5].map((n) => (
+        <Star key={n} className={cn(
+          size === "xs" ? "w-2.5 h-2.5" : "w-3 h-3",
+          n <= Math.round(rating) ? "text-amber-400 fill-amber-400" : "text-white/20"
+        )} />
+      ))}
+    </div>
+  );
+}
+
+function ShopStarPicker({ value, onChange, accent }: { value: number; onChange: (v: number) => void; accent: string }) {
+  const [hovered, setHovered] = useState(0);
+  return (
+    <div className="flex gap-1.5">
+      {[1, 2, 3, 4, 5].map((n) => (
+        <button key={n} type="button" onClick={() => onChange(n)}
+          onMouseEnter={() => setHovered(n)} onMouseLeave={() => setHovered(0)}
+          className="transition-transform hover:scale-110">
+          <Star className={cn("w-6 h-6 transition-colors",
+            (hovered || value) >= n ? "text-amber-400 fill-amber-400" : "text-white/15")} />
+        </button>
+      ))}
+    </div>
+  );
+}
+
 interface SellerShop {
   sellerId: string;
   sellerName: string;
@@ -1594,7 +1637,36 @@ function ShopsView({ listings, onMessage, onOffer, onAddToCart, onViewCart, cart
   const [memberInput, setMemberInput] = useState("");
   const [memberSaving, setMemberSaving] = useState(false);
   const [addedInModal, setAddedInModal] = useState<Set<string>>(new Set());
+  const [shopTab, setShopTab] = useState<"items" | "reviews">("items");
+  const [shopSortMode, setShopSortMode] = useState<"all" | "top-rated">("all");
+  const [vouchMsg, setVouchMsg] = useState("");
+  const [vouchRating, setVouchRating] = useState(5);
+  const [vouchSubmitting, setVouchSubmitting] = useState(false);
+  const [vouchSuccess, setVouchSuccess] = useState(false);
+  const [vouchError, setVouchError] = useState<string | null>(null);
+  const [allVouches, setAllVouches] = useState<ShopVouch[]>([]);
   const approvedIds = new Set(approvedShops.map((s) => s.userId));
+
+  useEffect(() => {
+    fetch("/api/vouches", { credentials: "include" })
+      .then((r) => r.ok ? r.json() : [])
+      .then((d) => setAllVouches(Array.isArray(d) ? d : []))
+      .catch(() => {});
+  }, []);
+
+  const vouchStats = useMemo(() => {
+    const map: Record<string, { avg: number; count: number; list: ShopVouch[] }> = {};
+    for (const v of allVouches) {
+      if (!map[v.toUserId]) map[v.toUserId] = { avg: 0, count: 0, list: [] };
+      map[v.toUserId].list.push(v);
+    }
+    for (const key of Object.keys(map)) {
+      const ratings = map[key].list.map((v) => v.rating);
+      map[key].count = ratings.length;
+      map[key].avg = Math.round((ratings.reduce((s, r) => s + r, 0) / ratings.length) * 10) / 10;
+    }
+    return map;
+  }, [allVouches]);
 
   useEffect(() => {
     if (openShop && user?.id === openShop.sellerId && myShop) {
@@ -1603,6 +1675,11 @@ function ShopsView({ listings, onMessage, onOffer, onAddToCart, onViewCart, cart
       setMemberInput("");
     }
     setAddedInModal(new Set());
+    setShopTab("items");
+    setVouchMsg("");
+    setVouchRating(5);
+    setVouchSuccess(false);
+    setVouchError(null);
   }, [openShop?.sellerId]);
 
   const shopMap = listings.reduce<Record<string, SellerShop>>((acc, listing) => {
@@ -1671,6 +1748,14 @@ function ShopsView({ listings, onMessage, onOffer, onAddToCart, onViewCart, cart
   });
 
   const shops = Object.values(shopMap).sort((a, b) => {
+    if (shopSortMode === "top-rated") {
+      const aAvg = vouchStats[a.sellerId]?.avg ?? 0;
+      const bAvg = vouchStats[b.sellerId]?.avg ?? 0;
+      if (bAvg !== aAvg) return bAvg - aAvg;
+      const aCnt = vouchStats[a.sellerId]?.count ?? 0;
+      const bCnt = vouchStats[b.sellerId]?.count ?? 0;
+      return bCnt - aCnt;
+    }
     const aVerified = approvedIds.has(a.sellerId) ? 1 : 0;
     const bVerified = approvedIds.has(b.sellerId) ? 1 : 0;
     if (bVerified !== aVerified) return bVerified - aVerified;
@@ -1744,8 +1829,17 @@ function ShopsView({ listings, onMessage, onOffer, onAddToCart, onViewCart, cart
 
   return (
     <div className="space-y-4">
-      {/* Size toggle */}
-      <div className="flex justify-end">
+      {/* Toolbar: sort + size toggle */}
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-0.5 p-0.5 rounded-lg bg-white/5 border border-white/10">
+          {([["all", "All"], ["top-rated", "⭐ Top Rated"]] as const).map(([mode, label]) => (
+            <button key={mode} onClick={() => setShopSortMode(mode)}
+              className={cn("px-3 py-1 rounded-md text-xs font-bold transition-all",
+                shopSortMode === mode ? "bg-white/15 text-white" : "text-white/40 hover:text-white/70")}>
+              {label}
+            </button>
+          ))}
+        </div>
         <div className="flex items-center gap-0.5 p-0.5 rounded-lg bg-white/5 border border-white/10">
           {(["sm", "md", "lg"] as const).map((s) => (
             <button
@@ -1958,7 +2052,37 @@ function ShopsView({ listings, onMessage, onOffer, onAddToCart, onViewCart, cart
                   </div>
                 )}
 
+                {/* Tab bar */}
+                <div className="shrink-0 flex gap-1 px-4 py-2.5" style={{ background: "rgba(0,0,0,0.5)", borderBottom: `1px solid ${accent}20` }}>
+                  {([["items", "Items"], ["reviews", "Reviews"]] as const).map(([t, label]) => {
+                    const cnt = t === "reviews" ? (vouchStats[shop.sellerId]?.count ?? 0) : allItems.length;
+                    return (
+                      <button key={t} onClick={() => setShopTab(t)}
+                        className={cn("flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all",
+                          shopTab === t
+                            ? "text-white border"
+                            : "text-white/40 hover:text-white/70 border border-transparent")}
+                        style={shopTab === t ? { background: `${accent}25`, borderColor: `${accent}50`, color: accent } : {}}>
+                        {t === "reviews" && <Star className="w-3 h-3" />}
+                        {label}
+                        {cnt > 0 && <span className="text-[10px] opacity-70">({cnt})</span>}
+                      </button>
+                    );
+                  })}
+                  {(() => {
+                    const stats = vouchStats[shop.sellerId];
+                    if (!stats) return null;
+                    return (
+                      <div className="ml-auto flex items-center gap-1">
+                        <ShopStars rating={stats.avg} />
+                        <span className="text-xs font-bold text-amber-400">{stats.avg}</span>
+                      </div>
+                    );
+                  })()}
+                </div>
+
                 {/* Items grid */}
+                {shopTab === "items" && (
                 <div className="flex-1 overflow-y-auto p-4" style={{ background: "rgba(0,0,0,0.6)" }}>
                   {allItems.length === 0 ? (
                     <div className="flex flex-col items-center justify-center h-40 text-white/30">
@@ -2027,6 +2151,121 @@ function ShopsView({ listings, onMessage, onOffer, onAddToCart, onViewCart, cart
                     </div>
                   )}
                 </div>
+                )}
+
+                {/* Reviews tab */}
+                {shopTab === "reviews" && (
+                <div className="flex-1 overflow-y-auto p-4 space-y-4" style={{ background: "rgba(0,0,0,0.6)" }}>
+                  {/* Leave a review form */}
+                  {user && user.id !== shop.sellerId && (
+                    <div className="p-4 rounded-2xl border space-y-3" style={{ borderColor: `${accent}30`, background: `${accent}08` }}>
+                      <p className="text-xs font-bold text-white/70 uppercase tracking-wider">Rate this shop</p>
+                      {vouchSuccess ? (
+                        <div className="flex items-center gap-2 text-green-400 text-sm font-bold py-2">
+                          <Check className="w-4 h-4" />
+                          Review submitted!
+                        </div>
+                      ) : (
+                        <>
+                          <ShopStarPicker value={vouchRating} onChange={setVouchRating} accent={accent} />
+                          <textarea
+                            value={vouchMsg}
+                            onChange={(e) => setVouchMsg(e.target.value.slice(0, 300))}
+                            placeholder="Share your experience with this shop… (min 10 chars)"
+                            rows={3}
+                            className="w-full px-3 py-2 rounded-xl bg-black/40 border border-white/10 text-sm text-white placeholder-white/30 focus:outline-none focus:border-white/30 transition resize-none"
+                          />
+                          <div className="flex items-center gap-2">
+                            <span className={cn("text-[11px] ml-auto", vouchMsg.length > 270 ? "text-orange-400" : "text-white/30")}>{vouchMsg.length}/300</span>
+                            {vouchError && <span className="text-[11px] text-red-400">{vouchError}</span>}
+                            <button
+                              disabled={vouchSubmitting || vouchMsg.trim().length < 10}
+                              onClick={async () => {
+                                setVouchSubmitting(true);
+                                setVouchError(null);
+                                const verSh = approvedShops.find((s) => s.userId === shop.sellerId);
+                                try {
+                                  const r = await fetch("/api/vouches", {
+                                    method: "POST",
+                                    headers: { "Content-Type": "application/json" },
+                                    credentials: "include",
+                                    body: JSON.stringify({
+                                      toUserId: shop.sellerId,
+                                      toUsername: verSh?.shopName ?? shop.sellerName,
+                                      toAvatar: verSh?.logoUrl ?? null,
+                                      message: vouchMsg.trim(),
+                                      rating: vouchRating,
+                                    }),
+                                  });
+                                  const d = await r.json() as { ok?: boolean; error?: string };
+                                  if (!r.ok) throw new Error(d.error ?? "Failed");
+                                  setVouchSuccess(true);
+                                  setVouchMsg("");
+                                  // refresh local vouches
+                                  fetch("/api/vouches", { credentials: "include" })
+                                    .then((res) => res.ok ? res.json() : [])
+                                    .then((data) => setAllVouches(Array.isArray(data) ? data : []))
+                                    .catch(() => {});
+                                } catch (err) {
+                                  setVouchError(err instanceof Error ? err.message : "Failed to submit");
+                                } finally {
+                                  setVouchSubmitting(false);
+                                }
+                              }}
+                              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold disabled:opacity-40 transition-all"
+                              style={{ background: accent, color: contrastText(accent) }}
+                            >
+                              {vouchSubmitting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Heart className="w-3.5 h-3.5" />}
+                              Submit Review
+                            </button>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  )}
+                  {!user && (
+                    <button onClick={() => { setOpenShop(null); onLoginPrompt(); }}
+                      className="w-full flex items-center justify-center gap-2 py-3 rounded-xl border border-dashed border-white/15 text-sm text-white/50 hover:text-white/70 transition-colors">
+                      <Heart className="w-4 h-4" />
+                      Log in to leave a review
+                    </button>
+                  )}
+                  {/* Existing reviews */}
+                  {(vouchStats[shop.sellerId]?.list ?? []).length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-12 text-white/25 gap-2">
+                      <Star className="w-10 h-10" />
+                      <p className="text-sm font-semibold">No reviews yet</p>
+                      <p className="text-xs">Be the first to rate this shop</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {(vouchStats[shop.sellerId]?.list ?? []).map((v) => (
+                        <div key={v.id} className="p-3 rounded-xl border space-y-2" style={{ borderColor: `${accent}20`, background: "rgba(0,0,0,0.35)" }}>
+                          <div className="flex items-center gap-2">
+                            {v.fromAvatar ? (
+                              <img src={v.fromAvatar} alt={v.fromUsername} className="w-7 h-7 rounded-full object-cover" />
+                            ) : (
+                              <div className="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center text-xs font-bold text-white/60">
+                                {v.fromUsername[0]?.toUpperCase()}
+                              </div>
+                            )}
+                            <div className="flex-1 min-w-0">
+                              <span className="text-xs font-bold text-white">{v.fromUsername}</span>
+                              <div className="flex items-center gap-1.5 mt-0.5">
+                                <ShopStars rating={v.rating} />
+                                <span className="text-[10px] text-white/35">
+                                  {new Date(v.updatedAt ?? v.createdAt).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                          <p className="text-xs text-white/70 leading-relaxed">&ldquo;{v.message}&rdquo;</p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                )}
 
                 {/* Floating cart bar */}
                 {cartCount > 0 && (
@@ -2112,6 +2351,17 @@ function ShopsView({ listings, onMessage, onOffer, onAddToCart, onViewCart, cart
                   ) : (
                     <p className="text-[11px] text-white/50">{totalItems} item{totalItems !== 1 ? "s" : ""}</p>
                   )}
+                  {(() => {
+                    const stats = vouchStats[shop.sellerId];
+                    if (!stats) return null;
+                    return (
+                      <div className="flex items-center gap-1 mt-0.5">
+                        <ShopStars rating={stats.avg} size="xs" />
+                        <span className="text-[10px] text-amber-400 font-bold">{stats.avg}</span>
+                        <span className="text-[10px] text-white/35">({stats.count})</span>
+                      </div>
+                    );
+                  })()}
                 </div>
               </div>
 
