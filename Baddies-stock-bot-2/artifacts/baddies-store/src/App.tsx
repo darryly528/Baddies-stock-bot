@@ -1,7 +1,7 @@
 import { Switch, Route, Router as WouterRouter, Link, useLocation } from "wouter";
 import { QueryClient, QueryClientProvider, useQuery } from "@tanstack/react-query";
 import { motion, AnimatePresence, LayoutGroup } from "framer-motion";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { applyThemeColors } from "./lib/theme-colors";
 import Home from "./pages/home";
 import ListPage from "./pages/list";
@@ -24,36 +24,61 @@ type SiteTheme = {
   bgBlur: boolean;
 };
 
+type UserTheme = { primary: string; secondary: string; bgUrl: string | null; bgOverlay: number; bgBlur: boolean };
+
+function readUserTheme(userId: string | undefined): UserTheme | null {
+  if (!userId) return null;
+  try {
+    const s = localStorage.getItem(`user-theme-${userId}`);
+    return s ? (JSON.parse(s) as UserTheme) : null;
+  } catch { return null; }
+}
+
 function SiteTheme() {
-  const { data: theme } = useQuery<SiteTheme>({
+  const { user } = useAuth();
+  const { data: serverTheme } = useQuery<SiteTheme>({
     queryKey: ["site-theme"],
     queryFn: () => fetch("/api/theme").then((r) => r.json()),
     staleTime: 60_000,
     refetchInterval: 120_000,
   });
 
-  useEffect(() => {
-    if (!theme) return;
-    applyThemeColors(theme.primaryColor, theme.secondaryColor);
-  }, [theme?.primaryColor, theme?.secondaryColor]);
+  const [userTheme, setUserTheme] = useState<UserTheme | null>(() => readUserTheme(user?.id));
 
-  if (!theme?.bgUrl) return null;
+  useEffect(() => {
+    function reload() { setUserTheme(readUserTheme(user?.id)); }
+    reload();
+    window.addEventListener("user-theme-changed", reload);
+    return () => window.removeEventListener("user-theme-changed", reload);
+  }, [user?.id]);
+
+  useEffect(() => {
+    const t = userTheme ?? serverTheme;
+    if (!t) return;
+    applyThemeColors(
+      userTheme ? userTheme.primary : serverTheme!.primaryColor,
+      userTheme ? userTheme.secondary : serverTheme!.secondaryColor,
+    );
+  }, [userTheme, serverTheme?.primaryColor, serverTheme?.secondaryColor]);
+
+  const bg = userTheme ?? serverTheme;
+  if (!bg?.bgUrl) return null;
 
   return (
     <>
       <div
         className="fixed inset-0 -z-10"
         style={{
-          backgroundImage: `url(${theme.bgUrl})`,
+          backgroundImage: `url(${bg.bgUrl})`,
           backgroundSize: "cover",
           backgroundPosition: "center",
           backgroundAttachment: "fixed",
-          filter: theme.bgBlur ? "blur(4px) scale(1.04)" : "none",
+          filter: bg.bgBlur ? "blur(4px) scale(1.04)" : "none",
         }}
       />
       <div
         className="fixed inset-0 -z-10"
-        style={{ background: `rgba(0,0,0,${theme.bgOverlay})` }}
+        style={{ background: `rgba(0,0,0,${bg.bgOverlay})` }}
       />
     </>
   );

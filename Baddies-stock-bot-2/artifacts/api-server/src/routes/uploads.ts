@@ -188,6 +188,33 @@ router.post("/uploads/profile-image", upload.single("image"), async (req: Reques
   res.json({ ok: true, url });
 });
 
+// ── Upload user personal site background (client-side theme, any logged-in user) ──
+
+const SITE_BG_DIR = path.join(UPLOADS_DIR, "site-bgs");
+if (!fs.existsSync(SITE_BG_DIR)) fs.mkdirSync(SITE_BG_DIR, { recursive: true });
+
+router.post("/uploads/user-site-bg", upload.single("file"), async (req: Request, res: Response) => {
+  const user = req.session?.discordUser;
+  if (!user) { res.status(401).json({ error: "Not authenticated" }); return; }
+  if (!req.file) { res.status(400).json({ error: "No image uploaded or invalid file type (JPEG/PNG/WebP/GIF only)" }); return; }
+
+  const extMap: Record<string, string> = {
+    "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp", "image/gif": "gif",
+  };
+  const ext = extMap[req.file.mimetype] ?? "jpg";
+  const filename = `${user.id}.${ext}`;
+  const filePath = path.join(SITE_BG_DIR, filename);
+
+  const variants = ["jpg", "png", "webp", "gif"].filter((e) => e !== ext);
+  for (const v of variants) {
+    const old = path.join(SITE_BG_DIR, `${user.id}.${v}`);
+    if (fs.existsSync(old)) fs.unlinkSync(old);
+  }
+
+  fs.writeFileSync(filePath, req.file.buffer);
+  res.json({ ok: true, url: `/api/uploads/site-bgs/${filename}` });
+});
+
 // ── Upload DM image ───────────────────────────────────────────────────────────
 
 router.post("/uploads/dm-image", upload.single("image"), async (req: Request, res: Response) => {

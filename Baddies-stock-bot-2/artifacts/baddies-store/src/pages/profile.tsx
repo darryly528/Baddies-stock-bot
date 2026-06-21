@@ -18,6 +18,7 @@ import {
 } from "@/hooks/use-profile";
 import { ROLE_LABEL, ROLE_COLOR, type AnyRole } from "@/hooks/use-staff";
 import { cn } from "@/lib/utils";
+import { applyThemeColors } from "@/lib/theme-colors";
 
 // ── Crop modal ────────────────────────────────────────────────────────────────
 
@@ -380,10 +381,10 @@ function ProfileEditor({
 }: {
   profile: Profile;
   onClose: () => void;
-  initialTab?: "about" | "theme" | "cards" | "items";
+  initialTab?: "about" | "theme" | "cards" | "items" | "site";
 }) {
   const qc = useQueryClient();
-  const [tab, setTab] = useState<"about" | "theme" | "cards" | "items">(initialTab ?? "about");
+  const [tab, setTab] = useState<"about" | "theme" | "cards" | "items" | "site">(initialTab ?? "about");
   const [tagline, setTagline] = useState(profile.tagline);
   const [bio, setBio] = useState(profile.bio);
   const [tradePrefs, setTradePrefs] = useState(profile.tradePreferences);
@@ -479,6 +480,50 @@ function ProfileEditor({
     } catch { /* ignore */ }
   }
 
+  // ── Site theme (client-side only, localStorage) ──
+  const SITE_THEME_KEY = `user-theme-${profile.userId}`;
+  type UserSiteTheme = { primary: string; secondary: string; bgUrl: string | null; bgOverlay: number; bgBlur: boolean };
+  const DEFAULT_SITE_THEME: UserSiteTheme = { primary: "#ff0080", secondary: "#7c3aed", bgUrl: null, bgOverlay: 0.6, bgBlur: false };
+  const [siteTheme, setSiteTheme] = useState<UserSiteTheme>(DEFAULT_SITE_THEME);
+  const [siteUploading, setSiteUploading] = useState(false);
+  const [siteUploadError, setSiteUploadError] = useState<string | null>(null);
+  const [siteSaved, setSiteSaved] = useState(false);
+  const siteFileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem(SITE_THEME_KEY);
+      if (stored) setSiteTheme(JSON.parse(stored) as UserSiteTheme);
+    } catch { /* ignore */ }
+  }, [SITE_THEME_KEY]);
+
+  async function handleSiteBgUpload(file: File) {
+    setSiteUploading(true); setSiteUploadError(null);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      const r = await fetch("/api/uploads/user-site-bg", { method: "POST", body: fd, credentials: "include" });
+      const data = await r.json() as { ok?: boolean; url?: string; error?: string };
+      if (!data.ok) throw new Error(data.error ?? "Upload failed");
+      setSiteTheme((p) => ({ ...p, bgUrl: data.url! }));
+    } catch (err) { setSiteUploadError(err instanceof Error ? err.message : "Upload failed"); }
+    finally { setSiteUploading(false); }
+  }
+
+  function handleSiteSave() {
+    localStorage.setItem(SITE_THEME_KEY, JSON.stringify(siteTheme));
+    applyThemeColors(siteTheme.primary, siteTheme.secondary);
+    window.dispatchEvent(new Event("user-theme-changed"));
+    setSiteSaved(true);
+    setTimeout(() => setSiteSaved(false), 2500);
+  }
+
+  function handleSiteReset() {
+    localStorage.removeItem(SITE_THEME_KEY);
+    setSiteTheme(DEFAULT_SITE_THEME);
+    window.dispatchEvent(new Event("user-theme-changed"));
+  }
+
   async function handleSave() {
     setError(null);
     try {
@@ -520,7 +565,7 @@ function ProfileEditor({
 
       {/* Tabs */}
       <div className="flex gap-1 p-2 bg-black/30 border-b border-white/10 shrink-0">
-        {(["about", "theme", "cards", "items"] as const).map((t) => (
+        {(["about", "theme", "cards", "items", "site"] as const).map((t) => (
           <button key={t} onClick={() => setTab(t)}
             className={cn("flex-1 py-1.5 rounded-lg text-xs font-semibold capitalize transition-colors",
               tab === t ? "bg-primary/20 text-primary border border-primary/30" : "text-muted-foreground hover:text-white")}>
@@ -896,6 +941,105 @@ function ProfileEditor({
               <p className="text-xs text-muted-foreground text-center italic">Maximum 6 items reached. Remove one to add another.</p>
             )}
           </>
+        )}
+        {tab === "site" && (
+          <div className="space-y-4">
+            <p className="text-[11px] text-muted-foreground/70 bg-white/5 rounded-xl px-3 py-2 border border-white/10 leading-relaxed">
+              🎨 <strong className="text-white/80">Your personal view only</strong> — colors and background you set here are saved in your browser and only visible to you.
+            </p>
+
+            {/* Primary color */}
+            <div className="space-y-2">
+              <label className="text-[11px] text-muted-foreground uppercase tracking-wider font-semibold">Accent Color</label>
+              <div className="flex items-center gap-2">
+                <div className="w-9 h-9 rounded-xl border border-white/20 overflow-hidden shrink-0 cursor-pointer"
+                  onClick={() => { const i = document.createElement("input"); i.type = "color"; i.value = siteTheme.primary; i.oninput = () => setSiteTheme((p) => ({ ...p, primary: i.value })); i.click(); }}>
+                  <div className="w-full h-full" style={{ background: siteTheme.primary }} />
+                </div>
+                <input type="text" value={siteTheme.primary}
+                  onChange={(e) => setSiteTheme((p) => ({ ...p, primary: e.target.value }))}
+                  className="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white font-mono focus:outline-none focus:border-primary/50"
+                  placeholder="#ff0080" />
+              </div>
+            </div>
+
+            {/* Secondary color */}
+            <div className="space-y-2">
+              <label className="text-[11px] text-muted-foreground uppercase tracking-wider font-semibold">Secondary Color</label>
+              <div className="flex items-center gap-2">
+                <div className="w-9 h-9 rounded-xl border border-white/20 overflow-hidden shrink-0 cursor-pointer"
+                  onClick={() => { const i = document.createElement("input"); i.type = "color"; i.value = siteTheme.secondary; i.oninput = () => setSiteTheme((p) => ({ ...p, secondary: i.value })); i.click(); }}>
+                  <div className="w-full h-full" style={{ background: siteTheme.secondary }} />
+                </div>
+                <input type="text" value={siteTheme.secondary}
+                  onChange={(e) => setSiteTheme((p) => ({ ...p, secondary: e.target.value }))}
+                  className="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white font-mono focus:outline-none focus:border-primary/50"
+                  placeholder="#7c3aed" />
+              </div>
+            </div>
+
+            {/* Gradient preview */}
+            <div className="h-5 rounded-lg" style={{ background: `linear-gradient(to right, ${siteTheme.primary}, ${siteTheme.secondary})` }} />
+
+            {/* Site background */}
+            <div className="space-y-2 pt-2 border-t border-white/10">
+              <label className="text-[11px] text-muted-foreground uppercase tracking-wider font-semibold">Site Background</label>
+              <div className="flex items-center gap-3">
+                {siteTheme.bgUrl ? (
+                  <div className="w-20 h-11 rounded-lg ring-1 ring-white/20 overflow-hidden shrink-0">
+                    <img src={siteTheme.bgUrl} alt="" className="w-full h-full object-cover" />
+                  </div>
+                ) : (
+                  <div className="w-20 h-11 rounded-lg bg-white/10 border border-dashed border-white/15 flex items-center justify-center text-[10px] text-muted-foreground shrink-0">No BG</div>
+                )}
+                <div className="flex gap-2 flex-wrap">
+                  <button onClick={() => siteFileInputRef.current?.click()} disabled={siteUploading}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/5 border border-white/15 text-xs font-semibold text-white hover:bg-white/10 transition disabled:opacity-50">
+                    {siteUploading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Upload className="w-3 h-3" />} {siteUploading ? "Uploading…" : "Upload"}
+                  </button>
+                  {siteTheme.bgUrl && (
+                    <button onClick={() => setSiteTheme((p) => ({ ...p, bgUrl: null }))}
+                      className="px-3 py-1.5 rounded-xl bg-red-500/10 border border-red-500/20 text-xs font-semibold text-red-400 hover:bg-red-500/20 transition">Remove</button>
+                  )}
+                </div>
+              </div>
+              {siteUploadError && <p className="text-xs text-amber-400">{siteUploadError}</p>}
+              <input ref={siteFileInputRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif" className="hidden"
+                onChange={(e) => { const f = e.target.files?.[0]; if (f) handleSiteBgUpload(f); e.target.value = ""; }} />
+              {siteTheme.bgUrl && (
+                <div className="space-y-2 pt-1">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] text-muted-foreground">Overlay Darkness</span>
+                    <span className="text-[11px] font-mono text-white">{Math.round(siteTheme.bgOverlay * 100)}%</span>
+                  </div>
+                  <input type="range" min={0} max={100} value={Math.round(siteTheme.bgOverlay * 100)}
+                    onChange={(e) => setSiteTheme((p) => ({ ...p, bgOverlay: Number(e.target.value) / 100 }))}
+                    className="w-full accent-primary" />
+                  <div className="flex items-center justify-between pt-1">
+                    <span className="text-[11px] text-muted-foreground">Blur Background</span>
+                    <button onClick={() => setSiteTheme((p) => ({ ...p, bgBlur: !p.bgBlur }))}
+                      className={cn("relative w-9 h-5 rounded-full transition-colors", siteTheme.bgBlur ? "bg-primary" : "bg-white/15")}>
+                      <span className={cn("absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform", siteTheme.bgBlur ? "translate-x-4" : "translate-x-0")} />
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Save / Reset */}
+            <div className="flex gap-2 pt-1">
+              <button onClick={handleSiteSave}
+                className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl font-semibold text-sm text-white transition-all"
+                style={{ background: `linear-gradient(135deg, ${siteTheme.primary}, ${siteTheme.secondary})` }}>
+                {siteSaved ? <Check className="w-4 h-4" /> : <Palette className="w-4 h-4" />}
+                {siteSaved ? "Applied!" : "Save & Apply"}
+              </button>
+              <button onClick={handleSiteReset}
+                className="px-4 py-2.5 rounded-xl border border-white/15 text-muted-foreground hover:text-white hover:border-white/30 text-sm font-semibold transition-all">
+                Reset
+              </button>
+            </div>
+          </div>
         )}
       </div>
 

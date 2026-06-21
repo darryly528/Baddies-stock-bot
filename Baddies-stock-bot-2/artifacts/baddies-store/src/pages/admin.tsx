@@ -1406,7 +1406,7 @@ export default function AdminPage() {
   const { user } = useAuth();
   const qc = useQueryClient();
 
-  type TabKey = "listings" | "members" | "staff" | "requests" | "theme";
+  type TabKey = "listings" | "members" | "staff" | "requests";
   const [tab, setTab] = useState<TabKey>("members");
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [confirm, setConfirm] = useState<{ message: string; action: () => void } | null>(null);
@@ -1438,10 +1438,10 @@ export default function AdminPage() {
   useEffect(() => {
     if (!callerRole) return;
     const ROLE_RANK: Record<string, number> = { owner: 4, "co-owner": 3, admin: 2, mod: 1, verified_reseller: 0 };
-    const minRoles: Record<TabKey, string> = { members: "mod", requests: "mod", listings: "admin", staff: "mod", theme: "admin" };
+    const minRoles: Record<TabKey, string> = { members: "mod", requests: "mod", listings: "admin", staff: "mod" };
     const rank = ROLE_RANK[callerRole] ?? 0;
     if ((ROLE_RANK[minRoles[tab]] ?? 99) > rank) {
-      const first = (["members", "requests", "listings", "staff", "theme"] as TabKey[]).find(
+      const first = (["members", "requests", "listings", "staff"] as TabKey[]).find(
         (k) => (ROLE_RANK[minRoles[k]] ?? 99) <= rank
       );
       if (first) setTab(first);
@@ -1561,7 +1561,6 @@ export default function AdminPage() {
     { key: "requests", label: `Requests${banRequests.length > 0 ? ` (${banRequests.length})` : ""}`, icon: Ban, minRole: "mod" },
     { key: "listings", label: "Listings", icon: ShoppingBag, minRole: "admin" },
     { key: "staff", label: "Staff", icon: UserCog, minRole: "mod" },
-    { key: "theme", label: "Theme", icon: Palette, minRole: "admin" },
   ];
 
   const visibleTabs = tabs.filter((t) => hasMinRole(callerRole, t.minRole));
@@ -1791,8 +1790,6 @@ export default function AdminPage() {
         {/* ── BAN REQUESTS TAB ── */}
         {tab === "requests" && <BanRequestsTab />}
 
-        {/* ── THEME TAB ── */}
-        {tab === "theme" && <ThemeTab />}
 
       </div>
 
