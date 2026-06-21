@@ -13,6 +13,9 @@ const LISTING_CHANNEL_ID = "1486949502349873313";
 const MOD_ROLE_ID = process.env["MOD_ROLE_ID"] ?? "1441178708311281845";
 
 function getRedirectUri(req: Request): string {
+  if (process.env["PUBLIC_URL"]) {
+    return `${process.env["PUBLIC_URL"].replace(/\/$/, "")}/api/auth/discord/callback`;
+  }
   const domain = process.env["REPLIT_DEV_DOMAIN"] ?? req.get("host") ?? "localhost:8080";
   return `https://${domain}/api/auth/discord/callback`;
 }
