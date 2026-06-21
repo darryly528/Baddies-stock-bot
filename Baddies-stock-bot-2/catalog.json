@@ -42346,7 +42346,7 @@
     "imageUrl": "https://cdn.meowia.com/baddies/rpg/dark-cupid-rocket-launcher.png",
     "value": 0,
     "tokenValue": null,
-    "rap": 0,
+    "rap": 100,
     "category": "RPG",
     "tradeable": true,
     "itemType": "Skin",

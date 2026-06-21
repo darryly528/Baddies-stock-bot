@@ -5,7 +5,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Pencil, Check, X, Plus, Trash2, Search, Loader2, Box,
   ArrowLeft, ShoppingBag, LayoutList, Sparkles, BadgeCheck,
-  ExternalLink, AlertTriangle, Upload, Heart, Flag, Crop as CropIcon, Star, AtSign,
+  ExternalLink, AlertTriangle, Upload, Heart, Flag, Crop as CropIcon, Star, AtSign, Palette,
 } from "lucide-react";
 import ReactCrop, { centerCrop, makeAspectCrop, type Crop, type PixelCrop } from "react-image-crop";
 import "react-image-crop/dist/ReactCrop.css";
@@ -376,12 +376,14 @@ function MockCard({ cardStyle, accentColor, edgeEffect, username, previewImage }
 function ProfileEditor({
   profile,
   onClose,
+  initialTab,
 }: {
   profile: Profile;
   onClose: () => void;
+  initialTab?: "about" | "theme" | "cards" | "items";
 }) {
   const qc = useQueryClient();
-  const [tab, setTab] = useState<"about" | "style" | "cards" | "items">("about");
+  const [tab, setTab] = useState<"about" | "theme" | "cards" | "items">(initialTab ?? "about");
   const [tagline, setTagline] = useState(profile.tagline);
   const [bio, setBio] = useState(profile.bio);
   const [tradePrefs, setTradePrefs] = useState(profile.tradePreferences);
@@ -518,7 +520,7 @@ function ProfileEditor({
 
       {/* Tabs */}
       <div className="flex gap-1 p-2 bg-black/30 border-b border-white/10 shrink-0">
-        {(["about", "style", "cards", "items"] as const).map((t) => (
+        {(["about", "theme", "cards", "items"] as const).map((t) => (
           <button key={t} onClick={() => setTab(t)}
             className={cn("flex-1 py-1.5 rounded-lg text-xs font-semibold capitalize transition-colors",
               tab === t ? "bg-primary/20 text-primary border border-primary/30" : "text-muted-foreground hover:text-white")}>
@@ -569,7 +571,7 @@ function ProfileEditor({
           </>
         )}
 
-        {tab === "style" && (
+        {tab === "theme" && (
           <>
             <div className="space-y-2">
               <label className="text-[11px] text-muted-foreground uppercase tracking-wider font-semibold">Banner Style</label>
@@ -1346,6 +1348,7 @@ export default function ProfilePage() {
   const showError = !isLoading && !profile && (isError || !isOwn);
 
   const [editing, setEditing] = useState(false);
+  const [editingTab, setEditingTab] = useState<"about" | "theme" | "cards" | "items">("about");
   const [vouchOpen, setVouchOpen] = useState(false);
   const [reportTarget, setReportTarget] = useState<ReportTarget | null>(null);
 
@@ -1411,15 +1414,24 @@ export default function ProfilePage() {
 
       {/* Own profile quick-edit header */}
       {isOwn && !editing && (
-        <div className="max-w-4xl mx-auto px-3 sm:px-6 lg:px-8 pt-4 pb-1">
+        <div className="max-w-4xl mx-auto px-3 sm:px-6 lg:px-8 pt-4 pb-1 flex gap-2">
           <motion.button
-            onClick={() => setEditing(true)}
+            onClick={() => { setEditingTab("about"); setEditing(true); }}
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.97 }}
-            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-primary/10 border border-primary/25 text-sm font-semibold text-primary hover:bg-primary/20 transition-colors"
+            className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-primary/10 border border-primary/25 text-sm font-semibold text-primary hover:bg-primary/20 transition-colors"
           >
             <Pencil className="w-4 h-4" />
             Edit Profile
+          </motion.button>
+          <motion.button
+            onClick={() => { setEditingTab("theme"); setEditing(true); }}
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.97 }}
+            className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-white/5 border border-white/15 text-sm font-semibold text-white/70 hover:text-white hover:bg-white/10 transition-colors"
+          >
+            <Palette className="w-4 h-4" />
+            Customize Theme
           </motion.button>
         </div>
       )}
@@ -1440,7 +1452,7 @@ export default function ProfilePage() {
         <AnimatePresence>
           {editing && isOwn && (
             <div className="lg:sticky lg:top-20 lg:self-start px-3 sm:px-0">
-              <ProfileEditor profile={ownProfile ?? profile} onClose={() => setEditing(false)} />
+              <ProfileEditor profile={ownProfile ?? profile} onClose={() => setEditing(false)} initialTab={editingTab} />
             </div>
           )}
         </AnimatePresence>
