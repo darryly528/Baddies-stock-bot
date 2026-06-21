@@ -5,10 +5,7 @@ import path from "path";
 import fs from "fs";
 import { fileURLToPath } from "url";
 import session from "express-session";
-import connectPgSimple from "connect-pg-simple";
 import router from "./routes";
-
-const PgStore = connectPgSimple(session);
 
 const app: Express = express();
 
@@ -18,17 +15,8 @@ app.use(compression({ level: 6, threshold: 512 }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-const sessionStore = process.env["DATABASE_URL"]
-  ? new PgStore({
-      conString: process.env["DATABASE_URL"],
-      createTableIfMissing: true,
-      ttl: 7 * 24 * 60 * 60,
-    })
-  : undefined;
-
 app.use(
   session({
-    store: sessionStore,
     secret: process.env["SESSION_SECRET"] ?? "baddies-store-secret",
     resave: false,
     saveUninitialized: false,
