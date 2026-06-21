@@ -1590,29 +1590,6 @@ export default function ProfilePage() {
         </div>
       )}
 
-      {/* Own profile quick-edit header */}
-      {isOwn && !editing && (
-        <div className="max-w-4xl mx-auto px-3 sm:px-6 lg:px-8 pt-4 pb-1 flex gap-2">
-          <motion.button
-            onClick={() => { setEditingTab("about"); setEditing(true); }}
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.97 }}
-            className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-primary/10 border border-primary/25 text-sm font-semibold text-primary hover:bg-primary/20 transition-colors"
-          >
-            <Pencil className="w-4 h-4" />
-            Edit Profile
-          </motion.button>
-          <motion.button
-            onClick={() => { setEditingTab("theme"); setEditing(true); }}
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.97 }}
-            className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-white/5 border border-white/15 text-sm font-semibold text-white/70 hover:text-white hover:bg-white/10 transition-colors"
-          >
-            <Palette className="w-4 h-4" />
-            Customize Theme
-          </motion.button>
-        </div>
-      )}
 
       <div className={cn("max-w-4xl mx-auto pt-3", editing ? "grid grid-cols-1 lg:grid-cols-[1fr_380px] gap-6 px-3 sm:px-6" : "")}>
         {/* Profile view */}
