@@ -1756,14 +1756,6 @@ function ShopsView({ listings, onMessage, user, onLoginPrompt, approvedShops, my
                     <p className="text-[11px] text-white/50">{totalItems} item{totalItems !== 1 ? "s" : ""}</p>
                   )}
                 </div>
-                <Link
-                  href={`/profile/${shop.sellerId}`}
-                  className="shrink-0 p-1.5 rounded-lg border transition-all hover:opacity-90"
-                  style={{ borderColor: `${accent}50`, color: accent, background: `${accent}20` }}
-                  title="View profile"
-                >
-                  <ExternalLink className="w-3.5 h-3.5" />
-                </Link>
               </div>
 
               {/* Item thumbnails — on top of everything */}
