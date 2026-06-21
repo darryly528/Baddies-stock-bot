@@ -1,1 +1,44 @@
-[]
+[
+  {
+    "id": "d50dd118-814e-41cb-a884-0c09d3c3c8fd",
+    "seller": "disgust_tf",
+    "discordUserId": "916248084697190440",
+    "discordAvatar": "4949a0bf4c05ccbfdef40b5e2e8d556a",
+    "paymentMethods": [
+      "Cash App",
+      "Apple Pay"
+    ],
+    "paymentDetails": {
+      "Cash App": "https://cash.app/$Y0ungho",
+      "Apple Pay": "Dm me"
+    },
+    "items": [
+      {
+        "name": "Brass Knuckles",
+        "itemType": "Weapon",
+        "imageUrl": "https://cdn.meowia.com/baddies/brass-knuckles.png",
+        "quantity": 1,
+        "price": "15",
+        "soldOut": false
+      },
+      {
+        "name": "Slasher Claws",
+        "itemType": "Weapon",
+        "imageUrl": "https://cdn.meowia.com/baddies/slasher-claws.png",
+        "quantity": 1,
+        "price": "7",
+        "soldOut": false
+      },
+      {
+        "name": "Glitter Style",
+        "itemType": "Fighting Style",
+        "imageUrl": "https://cdn.meowia.com/baddies/fighting-style/glitter-style.png",
+        "quantity": 1,
+        "price": "9",
+        "soldOut": false
+      }
+    ],
+    "createdAt": "2026-06-21T01:49:16.485Z",
+    "listingType": "fixed"
+  }
+]

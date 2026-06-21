@@ -1566,9 +1566,13 @@ interface SellerShop {
   sampleImages: (string | null)[];
 }
 
-function ShopsView({ listings, onMessage, user, onLoginPrompt, approvedShops, myShop, onCreateShop, onEditShop }: {
+function ShopsView({ listings, onMessage, onOffer, onAddToCart, onViewCart, cartCount, user, onLoginPrompt, approvedShops, myShop, onCreateShop, onEditShop }: {
   listings: Listing[];
   onMessage: (listing: Listing, item: ListingItem) => void;
+  onOffer: (listing: Listing, item: ListingItem) => void;
+  onAddToCart: (listing: Listing, item: ListingItem) => void;
+  onViewCart: () => void;
+  cartCount: number;
   user: { id: string } | null;
   onLoginPrompt: () => void;
   approvedShops: ShopApplication[];
@@ -1582,6 +1586,7 @@ function ShopsView({ listings, onMessage, user, onLoginPrompt, approvedShops, my
   const [modalMembers, setModalMembers] = useState<string[]>([]);
   const [memberInput, setMemberInput] = useState("");
   const [memberSaving, setMemberSaving] = useState(false);
+  const [addedInModal, setAddedInModal] = useState<Set<string>>(new Set());
   const approvedIds = new Set(approvedShops.map((s) => s.userId));
 
   useEffect(() => {
@@ -1590,6 +1595,7 @@ function ShopsView({ listings, onMessage, user, onLoginPrompt, approvedShops, my
       setShowManageSellers(false);
       setMemberInput("");
     }
+    setAddedInModal(new Set());
   }, [openShop?.sellerId]);
 
   const shopMap = listings.reduce<Record<string, SellerShop>>((acc, listing) => {
@@ -1968,26 +1974,71 @@ function ShopsView({ listings, onMessage, user, onLoginPrompt, approvedShops, my
                               </div>
                             )}
                           </div>
-                          {/* Info + Buy */}
-                          <div className="p-2.5 flex items-center gap-2 border-t" style={{ borderColor: `${accent}20` }}>
-                            <div className="flex-1 min-w-0">
+                          {/* Info + Add / Offer */}
+                          <div className="p-2 border-t" style={{ borderColor: `${accent}20` }}>
+                            <div className="mb-1.5">
                               <p className="text-xs font-bold text-white truncate">{item.name}</p>
                               {item.price && <p className="text-[11px] font-bold" style={{ color: accent }}>${item.price}</p>}
                             </div>
-                            <button
-                              onClick={() => { if (!user) { onLoginPrompt(); return; } onMessage(l, item); setOpenShop(null); }}
-                              className="shrink-0 flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-bold transition-all hover:opacity-80 active:scale-95"
-                              style={{ background: accent, color: "white", boxShadow: `0 2px 8px ${accent}50` }}
-                            >
-                              <MessageCircle className="w-3 h-3" />
-                              Buy
-                            </button>
+                            <div className="flex gap-1.5">
+                              {(() => {
+                                const key = `${l.id}-${item.name}`;
+                                const isAdded = addedInModal.has(key);
+                                return (
+                                  <button
+                                    onClick={() => {
+                                      if (!user) { onLoginPrompt(); return; }
+                                      if (isAdded) {
+                                        setAddedInModal((prev) => { const n = new Set(prev); n.delete(key); return n; });
+                                      } else {
+                                        onAddToCart(l, item);
+                                        setAddedInModal((prev) => new Set([...prev, key]));
+                                      }
+                                    }}
+                                    className="flex-1 flex items-center justify-center gap-1 py-1.5 rounded-lg text-[11px] font-bold transition-all active:scale-95"
+                                    style={isAdded
+                                      ? { background: `${accent}30`, color: accent, border: `1px solid ${accent}50` }
+                                      : { background: "rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.75)", border: "1px solid rgba(255,255,255,0.12)" }}
+                                  >
+                                    {isAdded ? <Check className="w-3 h-3" /> : <ShoppingCart className="w-3 h-3" />}
+                                    {isAdded ? "Added" : "Add"}
+                                  </button>
+                                );
+                              })()}
+                              <button
+                                onClick={() => { if (!user) { onLoginPrompt(); return; } onOffer(l, item); setOpenShop(null); }}
+                                className="flex-1 flex items-center justify-center gap-1 py-1.5 rounded-lg text-[11px] font-bold transition-all hover:opacity-80 active:scale-95"
+                                style={{ background: accent, color: "white", boxShadow: `0 2px 8px ${accent}40` }}
+                              >
+                                <MessageCircle className="w-3 h-3" />
+                                Offer
+                              </button>
+                            </div>
                           </div>
                         </div>
                       ))}
                     </div>
                   )}
                 </div>
+
+                {/* Floating cart bar */}
+                {cartCount > 0 && (
+                  <div className="shrink-0 px-4 py-3 flex items-center gap-3"
+                    style={{ background: "rgba(0,0,0,0.7)", borderTop: `1px solid ${accent}25` }}>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-bold text-white">{cartCount} item{cartCount !== 1 ? "s" : ""} in cart</p>
+                      <p className="text-[10px] text-white/40">Ready to checkout</p>
+                    </div>
+                    <button
+                      onClick={() => { setOpenShop(null); onViewCart(); }}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all hover:opacity-80"
+                      style={{ background: accent, color: "#fff", boxShadow: `0 2px 12px ${accent}50` }}
+                    >
+                      <ShoppingCart className="w-3.5 h-3.5" />
+                      View Cart
+                    </button>
+                  </div>
+                )}
               </motion.div>
             </motion.div>
           );
@@ -2410,6 +2461,32 @@ export default function ListingsPage() {
                 prefill: `Hi! I'd like to buy ${item.name}${item.price ? ` (listed at $${item.price})` : ""}. Is it still available?`,
               });
             }}
+            onOffer={(listing, item) => {
+              if (!user) { setLoginPrompt(true); return; }
+              setChatTarget({
+                listingId: listing.id,
+                listingTitle: item.name,
+                sellerId: listing.discordUserId ?? listing.seller,
+                sellerName: listing.seller,
+                sellerAvatar: listing.discordAvatar,
+                prefill: `Hi! I'd like to make an offer on ${item.name}${item.price ? ` (listed at $${item.price})` : ""}. Are you open to negotiating?`,
+              });
+            }}
+            onAddToCart={(listing, item) => {
+              setCart((prev) => {
+                const key = `${listing.id}-${item.name}`;
+                if (prev.some((e) => e.listingId === listing.id && e.item.name === item.name)) return prev;
+                return [...prev, {
+                  listingId: listing.id,
+                  sellerId: listing.discordUserId ?? listing.seller,
+                  sellerName: listing.seller,
+                  sellerAvatar: listing.discordAvatar,
+                  item,
+                }];
+              });
+            }}
+            onViewCart={() => setCartOpen(true)}
+            cartCount={cart.length}
             user={user}
             onLoginPrompt={() => setLoginPrompt(true)}
             approvedShops={approvedShops}
