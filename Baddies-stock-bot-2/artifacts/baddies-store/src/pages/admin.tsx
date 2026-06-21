@@ -866,8 +866,12 @@ function ThemeTab() {
   const [bannerUploading, setBannerUploading] = useState(false);
   const [avatarUploadError, setAvatarUploadError] = useState<string | null>(null);
   const [bannerUploadError, setBannerUploadError] = useState<string | null>(null);
+  const [currentBgUrl, setCurrentBgUrl] = useState<string | null>(null);
+  const [bgUploading, setBgUploading] = useState(false);
+  const [bgUploadError, setBgUploadError] = useState<string | null>(null);
   const avatarInputRef = useRef<HTMLInputElement>(null);
   const bannerInputRef = useRef<HTMLInputElement>(null);
+  const bgInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!ownProfile) return;
@@ -878,6 +882,7 @@ function ThemeTab() {
     setPBannerStyle((ownProfile.bannerStyle as BannerStyle) ?? "default");
     setCurrentAvatarUrl(ownProfile.customAvatarUrl ?? null);
     setCurrentBannerUrl(ownProfile.bannerImageUrl ?? null);
+    setCurrentBgUrl(ownProfile.profileBgUrl ?? null);
   }, [ownProfile?.userId]);
 
   async function handleProfileSave() {
@@ -890,10 +895,10 @@ function ThemeTab() {
     finally { setProfileSaving(false); }
   }
 
-  async function handleProfileImageUpload(type: "avatar" | "banner", file: File) {
-    const setUploading = type === "avatar" ? setAvatarUploading : setBannerUploading;
-    const setError = type === "avatar" ? setAvatarUploadError : setBannerUploadError;
-    const setUrl = type === "avatar" ? setCurrentAvatarUrl : setCurrentBannerUrl;
+  async function handleProfileImageUpload(type: "avatar" | "banner" | "profileBg", file: File) {
+    const setUploading = type === "avatar" ? setAvatarUploading : type === "banner" ? setBannerUploading : setBgUploading;
+    const setError = type === "avatar" ? setAvatarUploadError : type === "banner" ? setBannerUploadError : setBgUploadError;
+    const setUrl = type === "avatar" ? setCurrentAvatarUrl : type === "banner" ? setCurrentBannerUrl : setCurrentBgUrl;
     setUploading(true); setError(null);
     try {
       const form = new FormData();
@@ -907,8 +912,8 @@ function ThemeTab() {
     finally { setUploading(false); }
   }
 
-  async function handleRemoveProfileImage(type: "avatar" | "banner") {
-    const setUrl = type === "avatar" ? setCurrentAvatarUrl : setCurrentBannerUrl;
+  async function handleRemoveProfileImage(type: "avatar" | "banner" | "profileBg") {
+    const setUrl = type === "avatar" ? setCurrentAvatarUrl : type === "banner" ? setCurrentBannerUrl : setCurrentBgUrl;
     const r = await fetch(`/api/uploads/profile-image?type=${type}`, { method: "DELETE", credentials: "include" });
     if (r.ok) setUrl(null);
   }
@@ -1120,6 +1125,36 @@ function ThemeTab() {
               {bannerUploadError && <p className="text-xs text-amber-400">{bannerUploadError}</p>}
               <input ref={bannerInputRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif" className="hidden"
                 onChange={(e) => { const f = e.target.files?.[0]; if (f) handleProfileImageUpload("banner", f); e.target.value = ""; }} />
+            </div>
+
+            {/* Profile page background — separate from site-wide background */}
+            <div className="space-y-2 pt-3 border-t border-white/10">
+              <label className="text-[11px] text-muted-foreground uppercase tracking-wider font-semibold">Profile Page Background</label>
+              <p className="text-[11px] text-muted-foreground/60">Fills only <em>your profile page</em> — separate from the site-wide background in Site Theme.</p>
+              <div className="flex items-center gap-3">
+                {currentBgUrl ? (
+                  <div className="w-28 h-14 rounded-lg ring-1 ring-white/20 overflow-hidden shrink-0">
+                    <img src={currentBgUrl} alt="Profile background" className="w-full h-full object-cover" />
+                  </div>
+                ) : (
+                  <div className="w-28 h-14 rounded-lg bg-white/10 border border-dashed border-white/15 flex items-center justify-center text-[10px] text-muted-foreground shrink-0">No BG</div>
+                )}
+                <div className="flex gap-2">
+                  <button onClick={() => bgInputRef.current?.click()} disabled={bgUploading}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/5 border border-white/15 text-xs font-semibold text-white hover:bg-white/10 transition disabled:opacity-50">
+                    {bgUploading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Upload className="w-3 h-3" />}
+                    {bgUploading ? "Uploading…" : "Upload"}
+                  </button>
+                  {currentBgUrl && (
+                    <button onClick={() => handleRemoveProfileImage("profileBg")}
+                      className="px-3 py-1.5 rounded-xl bg-red-500/10 border border-red-500/20 text-xs font-semibold text-red-400 hover:bg-red-500/20 transition">Remove</button>
+                  )}
+                </div>
+              </div>
+              {bgUploadError && <p className="text-xs text-amber-400">{bgUploadError}</p>}
+              <p className="text-[11px] text-muted-foreground/50">Max 5MB · JPEG, PNG, WebP, GIF · uploaded as-is (no crop)</p>
+              <input ref={bgInputRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif" className="hidden"
+                onChange={(e) => { const f = e.target.files?.[0]; if (f) handleProfileImageUpload("profileBg", f); e.target.value = ""; }} />
             </div>
           </div>
 
