@@ -41,6 +41,10 @@ if (fs.existsSync(staticDir)) {
   app.get("/*splat", (_req, res) => {
     res.sendFile(path.join(staticDir, "index.html"));
   });
+} else {
+  app.get("/", (_req, res) => {
+    res.status(200).send("OK");
+  });
 }
 
 export default app;
