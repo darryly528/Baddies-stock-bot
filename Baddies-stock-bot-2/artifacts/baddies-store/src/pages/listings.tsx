@@ -2553,11 +2553,7 @@ export default function ListingsPage() {
     return ids;
   }, [approvedShops]);
 
-  // Shop-affiliated sellers are hidden from the normal All/Buy/Auctions feed
-  const activeListings = [...listings].reverse().filter((l) => {
-    const sellerId = l.discordUserId ?? l.seller;
-    return l.items.some((i) => !i.soldOut) && !shopAffiliatedIds.has(sellerId);
-  });
+  const activeListings = [...listings].reverse().filter((l) => l.items.some((i) => !i.soldOut));
 
   const filteredListings = activeListings.filter((l) => {
     if (activeFilter === "auctions") return l.listingType === "auction";
