@@ -1575,6 +1575,7 @@ function ShopsView({ listings, onMessage, user, onLoginPrompt, approvedShops, my
   onEditShop: () => void;
 }) {
   const [expanded, setExpanded] = useState<string | null>(null);
+  const [cardSize, setCardSize] = useState<"sm" | "md" | "lg">("md");
   const approvedIds = new Set(approvedShops.map((s) => s.userId));
 
   const shopMap = listings.reduce<Record<string, SellerShop>>((acc, listing) => {
@@ -1685,9 +1686,34 @@ function ShopsView({ listings, onMessage, user, onLoginPrompt, approvedShops, my
     );
   }
 
+  const gridCols =
+    cardSize === "sm" ? "grid-cols-2 sm:grid-cols-3 lg:grid-cols-4" :
+    cardSize === "lg" ? "grid-cols-1 lg:grid-cols-2" :
+    "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3";
+
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      {/* Size toggle */}
+      <div className="flex justify-end">
+        <div className="flex items-center gap-0.5 p-0.5 rounded-lg bg-white/5 border border-white/10">
+          {(["sm", "md", "lg"] as const).map((s) => (
+            <button
+              key={s}
+              onClick={() => setCardSize(s)}
+              className={cn(
+                "px-3 py-1 rounded-md text-xs font-bold transition-all",
+                cardSize === s
+                  ? "bg-white/15 text-white"
+                  : "text-white/40 hover:text-white/70"
+              )}
+            >
+              {s.toUpperCase()}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className={cn("grid gap-4", gridCols)}>
       {shops.map((shop) => {
         const isExpanded = expanded === shop.sellerId;
         const verifiedShop = approvedShops.find((s) => s.userId === shop.sellerId);
