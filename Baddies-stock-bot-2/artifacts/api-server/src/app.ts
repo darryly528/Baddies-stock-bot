@@ -35,7 +35,7 @@ app.use("/api/*splat", (_req, res) => {
   res.status(404).json({ error: "API route not found" });
 });
 
-const staticDir = process.env["STATIC_DIR"] ?? path.resolve(process.cwd(), "artifacts/baddies-store/dist");
+const staticDir = path.resolve(process.env["STATIC_DIR"] ?? path.join(process.cwd(), "artifacts/baddies-store/dist"));
 if (fs.existsSync(staticDir)) {
   app.use(express.static(staticDir));
   app.get("/*splat", (_req, res) => {
