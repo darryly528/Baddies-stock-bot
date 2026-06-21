@@ -1,8 +1,8 @@
 import { motion } from "framer-motion";
 import { Link } from "wouter";
-import { Shield, AlertTriangle, HandCoins, Scale, MessageSquare } from "lucide-react";
+import { Shield, AlertTriangle, HandCoins, Scale, MessageSquare, Lock } from "lucide-react";
 
-const EFFECTIVE_DATE = "June 20, 2025";
+const EFFECTIVE_DATE = "June 21, 2025";
 
 const sections = [
   {
@@ -45,6 +45,18 @@ const sections = [
       "If you believe you have been scammed, open a support ticket in our Discord immediately with evidence (screenshots, video). We will investigate and take action where possible.",
       "While we will make reasonable efforts to assist, Baddies Store cannot recover lost items or currency on your behalf. Our ability to act is limited to banning bad actors from the platform.",
       "Chargebacks or disputes filed against Baddies Store for peer-to-peer trade losses will not be honoured, as we are not a party to those transactions.",
+    ],
+  },
+  {
+    icon: Lock,
+    iconColor: "text-purple-400",
+    title: "Privacy & Communications",
+    content: [
+      "Baddies Store is not responsible for any personal information you choose to share with other users through this platform, our Discord server, or any associated communication channels.",
+      "Any conversations, messages, or exchanges that take place between users — including those conducted privately or via third-party services — are entirely at your own risk. We are not liable for the content of those conversations or any consequences arising from them.",
+      "We are not responsible for any leakage, exposure, or misuse of personal information that results from your interactions with other users on or off this platform.",
+      "We strongly advise against sharing sensitive personal information (such as your real name, address, phone number, or payment credentials) with other users.",
+      "Inappropriate, harassing, or harmful communications reported to us may result in account suspension, but Baddies Store cannot be held liable for conduct that occurs outside of our direct control.",
     ],
   },
   {
