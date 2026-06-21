@@ -2796,7 +2796,7 @@ export default function ListingsPage() {
           </div>
         ) : activeFilter === "shops" ? (
           <ShopsView
-            listings={activeListings}
+            listings={listings}
             onMessage={(listing, item) => {
               if (!user) { setLoginPrompt(true); return; }
               setChatTarget({

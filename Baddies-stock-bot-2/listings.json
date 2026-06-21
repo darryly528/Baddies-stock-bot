@@ -1,6 +1,6 @@
 [
   {
-    "id": "d50dd118-814e-41cb-a884-0c09d3c3c8fd",
+    "id": "ba619ab0-8010-42e4-8c2d-a889b6f1c59e",
     "seller": "disgust_tf",
     "discordUserId": "916248084697190440",
     "discordAvatar": "4949a0bf4c05ccbfdef40b5e2e8d556a",
@@ -10,7 +10,7 @@
     ],
     "paymentDetails": {
       "Cash App": "https://cash.app/$Y0ungho",
-      "Apple Pay": "Dm me"
+      "Apple Pay": "Dm me for it"
     },
     "items": [
       {
@@ -26,7 +26,7 @@
         "itemType": "Weapon",
         "imageUrl": "https://cdn.meowia.com/baddies/slasher-claws.png",
         "quantity": 1,
-        "price": "7",
+        "price": "8",
         "soldOut": false
       },
       {
@@ -38,7 +38,7 @@
         "soldOut": false
       }
     ],
-    "createdAt": "2026-06-21T01:49:16.485Z",
+    "createdAt": "2026-06-21T02:19:42.435Z",
     "listingType": "fixed"
   }
 ]
