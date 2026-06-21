@@ -27,6 +27,7 @@ import {
   Gavel,
   Clock,
   Tag,
+  Store,
 } from "lucide-react";
 import { cn, formatNumber } from "@/lib/utils";
 
@@ -53,6 +54,14 @@ interface Guild {
   icon: string | null;
 }
 
+interface MyShop {
+  userId: string;
+  shopName: string;
+  status: "pending" | "approved" | "rejected";
+  accentColor?: string;
+  logoUrl?: string;
+}
+
 export default function ListPage() {
   const { user, loading: authLoading } = useAuth();
   const [step, setStep] = useState<"select" | "review" | "messages">("select");
@@ -76,7 +85,16 @@ export default function ListPage() {
   const [postSuccess, setPostSuccess] = useState<string | null>(null);
   const [postError, setPostError] = useState<string | null>(null);
   const [notifyingId, setNotifyingId] = useState<string | null>(null);
+  const [myShop, setMyShop] = useState<MyShop | null>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    if (!user) return;
+    fetch("/api/shops/mine", { credentials: "include" })
+      .then((r) => r.ok ? r.json() : null)
+      .then((d: MyShop | null) => setMyShop(d))
+      .catch(() => {});
+  }, [user?.id]);
 
   const { data: catalogData, isLoading: catalogLoading } = useInfiniteCatalogItems({
     search,
@@ -368,10 +386,25 @@ export default function ListPage() {
                       {user.username[0]?.toUpperCase()}
                     </div>
                   )}
-                  <div>
+                  <div className="flex-1 min-w-0">
                     <p className="text-sm text-muted-foreground">Listing as</p>
                     <p className="font-semibold text-white">{user.username}</p>
                   </div>
+                  {myShop?.status === "approved" && (
+                    <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-bold shrink-0"
+                      style={{
+                        background: `${myShop.accentColor ?? "#a855f7"}20`,
+                        color: myShop.accentColor ?? "#a855f7",
+                        border: `1px solid ${myShop.accentColor ?? "#a855f7"}40`,
+                      }}>
+                      {myShop.logoUrl ? (
+                        <img src={myShop.logoUrl} alt="" className="w-4 h-4 rounded object-cover" />
+                      ) : (
+                        <Store className="w-3.5 h-3.5" />
+                      )}
+                      {myShop.shopName}
+                    </div>
+                  )}
                 </div>
 
                 {/* Payment methods */}
@@ -696,18 +729,54 @@ export default function ListPage() {
                   </div>
                 )}
 
-                {/* Post to Discord after publishing — mod only */}
+                {/* Post to Discord after publishing */}
                 <AnimatePresence>
                   {postedListingId && !selected.length && (
                     <motion.div
                       initial={{ opacity: 0, y: 8 }}
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: 8 }}
-                      className="p-4 rounded-xl bg-green-500/10 border border-green-500/20 space-y-3"
+                      className="rounded-xl overflow-hidden space-y-0"
+                      style={myShop?.status === "approved" ? {
+                        border: `1px solid ${myShop.accentColor ?? "#a855f7"}40`,
+                        background: `${myShop.accentColor ?? "#a855f7"}12`,
+                      } : { border: "1px solid rgba(34,197,94,0.3)", background: "rgba(34,197,94,0.08)" }}
                     >
-                      <p className="text-green-400 text-sm flex items-center gap-2">
-                        <CheckCircle2 className="w-4 h-4" /> Listing published successfully!
-                      </p>
+                      {/* Main success row */}
+                      {myShop?.status === "approved" ? (
+                        <div className="p-4 flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
+                            style={{ background: `${myShop.accentColor ?? "#a855f7"}25` }}>
+                            {myShop.logoUrl ? (
+                              <img src={myShop.logoUrl} alt="" className="w-6 h-6 rounded object-cover" />
+                            ) : (
+                              <Store className="w-4 h-4" style={{ color: myShop.accentColor ?? "#a855f7" }} />
+                            )}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-bold text-white">
+                              Live in{" "}
+                              <span style={{ color: myShop.accentColor ?? "#a855f7" }}>{myShop.shopName}</span>
+                              !
+                            </p>
+                            <p className="text-xs text-white/50 mt-0.5">Your listing is now visible in your shop.</p>
+                          </div>
+                          <a
+                            href="/listings"
+                            className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all hover:opacity-80"
+                            style={{ background: `${myShop.accentColor ?? "#a855f7"}25`, color: myShop.accentColor ?? "#a855f7", border: `1px solid ${myShop.accentColor ?? "#a855f7"}40` }}
+                          >
+                            <Store className="w-3 h-3" />
+                            View shop
+                          </a>
+                        </div>
+                      ) : (
+                        <div className="p-4">
+                          <p className="text-green-400 text-sm flex items-center gap-2">
+                            <CheckCircle2 className="w-4 h-4" /> Listing published successfully!
+                          </p>
+                        </div>
+                      )}
                       {isMod && (
                         postSuccess ? (
                           <p className="text-[#5865F2] text-sm flex items-center gap-2">
