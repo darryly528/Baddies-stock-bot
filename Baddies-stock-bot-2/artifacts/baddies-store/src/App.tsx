@@ -1,7 +1,7 @@
 import { Switch, Route, Router as WouterRouter, Link, useLocation } from "wouter";
 import { QueryClient, QueryClientProvider, useQuery } from "@tanstack/react-query";
 import { motion, AnimatePresence, LayoutGroup } from "framer-motion";
-import { useEffect } from "react";
+import { useEffect, useState, useRef } from "react";
 import { applyThemeColors } from "./lib/theme-colors";
 import Home from "./pages/home";
 import ListPage from "./pages/list";
@@ -11,7 +11,7 @@ import AdminPage from "./pages/admin";
 import TosPage from "./pages/tos";
 import ProfilePage from "./pages/profile";
 import CommunityPage from "./pages/community";
-import { PackagePlus, ShoppingBag, LogOut, LayoutList, Inbox, Shield, UserCircle2, Heart } from "lucide-react";
+import { PackagePlus, ShoppingBag, LogOut, LayoutList, Inbox, Shield, UserCircle2, Heart, ChevronDown } from "lucide-react";
 import { cn } from "./lib/utils";
 import { AuthProvider, useAuth } from "./contexts/auth-context";
 import { useConversations } from "./hooks/use-messages";
@@ -182,37 +182,8 @@ function NavBar() {
       {/* Auth area */}
       {!loading && (
         user ? (
-          <div className="flex items-center gap-2 md:ml-2 md:pl-2 md:border-l md:border-white/10 shrink-0">
-            <Link href={`/profile/${user.id}`}
-              className="flex items-center gap-2 rounded-xl hover:bg-white/5 p-1 transition-colors group"
-              title="My Profile">
-              {avatarUrl ? (
-                <motion.img
-                  src={avatarUrl}
-                  alt={user.username}
-                  className="w-7 h-7 rounded-full ring-2 ring-primary/40"
-                  whileHover={{ scale: 1.1, ringColor: "rgba(255,0,128,0.7)" }}
-                  transition={{ type: "spring", stiffness: 400, damping: 20 }}
-                />
-              ) : (
-                <div className="w-7 h-7 rounded-full bg-primary/30 flex items-center justify-center text-xs font-bold group-hover:bg-primary/50 transition-colors">
-                  {user.username[0]?.toUpperCase()}
-                </div>
-              )}
-              <span className="text-sm font-medium text-white hidden lg:block max-w-[120px] truncate group-hover:text-primary/80 transition-colors">
-                {user.username}
-              </span>
-            </Link>
-            <motion.button
-              onClick={logout}
-              className="p-1.5 rounded-lg text-muted-foreground hover:text-red-400 hover:bg-white/5 transition-colors"
-              whileTap={{ scale: 0.88 }}
-              title="Log out"
-              aria-label="Log out"
-            >
-              <LogOut className="w-4 h-4" />
-            </motion.button>
-          </div>
+          <ProfileDropdown user={user} avatarUrl={avatarUrl} isStaff={isStaff} logout={logout} />
+        
         ) : (
           <motion.a
             href="/api/auth/discord"
