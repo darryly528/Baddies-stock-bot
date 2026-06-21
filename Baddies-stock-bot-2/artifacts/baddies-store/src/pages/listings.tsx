@@ -1725,20 +1725,23 @@ function ShopsView({ listings, onMessage, user, onLoginPrompt, approvedShops, my
 
               {/* Top row: avatar + name + verified badge + profile link */}
               <div className="flex items-center gap-2.5">
-                <Link href={`/profile/${shop.sellerId}`}>
+                <button onClick={() => setExpanded(isExpanded ? null : shop.sellerId)} className="shrink-0">
                   <img
                     src={displayAvatar}
                     alt={displayName}
-                    className="w-10 h-10 rounded-full border-2 object-cover shrink-0 hover:opacity-80 transition-opacity bg-black"
+                    className="w-10 h-10 rounded-full border-2 object-cover hover:opacity-80 transition-opacity bg-black"
                     style={{ borderColor: accent }}
                     onError={(e) => { (e.target as HTMLImageElement).src = `https://cdn.discordapp.com/embed/avatars/0.png`; }}
                   />
-                </Link>
+                </button>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-1.5 flex-wrap">
-                    <Link href={`/profile/${shop.sellerId}`} className="font-bold text-white hover:opacity-80 transition-opacity text-sm truncate">
+                    <button
+                      onClick={() => setExpanded(isExpanded ? null : shop.sellerId)}
+                      className="font-bold text-white hover:opacity-80 transition-opacity text-sm truncate"
+                    >
                       {displayName}
-                    </Link>
+                    </button>
                     {isVerified && (
                       <span className="flex items-center gap-0.5 text-[9px] font-bold tracking-wide px-1.5 py-0.5 rounded-full border"
                         style={{ background: `${accent}30`, color: accent, borderColor: `${accent}60` }}>
@@ -1757,6 +1760,7 @@ function ShopsView({ listings, onMessage, user, onLoginPrompt, approvedShops, my
                   href={`/profile/${shop.sellerId}`}
                   className="shrink-0 p-1.5 rounded-lg border transition-all hover:opacity-90"
                   style={{ borderColor: `${accent}50`, color: accent, background: `${accent}20` }}
+                  title="View profile"
                 >
                   <ExternalLink className="w-3.5 h-3.5" />
                 </Link>
