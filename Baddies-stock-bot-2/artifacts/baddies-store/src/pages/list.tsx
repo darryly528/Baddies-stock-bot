@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect, useRef } from "react";
 import { useInfiniteCatalogItems } from "@/hooks/use-catalog";
 import { useListings, useCreateListing, useMarkSold, useDeleteListing, usePostListingToDiscord } from "@/hooks/use-listings";
+import { useOwnProfile } from "@/hooks/use-profile";
 import { useConfig } from "@/hooks/use-config";
 import type { ListingItem } from "@/hooks/use-listings";
 import { useAuth } from "@/contexts/auth-context";
@@ -64,6 +65,8 @@ interface MyShop {
 
 export default function ListPage() {
   const { user, loading: authLoading } = useAuth();
+  const { data: ownProfile } = useOwnProfile();
+  const paymentInitializedRef = useRef(false);
   const [step, setStep] = useState<"select" | "review" | "messages">("select");
   const [openConvId, setOpenConvId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
@@ -95,6 +98,14 @@ export default function ListPage() {
       .then((d: MyShop | null) => setMyShop(d))
       .catch(() => {});
   }, [user?.id]);
+
+  useEffect(() => {
+    if (paymentInitializedRef.current) return;
+    if (!ownProfile?.paymentInfo?.methods?.length) return;
+    paymentInitializedRef.current = true;
+    setPaymentMethods(ownProfile.paymentInfo.methods);
+    setPaymentDetails(ownProfile.paymentInfo.details ?? {});
+  }, [ownProfile]);
 
   const { data: catalogData, isLoading: catalogLoading } = useInfiniteCatalogItems({
     search,

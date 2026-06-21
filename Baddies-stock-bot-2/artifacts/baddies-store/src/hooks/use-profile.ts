@@ -31,6 +31,9 @@ export const EDGE_EFFECTS: { key: EdgeEffect; label: string; desc: string; icon:
   { key: "corner",  label: "Corner",  desc: "Lit corner accents",  icon: "📐" },
 ];
 
+export type PaymentDetail = { info: string; useMiddleMan: boolean; robuxAmount: string; gampassLink: string };
+export type PaymentInfo = { methods: string[]; details: Record<string, PaymentDetail> };
+
 export type Profile = {
   userId: string;
   username: string;
@@ -51,6 +54,7 @@ export type Profile = {
   customAvatarUrl: string | null;
   bannerImageUrl: string | null;
   profileBgUrl: string | null;
+  paymentInfo?: PaymentInfo | null;
 };
 
 export const BANNER_STYLES: { key: BannerStyle; label: string; from: string; via: string; to: string }[] = [
@@ -119,6 +123,7 @@ export function useUpdateProfile() {
       defaultFrameColor?: string;
       tradePreferences?: string;
       featuredItems?: FeaturedItem[];
+      paymentInfo?: PaymentInfo;
     }) =>
       fetch(`${apiBase}/api/profile`, {
         method: "PATCH",

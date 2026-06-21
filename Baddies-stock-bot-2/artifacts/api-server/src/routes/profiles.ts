@@ -14,6 +14,9 @@ export type FeaturedItem = {
   value?: number;
 };
 
+type PaymentDetail = { info: string; useMiddleMan: boolean; robuxAmount: string; gampassLink: string };
+type PaymentInfo = { methods: string[]; details: Record<string, PaymentDetail> };
+
 type ProfileData = {
   tagline: string;
   bio: string;
@@ -30,6 +33,7 @@ type ProfileData = {
   customAvatarUrl: string | null;
   bannerImageUrl: string | null;
   profileBgUrl: string | null;
+  paymentInfo?: PaymentInfo;
 };
 
 type ProfilesStore = Record<string, ProfileData>;
@@ -65,15 +69,40 @@ router.get("/profile", (req: Request, res: Response) => {
     customAvatarUrl: p.customAvatarUrl ?? null,
     bannerImageUrl: p.bannerImageUrl ?? null,
     profileBgUrl: p.profileBgUrl ?? null,
+    paymentInfo: p.paymentInfo ?? null,
   });
 });
 
 router.patch("/profile", (req: Request, res: Response) => {
   const u = req.session?.discordUser;
   if (!u) { res.status(401).json({ error: "Not authenticated" }); return; }
-  const { tagline, bio, accentColor, bannerStyle, cardStyle, edgeEffect, defaultFrameColor, tradePreferences, featuredItems } = req.body as Partial<ProfileData & { featuredItems: FeaturedItem[] }>;
+  const { tagline, bio, accentColor, bannerStyle, cardStyle, edgeEffect, defaultFrameColor, tradePreferences, featuredItems, paymentInfo } = req.body as Partial<ProfileData & { featuredItems: FeaturedItem[] }>;
   const profiles = loadProfiles();
   const ex = profiles[u.id] ?? {} as Partial<ProfileData>;
+
+  const VALID_PAYMENT_METHODS = ["PayPal", "Apple Pay", "Cash App", "Venmo", "Robux"];
+  let safePaymentInfo: PaymentInfo | undefined = ex.paymentInfo;
+  if (paymentInfo && typeof paymentInfo === "object") {
+    const methods = Array.isArray(paymentInfo.methods)
+      ? paymentInfo.methods.filter((m: unknown) => typeof m === "string" && VALID_PAYMENT_METHODS.includes(m as string)).slice(0, 5)
+      : [];
+    const details: Record<string, PaymentDetail> = {};
+    if (paymentInfo.details && typeof paymentInfo.details === "object") {
+      for (const m of methods) {
+        const d = (paymentInfo.details as Record<string, unknown>)[m];
+        if (d && typeof d === "object") {
+          const pd = d as Record<string, unknown>;
+          details[m] = {
+            info:          typeof pd["info"] === "string"          ? pd["info"].slice(0, 200)  : "",
+            useMiddleMan:  typeof pd["useMiddleMan"] === "boolean"  ? pd["useMiddleMan"]        : false,
+            robuxAmount:   typeof pd["robuxAmount"] === "string"    ? pd["robuxAmount"].slice(0, 20) : "",
+            gampassLink:   typeof pd["gampassLink"] === "string"    ? pd["gampassLink"].slice(0, 300) : "",
+          };
+        }
+      }
+    }
+    safePaymentInfo = { methods, details };
+  }
 
   profiles[u.id] = {
     username: u.username, avatarHash: u.avatar ?? null,
@@ -90,6 +119,7 @@ router.patch("/profile", (req: Request, res: Response) => {
     customAvatarUrl: ex.customAvatarUrl ?? null,
     bannerImageUrl: ex.bannerImageUrl ?? null,
     profileBgUrl: ex.profileBgUrl ?? null,
+    ...(safePaymentInfo !== undefined && { paymentInfo: safePaymentInfo }),
   };
 
   saveProfiles(profiles);

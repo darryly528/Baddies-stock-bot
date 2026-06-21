@@ -14,11 +14,21 @@ import { useAuth } from "@/contexts/auth-context";
 import {
   useProfile, useOwnProfile, useUpdateProfile,
   BANNER_STYLES, ACCENT_COLORS, getBannerClass, CARD_STYLES, EDGE_EFFECTS,
-  type BannerStyle, type CardStyle, type EdgeEffect, type FeaturedItem, type Profile,
+  type BannerStyle, type CardStyle, type EdgeEffect, type FeaturedItem, type Profile, type PaymentDetail,
 } from "@/hooks/use-profile";
+
 import { ROLE_LABEL, ROLE_COLOR, type AnyRole } from "@/hooks/use-staff";
 import { cn } from "@/lib/utils";
 import { applyThemeColors } from "@/lib/theme-colors";
+
+const PAYMENT_LABELS = ["PayPal", "Apple Pay", "Cash App", "Venmo", "Robux"] as const;
+const PAYMENT_EMOJI: Record<string, string> = {
+  "PayPal":    "https://cdn.discordapp.com/emojis/1481817468912799814.png",
+  "Apple Pay": "https://cdn.discordapp.com/emojis/1481817467813888212.png",
+  "Cash App":  "https://cdn.discordapp.com/emojis/1481817469646393415.png",
+  "Venmo":     "https://cdn.discordapp.com/emojis/1481817470431006883.png",
+  "Robux":     "/robux-logo.png",
+};
 
 // ── Crop modal ────────────────────────────────────────────────────────────────
 
@@ -381,10 +391,10 @@ function ProfileEditor({
 }: {
   profile: Profile;
   onClose: () => void;
-  initialTab?: "about" | "theme" | "cards" | "items" | "site";
+  initialTab?: "about" | "payment" | "theme" | "cards" | "items" | "site";
 }) {
   const qc = useQueryClient();
-  const [tab, setTab] = useState<"about" | "theme" | "cards" | "items" | "site">(initialTab ?? "about");
+  const [tab, setTab] = useState<"about" | "payment" | "theme" | "cards" | "items" | "site">(initialTab ?? "about");
   const [tagline, setTagline] = useState(profile.tagline);
   const [bio, setBio] = useState(profile.bio);
   const [tradePrefs, setTradePrefs] = useState(profile.tradePreferences);
@@ -398,6 +408,26 @@ function ProfileEditor({
   const [featuredItems, setFeaturedItems] = useState<FeaturedItem[]>(profile.featuredItems);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const [paymentMethods, setPaymentMethods] = useState<string[]>(profile.paymentInfo?.methods ?? []);
+  const [paymentDetails, setPaymentDetails] = useState<Record<string, PaymentDetail>>(profile.paymentInfo?.details ?? {});
+
+  function togglePaymentMethod(label: string) {
+    setPaymentMethods((prev) => {
+      if (prev.includes(label)) {
+        setPaymentDetails((pd) => { const { [label]: _, ...rest } = pd; return rest; });
+        return prev.filter((m) => m !== label);
+      }
+      return [...prev, label];
+    });
+  }
+
+  function updatePaymentDetail(method: string, field: string, value: string | boolean) {
+    setPaymentDetails((prev) => ({
+      ...prev,
+      [method]: { info: "", useMiddleMan: false, robuxAmount: "", gampassLink: "", ...(prev[method] ?? {}), [field]: value },
+    }));
+  }
 
   const [currentAvatarUrl, setCurrentAvatarUrl] = useState<string | null>(profile.customAvatarUrl ?? null);
   const [currentBannerUrl, setCurrentBannerUrl] = useState<string | null>(profile.bannerImageUrl ?? null);
@@ -528,7 +558,7 @@ function ProfileEditor({
   async function handleSave() {
     setError(null);
     try {
-      await update.mutateAsync({ tagline, bio, accentColor, bannerStyle, cardStyle, edgeEffect, defaultFrameColor: defaultFrameColor || undefined, tradePreferences: tradePrefs, featuredItems });
+      await update.mutateAsync({ tagline, bio, accentColor, bannerStyle, cardStyle, edgeEffect, defaultFrameColor: defaultFrameColor || undefined, tradePreferences: tradePrefs, featuredItems, paymentInfo: { methods: paymentMethods, details: paymentDetails } });
       setSaved(true);
       setTimeout(() => { setSaved(false); onClose(); }, 1000);
     } catch (err) {
@@ -566,11 +596,11 @@ function ProfileEditor({
 
       {/* Tabs */}
       <div className="flex gap-1 p-2 bg-black/30 border-b border-white/10 shrink-0">
-        {(["about", "theme", "cards", "items", "site"] as const).map((t) => (
+        {(["about", "payment", "theme", "cards", "items", "site"] as const).map((t) => (
           <button key={t} onClick={() => setTab(t)}
             className={cn("flex-1 py-1.5 rounded-lg text-xs font-semibold capitalize transition-colors",
               tab === t ? "bg-primary/20 text-primary border border-primary/30" : "text-muted-foreground hover:text-white")}>
-            {t === "items" ? `Items (${featuredItems.length}/6)` : t.charAt(0).toUpperCase() + t.slice(1)}
+            {t === "items" ? `Items (${featuredItems.length}/6)` : t === "payment" ? "Payment" : t.charAt(0).toUpperCase() + t.slice(1)}
           </button>
         ))}
       </div>
@@ -615,6 +645,117 @@ function ProfileEditor({
               />
             </div>
           </>
+        )}
+
+        {tab === "payment" && (
+          <div className="space-y-4">
+            <div>
+              <p className="text-[11px] text-muted-foreground uppercase tracking-wider font-semibold mb-1">Payment Defaults</p>
+              <p className="text-xs text-white/50 mb-3">These auto-fill when you create a listing so you don't have to re-enter them every time.</p>
+              <div className="flex flex-wrap gap-2">
+                {PAYMENT_LABELS.map((label) => {
+                  const active = paymentMethods.includes(label);
+                  return (
+                    <button
+                      key={label}
+                      onClick={() => togglePaymentMethod(label)}
+                      className={cn(
+                        "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium border transition-all",
+                        active
+                          ? "bg-primary/20 border-primary/50 text-primary"
+                          : "bg-white/5 border-white/10 text-muted-foreground hover:text-white hover:border-white/20"
+                      )}
+                    >
+                      {PAYMENT_EMOJI[label] && (
+                        <img src={PAYMENT_EMOJI[label]} alt={label} className="w-4 h-4 object-contain" />
+                      )}
+                      {label}
+                      {active && <span className="text-xs ml-0.5">✓</span>}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {paymentMethods.length > 0 && (
+              <div className="space-y-2.5">
+                {paymentMethods.map((method) => {
+                  const d = paymentDetails[method] ?? { info: "", useMiddleMan: false, robuxAmount: "", gampassLink: "" };
+                  if (method === "Robux") {
+                    return (
+                      <div key={method} className="p-3 rounded-xl bg-white/5 border border-white/10 space-y-2">
+                        <p className="text-xs font-semibold text-white/80 flex items-center gap-1.5">
+                          {PAYMENT_EMOJI[method] && <img src={PAYMENT_EMOJI[method]} alt="" className="w-3.5 h-3.5 object-contain" />}
+                          Robux details
+                        </p>
+                        <input
+                          value={d.robuxAmount}
+                          onChange={(e) => updatePaymentDetail(method, "robuxAmount", e.target.value)}
+                          placeholder="Amount (e.g. 5000)"
+                          className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-1.5 text-sm text-white placeholder:text-muted-foreground/60 outline-none focus:border-primary/50 transition"
+                        />
+                        <input
+                          value={d.gampassLink}
+                          onChange={(e) => updatePaymentDetail(method, "gampassLink", e.target.value)}
+                          placeholder="Gamepass link (optional)"
+                          className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-1.5 text-sm text-white placeholder:text-muted-foreground/60 outline-none focus:border-primary/50 transition"
+                        />
+                      </div>
+                    );
+                  }
+                  if (method === "Venmo" || method === "Apple Pay") {
+                    return (
+                      <div key={method} className="p-3 rounded-xl bg-white/5 border border-white/10 space-y-2">
+                        <p className="text-xs font-semibold text-white/80 flex items-center gap-1.5">
+                          {PAYMENT_EMOJI[method] && <img src={PAYMENT_EMOJI[method]} alt="" className="w-3.5 h-3.5 object-contain" />}
+                          {method} details
+                        </p>
+                        {!d.useMiddleMan && (
+                          <input
+                            value={d.info}
+                            onChange={(e) => updatePaymentDetail(method, "info", e.target.value)}
+                            placeholder="Phone number or username"
+                            className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-1.5 text-sm text-white placeholder:text-muted-foreground/60 outline-none focus:border-primary/50 transition"
+                          />
+                        )}
+                        {d.useMiddleMan && (
+                          <div className="px-3 py-2 rounded-lg bg-amber-500/10 border border-amber-500/20 text-xs text-amber-300">
+                            Buyers will use a middle man for this payment method.
+                          </div>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => updatePaymentDetail(method, "useMiddleMan", !d.useMiddleMan)}
+                          className={cn(
+                            "text-xs px-2.5 py-1 rounded-lg border transition-colors font-medium",
+                            d.useMiddleMan
+                              ? "bg-amber-500/20 border-amber-500/40 text-amber-300 hover:bg-amber-500/30"
+                              : "bg-white/5 border-white/10 text-muted-foreground hover:text-white hover:border-white/20"
+                          )}
+                        >
+                          {d.useMiddleMan ? "✓ Use Middle Man" : "Use Middle Man"}
+                        </button>
+                      </div>
+                    );
+                  }
+                  return (
+                    <div key={method} className="p-3 rounded-xl bg-white/5 border border-white/10 space-y-2">
+                      <p className="text-xs font-semibold text-white/80 flex items-center gap-1.5">
+                        {PAYMENT_EMOJI[method] && <img src={PAYMENT_EMOJI[method]} alt="" className="w-3.5 h-3.5 object-contain" />}
+                        {method} details
+                      </p>
+                      <input
+                        value={d.info}
+                        onChange={(e) => updatePaymentDetail(method, "info", e.target.value)}
+                        placeholder={method === "PayPal" ? "PayPal link or username (e.g. paypal.me/you)" : "Cash App cashtag (e.g. $name)"}
+                        className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-1.5 text-sm text-white placeholder:text-muted-foreground/60 outline-none focus:border-primary/50 transition"
+                      />
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
         )}
 
         {tab === "theme" && (
