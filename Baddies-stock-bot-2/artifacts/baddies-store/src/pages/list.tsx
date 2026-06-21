@@ -1160,23 +1160,6 @@ export default function ListPage() {
                                 >
                                   <div className="pt-3 space-y-3">
                                     <div className="space-y-2">
-                                      <p className="text-[11px] text-muted-foreground uppercase tracking-wider font-semibold">Frame / border color</p>
-                                      <div className="flex items-center gap-2 flex-wrap">
-                                        {FRAME_PALETTE.map((c) => (
-                                          <button key={c} onClick={() => setFrameDraft((d) => ({ ...d, color: c }))}
-                                            className="w-6 h-6 rounded-full border-2 transition-transform hover:scale-110 flex-shrink-0"
-                                            style={{ background: c, borderColor: frameDraft.color === c ? "white" : "transparent" }} />
-                                        ))}
-                                        <label className="relative w-6 h-6 rounded-full overflow-hidden cursor-pointer border-2 border-white/20 hover:scale-110 transition-transform flex-shrink-0" title="Custom color">
-                                          <input type="color" value={frameDraft.color} onChange={(e) => setFrameDraft((d) => ({ ...d, color: e.target.value }))}
-                                            className="absolute inset-0 opacity-0 w-full h-full cursor-pointer" />
-                                          <div className="w-full h-full flex items-center justify-center text-[8px] font-bold"
-                                            style={{ background: frameDraft.color, color: "white", textShadow: "0 0 4px rgba(0,0,0,0.8)" }}>+</div>
-                                        </label>
-                                      </div>
-                                    </div>
-
-                                    <div className="space-y-2">
                                       <p className="text-[11px] text-muted-foreground uppercase tracking-wider font-semibold">Frame overlay image</p>
                                       <div className="flex items-center gap-3">
                                         {frameDraft.imageUrl ? (

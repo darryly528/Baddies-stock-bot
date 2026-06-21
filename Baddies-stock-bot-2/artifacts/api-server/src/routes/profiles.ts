@@ -21,6 +21,7 @@ type ProfileData = {
   bannerStyle: string;
   cardStyle: string;
   edgeEffect: string;
+  defaultFrameColor: string;
   tradePreferences: string;
   featuredItems: FeaturedItem[];
   username: string;
@@ -58,6 +59,7 @@ router.get("/profile", (req: Request, res: Response) => {
     tagline: p.tagline ?? "", bio: p.bio ?? "",
     accentColor: p.accentColor ?? "#ff0080", bannerStyle: p.bannerStyle ?? "default",
     cardStyle: p.cardStyle ?? "default", edgeEffect: p.edgeEffect ?? "none",
+    defaultFrameColor: p.defaultFrameColor ?? "",
     tradePreferences: p.tradePreferences ?? "", featuredItems: p.featuredItems ?? [],
     siteRole: getRole(u.id, u.username), updatedAt: p.updatedAt ?? null,
     customAvatarUrl: p.customAvatarUrl ?? null,
@@ -69,20 +71,21 @@ router.get("/profile", (req: Request, res: Response) => {
 router.patch("/profile", (req: Request, res: Response) => {
   const u = req.session?.discordUser;
   if (!u) { res.status(401).json({ error: "Not authenticated" }); return; }
-  const { tagline, bio, accentColor, bannerStyle, cardStyle, edgeEffect, tradePreferences, featuredItems } = req.body as Partial<ProfileData & { featuredItems: FeaturedItem[] }>;
+  const { tagline, bio, accentColor, bannerStyle, cardStyle, edgeEffect, defaultFrameColor, tradePreferences, featuredItems } = req.body as Partial<ProfileData & { featuredItems: FeaturedItem[] }>;
   const profiles = loadProfiles();
   const ex = profiles[u.id] ?? {} as Partial<ProfileData>;
 
   profiles[u.id] = {
     username: u.username, avatarHash: u.avatar ?? null,
-    tagline:          typeof tagline === "string"          ? tagline.slice(0, 80)          : (ex.tagline ?? ""),
-    bio:              typeof bio === "string"               ? bio.slice(0, 500)             : (ex.bio ?? ""),
-    accentColor:      typeof accentColor === "string" && HEX_RE.test(accentColor) ? accentColor : (ex.accentColor ?? "#ff0080"),
-    bannerStyle:      typeof bannerStyle === "string" && VALID_BANNER_STYLES.includes(bannerStyle) ? bannerStyle : (ex.bannerStyle ?? "default"),
-    cardStyle:        typeof cardStyle === "string" && VALID_CARD_STYLES.includes(cardStyle) ? cardStyle : (ex.cardStyle ?? "default"),
-    edgeEffect:       typeof edgeEffect === "string" && VALID_EDGE_EFFECTS.includes(edgeEffect) ? edgeEffect : (ex.edgeEffect ?? "none"),
-    tradePreferences: typeof tradePreferences === "string" ? tradePreferences.slice(0, 200) : (ex.tradePreferences ?? ""),
-    featuredItems:    Array.isArray(featuredItems) ? (featuredItems as FeaturedItem[]).slice(0, 6) : (ex.featuredItems ?? []),
+    tagline:           typeof tagline === "string"           ? tagline.slice(0, 80)          : (ex.tagline ?? ""),
+    bio:               typeof bio === "string"               ? bio.slice(0, 500)             : (ex.bio ?? ""),
+    accentColor:       typeof accentColor === "string" && HEX_RE.test(accentColor) ? accentColor : (ex.accentColor ?? "#ff0080"),
+    bannerStyle:       typeof bannerStyle === "string" && VALID_BANNER_STYLES.includes(bannerStyle) ? bannerStyle : (ex.bannerStyle ?? "default"),
+    cardStyle:         typeof cardStyle === "string" && VALID_CARD_STYLES.includes(cardStyle) ? cardStyle : (ex.cardStyle ?? "default"),
+    edgeEffect:        typeof edgeEffect === "string" && VALID_EDGE_EFFECTS.includes(edgeEffect) ? edgeEffect : (ex.edgeEffect ?? "none"),
+    defaultFrameColor: typeof defaultFrameColor === "string" && HEX_RE.test(defaultFrameColor) ? defaultFrameColor : (ex.defaultFrameColor ?? ""),
+    tradePreferences:  typeof tradePreferences === "string" ? tradePreferences.slice(0, 200) : (ex.tradePreferences ?? ""),
+    featuredItems:     Array.isArray(featuredItems) ? (featuredItems as FeaturedItem[]).slice(0, 6) : (ex.featuredItems ?? []),
     updatedAt: new Date().toISOString(),
     customAvatarUrl: ex.customAvatarUrl ?? null,
     bannerImageUrl: ex.bannerImageUrl ?? null,
@@ -119,6 +122,7 @@ router.get("/profiles/:userId", (req: Request, res: Response) => {
     userId, username: p.username, avatarHash: p.avatarHash,
     tagline: p.tagline, bio: p.bio, accentColor: p.accentColor,
     bannerStyle: p.bannerStyle, cardStyle: p.cardStyle ?? "default", edgeEffect: p.edgeEffect ?? "none",
+    defaultFrameColor: p.defaultFrameColor ?? "",
     tradePreferences: p.tradePreferences,
     featuredItems: p.featuredItems, siteRole,
     listingCount: userListings.length, activeListings: userListings, updatedAt: p.updatedAt,

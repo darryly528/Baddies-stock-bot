@@ -38,6 +38,7 @@ export interface Listing {
   cardStyle?: string;
   sellerAccentColor?: string;
   sellerEdgeEffect?: string;
+  sellerDefaultFrameColor?: string;
   frameColor?: string;
   frameImageUrl?: string | null;
 }

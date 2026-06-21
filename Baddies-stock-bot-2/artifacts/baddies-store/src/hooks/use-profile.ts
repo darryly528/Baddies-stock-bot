@@ -41,6 +41,7 @@ export type Profile = {
   bannerStyle: BannerStyle;
   cardStyle: CardStyle;
   edgeEffect: EdgeEffect;
+  defaultFrameColor: string;
   tradePreferences: string;
   featuredItems: FeaturedItem[];
   siteRole: string | null;
@@ -115,6 +116,7 @@ export function useUpdateProfile() {
       bannerStyle?: BannerStyle;
       cardStyle?: CardStyle;
       edgeEffect?: EdgeEffect;
+      defaultFrameColor?: string;
       tradePreferences?: string;
       featuredItems?: FeaturedItem[];
     }) =>

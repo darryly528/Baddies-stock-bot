@@ -657,7 +657,7 @@ function AuctionCard({
 
   const urgentTimer = t && !t.ended && t.days === 0 && t.hours < 2;
   const isDefaultStyle = !listing.cardStyle || listing.cardStyle === "default";
-  const auctionAccent = listing.frameColor ?? listing.sellerAccentColor;
+  const auctionAccent = listing.frameColor ?? (listing.sellerDefaultFrameColor || listing.sellerAccentColor);
   const stProps = (!ended && !isDefaultStyle)
     ? getCardStyleProps(listing.cardStyle, auctionAccent)
     : null;
@@ -801,7 +801,7 @@ function ListingItemCard({
     ? `https://cdn.discordapp.com/avatars/${listing.discordUserId}/${listing.discordAvatar}.png?size=64`
     : null;
 
-  const effectiveAccent = listing.frameColor ?? listing.sellerAccentColor;
+  const effectiveAccent = listing.frameColor ?? (listing.sellerDefaultFrameColor || listing.sellerAccentColor);
   const stProps = getCardStyleProps(listing.cardStyle, effectiveAccent);
   const edgeProps = getEdgeEffectProps(listing.sellerEdgeEffect, effectiveAccent);
 

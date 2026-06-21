@@ -96,6 +96,7 @@ router.get("/listings", (req, res) => {
       cardStyle: p?.cardStyle ?? "default",
       sellerAccentColor: p?.accentColor ?? "#ff0080",
       sellerEdgeEffect: p?.edgeEffect ?? "none",
+      sellerDefaultFrameColor: p?.defaultFrameColor ?? "",
     };
   });
   res.setHeader("Cache-Control", "public, max-age=5, stale-while-revalidate=10");

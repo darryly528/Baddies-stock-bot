@@ -392,6 +392,7 @@ function ProfileEditor({
   const [bannerStyle, setBannerStyle] = useState<BannerStyle>(profile.bannerStyle);
   const [cardStyle, setCardStyle] = useState<CardStyle>((profile.cardStyle as CardStyle) ?? "default");
   const [edgeEffect, setEdgeEffect] = useState<EdgeEffect>((profile.edgeEffect as EdgeEffect) ?? "none");
+  const [defaultFrameColor, setDefaultFrameColor] = useState<string>(profile.defaultFrameColor ?? "");
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const previewImageRef = useRef<HTMLInputElement>(null);
   const [featuredItems, setFeaturedItems] = useState<FeaturedItem[]>(profile.featuredItems);
@@ -527,7 +528,7 @@ function ProfileEditor({
   async function handleSave() {
     setError(null);
     try {
-      await update.mutateAsync({ tagline, bio, accentColor, bannerStyle, cardStyle, edgeEffect, tradePreferences: tradePrefs, featuredItems });
+      await update.mutateAsync({ tagline, bio, accentColor, bannerStyle, cardStyle, edgeEffect, defaultFrameColor: defaultFrameColor || undefined, tradePreferences: tradePrefs, featuredItems });
       setSaved(true);
       setTimeout(() => { setSaved(false); onClose(); }, 1000);
     } catch (err) {
@@ -895,6 +896,39 @@ function ProfileEditor({
               <p className="text-[10px] text-muted-foreground/70 italic px-1">
                 {EDGE_EFFECTS.find((e) => e.key === edgeEffect)?.desc} — preview updates above.
               </p>
+            )}
+
+            {/* Default card frame color */}
+            <div>
+              <label className="text-[11px] text-muted-foreground uppercase tracking-wider font-semibold">Card Frame Color</label>
+              <p className="text-[11px] text-muted-foreground mt-0.5">Default border color for all your listing cards. Leave blank to use your accent color.</p>
+            </div>
+            <div className="flex items-center gap-2 flex-wrap">
+              {/* "None" swatch */}
+              <button
+                onClick={() => setDefaultFrameColor("")}
+                className={`w-6 h-6 rounded-full border-2 flex items-center justify-center text-[9px] font-bold transition-all hover:scale-110 ${!defaultFrameColor ? "border-white scale-110" : "border-white/20 text-white/40"}`}
+                style={{ background: "transparent" }}
+                title="Use accent color"
+              >✕</button>
+              {(["#ff0080","#a855f7","#3b82f6","#06b6d4","#22c55e","#f97316","#ef4444","#eab308","#e2e8f0","#ffffff"] as const).map((c) => (
+                <button key={c} onClick={() => setDefaultFrameColor(c)}
+                  className="w-6 h-6 rounded-full border-2 transition-all hover:scale-110"
+                  style={{ background: c, borderColor: defaultFrameColor === c ? "white" : "transparent", boxShadow: defaultFrameColor === c ? `0 0 8px ${c}` : "none" }} />
+              ))}
+              <label className="relative w-6 h-6 rounded-full overflow-hidden cursor-pointer border-2 border-white/20 hover:scale-110 transition-transform" title="Custom color">
+                <input type="color" value={defaultFrameColor || accentColor} onChange={(e) => setDefaultFrameColor(e.target.value)}
+                  className="absolute inset-0 opacity-0 w-full h-full cursor-pointer" />
+                <div className="w-full h-full flex items-center justify-center text-[8px] font-bold"
+                  style={{ background: defaultFrameColor || accentColor, color: "white", textShadow: "0 0 4px rgba(0,0,0,0.8)" }}>+</div>
+              </label>
+            </div>
+            {defaultFrameColor && (
+              <div className="flex items-center gap-2 px-3 py-2 rounded-xl" style={{ background: `${defaultFrameColor}18`, border: `1px solid ${defaultFrameColor}40` }}>
+                <div className="w-3 h-3 rounded-full shrink-0" style={{ background: defaultFrameColor }} />
+                <p className="text-[10px] font-mono" style={{ color: defaultFrameColor }}>{defaultFrameColor}</p>
+                <p className="text-[10px] text-muted-foreground/60 ml-auto">Applied to all your cards</p>
+              </div>
             )}
 
             <div className="px-3 py-2.5 rounded-xl bg-white/5 border border-white/10">
