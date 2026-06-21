@@ -1764,11 +1764,11 @@ function ShopsView({ listings, onMessage, user, onLoginPrompt, approvedShops, my
                   const img = shop.sampleImages[i];
                   return img ? (
                     <img key={i} src={img} alt=""
-                      className="w-full aspect-square rounded-xl object-contain drop-shadow-xl"
+                      className="w-full aspect-video rounded-lg object-contain drop-shadow-xl"
                       style={{ background: "rgba(0,0,0,0.5)", padding: "3px" }} />
                   ) : (
-                    <div key={i} className="w-full aspect-square rounded-xl bg-black/30 flex items-center justify-center border border-white/8">
-                      <Box className="w-5 h-5 text-white/15" />
+                    <div key={i} className="w-full aspect-video rounded-lg bg-black/30 flex items-center justify-center border border-white/8">
+                      <Box className="w-4 h-4 text-white/15" />
                     </div>
                   );
                 })}
