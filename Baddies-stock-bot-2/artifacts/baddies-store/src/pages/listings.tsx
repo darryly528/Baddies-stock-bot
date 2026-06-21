@@ -1682,8 +1682,19 @@ function ShopsView({ listings, onMessage, onOffer, onAddToCart, onViewCart, cart
     setVouchError(null);
   }, [openShop?.sellerId]);
 
+  // Only sellers who are approved shop owners or shop members belong in the Shops view
+  const shopSellerIds = useMemo(() => {
+    const ids = new Set<string>();
+    approvedShops.forEach((s) => {
+      ids.add(s.userId);
+      (s.members ?? []).forEach((m) => ids.add(m));
+    });
+    return ids;
+  }, [approvedShops]);
+
   const shopMap = listings.reduce<Record<string, SellerShop>>((acc, listing) => {
     const key = listing.discordUserId ?? listing.seller;
+    if (!shopSellerIds.has(key)) return acc;
     if (!acc[key]) {
       acc[key] = {
         sellerId: listing.discordUserId ?? listing.seller,
@@ -2497,7 +2508,21 @@ export default function ListingsPage() {
     }
   }
 
-  const activeListings = [...listings].reverse().filter((l) => l.items.some((i) => !i.soldOut));
+  // IDs of every seller whose listings belong inside a shop (owner + members)
+  const shopAffiliatedIds = useMemo(() => {
+    const ids = new Set<string>();
+    approvedShops.forEach((s) => {
+      ids.add(s.userId);
+      (s.members ?? []).forEach((m) => ids.add(m));
+    });
+    return ids;
+  }, [approvedShops]);
+
+  // Shop-affiliated sellers are hidden from the normal All/Buy/Auctions feed
+  const activeListings = [...listings].reverse().filter((l) => {
+    const sellerId = l.discordUserId ?? l.seller;
+    return l.items.some((i) => !i.soldOut) && !shopAffiliatedIds.has(sellerId);
+  });
 
   const filteredListings = activeListings.filter((l) => {
     if (activeFilter === "auctions") return l.listingType === "auction";
