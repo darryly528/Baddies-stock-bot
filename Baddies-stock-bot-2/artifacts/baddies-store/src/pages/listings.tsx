@@ -721,7 +721,9 @@ function AuctionCard({
         </h3>
 
         {/* Seller */}
-        <div className="flex items-center gap-1.5">
+        <Link href={listing.discordUserId ? `/profile/${listing.discordUserId}` : "#"}
+          onClick={(e) => !listing.discordUserId && e.preventDefault()}
+          className="flex items-center gap-1.5 hover:opacity-80 transition-opacity w-fit max-w-full">
           {avatarUrl ? (
             <img src={avatarUrl} alt={listing.seller} className="w-5 h-5 rounded-full ring-1 ring-white/20 flex-shrink-0" />
           ) : (
@@ -735,7 +737,7 @@ function AuctionCard({
               <CheckCircle2 className="w-2.5 h-2.5" />
             </span>
           )}
-        </div>
+        </Link>
 
         {/* Timer */}
         {listing.auctionEndsAt && !ended && (
@@ -845,7 +847,9 @@ function ListingItemCard({
           {item.name}
         </h3>
 
-        <div className="flex items-center gap-2 mt-auto">
+        <Link href={listing.discordUserId ? `/profile/${listing.discordUserId}` : "#"}
+          onClick={(e) => !listing.discordUserId && e.preventDefault()}
+          className="flex items-center gap-2 mt-auto hover:opacity-80 transition-opacity w-fit max-w-full">
           {avatarUrl ? (
             <img src={avatarUrl} alt={listing.seller} className="w-5 h-5 rounded-full ring-1 ring-white/20 flex-shrink-0" />
           ) : (
@@ -859,7 +863,7 @@ function ListingItemCard({
               <CheckCircle2 className="w-2.5 h-2.5" />
             </span>
           )}
-        </div>
+        </Link>
 
         <div className="flex items-center justify-between gap-2">
           <div>

@@ -1492,7 +1492,7 @@ export default function ProfilePage() {
   const showError = !isLoading && !profile && (isError || !isOwn);
 
   const [editing, setEditing] = useState(false);
-  const [editingTab, setEditingTab] = useState<"about" | "theme" | "cards" | "items">("about");
+  const [editingTab, setEditingTab] = useState<"about" | "theme" | "cards" | "items" | "site">("about");
   const [vouchOpen, setVouchOpen] = useState(false);
   const [reportTarget, setReportTarget] = useState<ReportTarget | null>(null);
 
