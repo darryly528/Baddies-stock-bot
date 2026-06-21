@@ -1574,7 +1574,7 @@ function ShopsView({ listings, onMessage, user, onLoginPrompt, approvedShops, my
   onCreateShop: () => void;
   onEditShop: () => void;
 }) {
-  const [expanded, setExpanded] = useState<string | null>(null);
+  const [openShop, setOpenShop] = useState<SellerShop | null>(null);
   const [cardSize, setCardSize] = useState<"sm" | "md" | "lg">("md");
   const approvedIds = new Set(approvedShops.map((s) => s.userId));
 
@@ -1713,9 +1713,144 @@ function ShopsView({ listings, onMessage, user, onLoginPrompt, approvedShops, my
         </div>
       </div>
 
+      {/* Full-screen shop modal */}
+      <AnimatePresence>
+        {openShop && (() => {
+          const shop = openShop;
+          const verifiedShop = approvedShops.find((s) => s.userId === shop.sellerId);
+          const isVerified = !!verifiedShop;
+          const accent = verifiedShop?.accentColor ?? shop.accentColor;
+          const displayAvatar = verifiedShop?.logoUrl ?? shop.sellerAvatar ?? `https://cdn.discordapp.com/embed/avatars/0.png`;
+          const displayName = verifiedShop?.shopName ?? shop.sellerName;
+          const allItems = shop.listings.flatMap((l) =>
+            l.items.filter((i) => !i.soldOut).map((item) => ({ listing: l, item }))
+          );
+          return (
+            <motion.div
+              key="shop-modal"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.18 }}
+              className="fixed inset-0 z-50 flex flex-col"
+              style={{ background: "rgba(0,0,0,0.85)", backdropFilter: "blur(12px)" }}
+              onClick={() => setOpenShop(null)}
+            >
+              <motion.div
+                initial={{ y: 40, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                exit={{ y: 40, opacity: 0 }}
+                transition={{ duration: 0.22, ease: "easeOut" }}
+                className="relative flex flex-col h-full max-w-3xl mx-auto w-full"
+                onClick={(e) => e.stopPropagation()}
+              >
+                {/* Hero banner */}
+                <div className="relative h-48 shrink-0 overflow-hidden">
+                  {verifiedShop?.bannerUrl ? (
+                    <img src={verifiedShop.bannerUrl} alt="" className="absolute inset-0 w-full h-full object-cover" />
+                  ) : verifiedShop?.logoUrl ? (
+                    <img src={verifiedShop.logoUrl} alt="" className="absolute inset-0 w-full h-full object-cover scale-110 blur-md" />
+                  ) : (
+                    <div className="absolute inset-0" style={{ background: `linear-gradient(135deg, ${accent}60 0%, #0a0a0f 100%)` }} />
+                  )}
+                  <div className="absolute inset-0" style={{ background: "linear-gradient(to bottom, rgba(0,0,0,0.1) 0%, rgba(0,0,0,0.7) 100%)" }} />
+
+                  {/* Close */}
+                  <button
+                    onClick={() => setOpenShop(null)}
+                    className="absolute top-3 right-3 z-10 w-8 h-8 rounded-full bg-black/50 border border-white/20 flex items-center justify-center hover:bg-black/70 transition-colors"
+                  >
+                    <X className="w-4 h-4 text-white" />
+                  </button>
+
+                  {/* Shop identity */}
+                  <div className="absolute bottom-0 left-0 right-0 p-4 flex items-end gap-3">
+                    <div className="w-14 h-14 rounded-xl border-2 overflow-hidden shrink-0 shadow-xl" style={{ borderColor: accent }}>
+                      <img src={displayAvatar} alt={displayName} className="w-full h-full object-cover bg-black"
+                        onError={(e) => { (e.target as HTMLImageElement).src = `https://cdn.discordapp.com/embed/avatars/0.png`; }} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <h2 className="text-xl font-black text-white drop-shadow">{displayName}</h2>
+                        {isVerified && (
+                          <span className="flex items-center gap-0.5 text-[9px] font-bold tracking-wide px-1.5 py-0.5 rounded-full border"
+                            style={{ background: `${accent}40`, color: accent, borderColor: `${accent}70` }}>
+                            <CheckCircle2 className="w-2.5 h-2.5" />
+                            Verified
+                          </span>
+                        )}
+                      </div>
+                      {verifiedShop?.tagline && <p className="text-sm text-white/70">{verifiedShop.tagline}</p>}
+                    </div>
+                    <span className="shrink-0 text-xs font-bold px-2.5 py-1 rounded-full" style={{ background: `${accent}30`, color: accent, border: `1px solid ${accent}50` }}>
+                      {allItems.length} item{allItems.length !== 1 ? "s" : ""}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Payment methods */}
+                {shop.paymentMethods.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5 px-4 py-2.5 shrink-0" style={{ background: `${accent}10`, borderBottom: `1px solid ${accent}20` }}>
+                    {shop.paymentMethods.map((m) => (
+                      <div key={m} className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-black/40 border border-white/15 text-[10px] text-white/70">
+                        {PAYMENT_EMOJI[m] && <img src={PAYMENT_EMOJI[m]} alt={m} className="w-3 h-3 object-contain" />}
+                        {m}
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Items grid */}
+                <div className="flex-1 overflow-y-auto p-4" style={{ background: "rgba(0,0,0,0.6)" }}>
+                  {allItems.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center h-40 text-white/30">
+                      <Box className="w-10 h-10 mb-2" />
+                      <p className="text-sm font-semibold">No items listed yet</p>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                      {allItems.map(({ listing: l, item }) => (
+                        <div key={`${l.id}-${item.name}`}
+                          className="relative rounded-xl overflow-hidden border flex flex-col"
+                          style={{ borderColor: `${accent}30`, background: "rgba(0,0,0,0.5)" }}>
+                          {/* Item image */}
+                          <div className="relative aspect-square w-full">
+                            {item.imageUrl ? (
+                              <img src={item.imageUrl} alt={item.name} className="w-full h-full object-contain p-2" />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center" style={{ background: `${accent}10` }}>
+                                <Box className="w-8 h-8" style={{ color: `${accent}50` }} />
+                              </div>
+                            )}
+                          </div>
+                          {/* Info + Buy */}
+                          <div className="p-2.5 flex items-center gap-2 border-t" style={{ borderColor: `${accent}20` }}>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-xs font-bold text-white truncate">{item.name}</p>
+                              {item.price && <p className="text-[11px] font-bold" style={{ color: accent }}>${item.price}</p>}
+                            </div>
+                            <button
+                              onClick={() => { if (!user) { onLoginPrompt(); return; } onMessage(l, item); setOpenShop(null); }}
+                              className="shrink-0 flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-bold transition-all hover:opacity-80 active:scale-95"
+                              style={{ background: accent, color: "white", boxShadow: `0 2px 8px ${accent}50` }}
+                            >
+                              <MessageCircle className="w-3 h-3" />
+                              Buy
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </motion.div>
+            </motion.div>
+          );
+        })()}
+      </AnimatePresence>
+
       <div className={cn("grid gap-4", gridCols)}>
       {shops.map((shop) => {
-        const isExpanded = expanded === shop.sellerId;
         const verifiedShop = approvedShops.find((s) => s.userId === shop.sellerId);
         const isVerified = !!verifiedShop;
         const accent = verifiedShop?.accentColor ?? shop.accentColor;
@@ -1730,7 +1865,8 @@ function ShopsView({ listings, onMessage, user, onLoginPrompt, approvedShops, my
             layout
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
-            className="relative rounded-2xl overflow-hidden border"
+            onClick={() => setOpenShop(shop)}
+            className="relative rounded-2xl overflow-hidden border cursor-pointer group"
             style={{ borderColor: isVerified ? `${accent}60` : `${accent}22` }}
           >
             {/* Full-card background image */}
@@ -1742,32 +1878,24 @@ function ShopsView({ listings, onMessage, user, onLoginPrompt, approvedShops, my
               ) : (
                 <div className="w-full h-full" style={{ background: `linear-gradient(135deg, ${accent}40 0%, #0a0a0f 100%)` }} />
               )}
-              {/* Dark overlay so content stays readable */}
-              <div className="absolute inset-0" style={{ background: "linear-gradient(to bottom, rgba(0,0,0,0.45) 0%, rgba(0,0,0,0.75) 55%, rgba(0,0,0,0.92) 100%)" }} />
+              <div className="absolute inset-0 transition-opacity group-hover:opacity-80" style={{ background: "linear-gradient(to bottom, rgba(0,0,0,0.45) 0%, rgba(0,0,0,0.75) 55%, rgba(0,0,0,0.92) 100%)" }} />
             </div>
 
-            {/* Card content — all z-10 to sit above background */}
+            {/* Card content */}
             <div className="relative z-10 p-4 space-y-3">
 
-              {/* Top row: avatar + name + verified badge + profile link */}
+              {/* Top row: avatar + name + verified badge */}
               <div className="flex items-center gap-2.5">
-                <button onClick={() => setExpanded(isExpanded ? null : shop.sellerId)} className="shrink-0">
-                  <img
-                    src={displayAvatar}
-                    alt={displayName}
-                    className="w-10 h-10 rounded-full border-2 object-cover hover:opacity-80 transition-opacity bg-black"
-                    style={{ borderColor: accent }}
-                    onError={(e) => { (e.target as HTMLImageElement).src = `https://cdn.discordapp.com/embed/avatars/0.png`; }}
-                  />
-                </button>
+                <img
+                  src={displayAvatar}
+                  alt={displayName}
+                  className="w-10 h-10 rounded-full border-2 object-cover shrink-0 bg-black"
+                  style={{ borderColor: accent }}
+                  onError={(e) => { (e.target as HTMLImageElement).src = `https://cdn.discordapp.com/embed/avatars/0.png`; }}
+                />
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-1.5 flex-wrap">
-                    <button
-                      onClick={() => setExpanded(isExpanded ? null : shop.sellerId)}
-                      className="font-bold text-white hover:opacity-80 transition-opacity text-sm truncate"
-                    >
-                      {displayName}
-                    </button>
+                    <span className="font-bold text-white text-sm truncate">{displayName}</span>
                     {isVerified && (
                       <span className="flex items-center gap-0.5 text-[9px] font-bold tracking-wide px-1.5 py-0.5 rounded-full border"
                         style={{ background: `${accent}30`, color: accent, borderColor: `${accent}60` }}>
@@ -1814,97 +1942,15 @@ function ShopsView({ listings, onMessage, user, onLoginPrompt, approvedShops, my
                 </div>
               )}
 
-              {/* Toggle items button */}
-              <button
-                onClick={() => setExpanded(isExpanded ? null : shop.sellerId)}
+              {/* Open shop hint */}
+              <div
                 className="w-full flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-semibold border transition-all backdrop-blur-sm"
-                style={{
-                  borderColor: isExpanded ? `${accent}60` : "rgba(255,255,255,0.15)",
-                  color: isExpanded ? accent : "rgba(255,255,255,0.7)",
-                  background: isExpanded ? `${accent}20` : "rgba(0,0,0,0.3)",
-                }}
+                style={{ borderColor: "rgba(255,255,255,0.15)", color: "rgba(255,255,255,0.7)", background: "rgba(0,0,0,0.3)" }}
               >
                 <Tag className="w-3 h-3" />
-                {isExpanded ? "Hide items" : `Browse ${totalItems} item${totalItems !== 1 ? "s" : ""}`}
-              </button>
+                Browse {totalItems} item{totalItems !== 1 ? "s" : ""}
+              </div>
             </div>
-
-            {/* Expanded store — fully branded */}
-            <AnimatePresence>
-              {isExpanded && (
-                <motion.div
-                  initial={{ height: 0, opacity: 0 }}
-                  animate={{ height: "auto", opacity: 1 }}
-                  exit={{ height: 0, opacity: 0 }}
-                  transition={{ duration: 0.25 }}
-                  className="overflow-hidden relative z-10"
-                >
-                  {/* Branded store header */}
-                  <div className="relative overflow-hidden" style={{ borderTop: `1px solid ${accent}30` }}>
-                    {/* Banner as section background */}
-                    {verifiedShop?.bannerUrl && (
-                      <img src={verifiedShop.bannerUrl} alt="" className="absolute inset-0 w-full h-full object-cover opacity-20" />
-                    )}
-                    <div className="absolute inset-0" style={{ background: `linear-gradient(to right, ${accent}25 0%, transparent 100%)` }} />
-                    <div className="relative flex items-center gap-2.5 px-4 py-3">
-                      <div className="w-7 h-7 rounded-lg border overflow-hidden shrink-0" style={{ borderColor: accent }}>
-                        {(verifiedShop?.logoUrl ?? shop.sellerAvatar) ? (
-                          <img src={verifiedShop?.logoUrl ?? shop.sellerAvatar!} alt={displayName} className="w-full h-full object-cover" />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center text-[10px] font-black" style={{ background: `${accent}30`, color: accent }}>
-                            {displayName[0]?.toUpperCase()}
-                          </div>
-                        )}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-[11px] font-bold truncate" style={{ color: accent }}>{displayName}</p>
-                        {verifiedShop?.tagline && <p className="text-[10px] text-white/50 truncate">{verifiedShop.tagline}</p>}
-                      </div>
-                      <span className="text-[9px] font-bold px-2 py-0.5 rounded-full" style={{ background: `${accent}20`, color: accent, border: `1px solid ${accent}40` }}>
-                        {totalItems} item{totalItems !== 1 ? "s" : ""}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Items list */}
-                  <div className="px-3 py-2 space-y-1 max-h-64 overflow-y-auto" style={{ background: `${accent}08` }}>
-                    {shop.listings.flatMap((l) =>
-                      l.items.filter((i) => !i.soldOut).map((item) => (
-                        <div key={`${l.id}-${item.name}`}
-                          className="flex items-center gap-2.5 py-2 px-2 rounded-xl transition-colors hover:bg-black/20"
-                          style={{ borderBottom: `1px solid ${accent}12` }}>
-                          {item.imageUrl ? (
-                            <img src={item.imageUrl} alt={item.name} className="w-9 h-9 rounded-lg object-contain shrink-0"
-                              style={{ background: "rgba(0,0,0,0.4)", padding: "2px" }} />
-                          ) : (
-                            <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0" style={{ background: `${accent}15` }}>
-                              <Box className="w-4 h-4" style={{ color: `${accent}60` }} />
-                            </div>
-                          )}
-                          <div className="flex-1 min-w-0">
-                            <p className="text-xs font-semibold text-white truncate">{item.name}</p>
-                            {item.price && (
-                              <p className="text-[11px] font-bold" style={{ color: accent }}>${item.price}</p>
-                            )}
-                          </div>
-                          <button
-                            onClick={() => {
-                              if (!user) { onLoginPrompt(); return; }
-                              onMessage(l, item);
-                            }}
-                            className="shrink-0 flex items-center gap-1 px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all hover:opacity-80 active:scale-95"
-                            style={{ background: accent, color: "white", boxShadow: `0 2px 8px ${accent}50` }}
-                          >
-                            <MessageCircle className="w-3 h-3" />
-                            Buy
-                          </button>
-                        </div>
-                      ))
-                    )}
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
           </motion.div>
         );
       })}
