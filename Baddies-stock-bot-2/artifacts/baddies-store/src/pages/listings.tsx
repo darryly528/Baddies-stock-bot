@@ -1116,6 +1116,13 @@ const SHOP_PALETTE = [
   "#f59e0b", "#ef4444", "#ec4899", "#f97316", "#ffffff",
 ];
 
+function contrastText(hex: string): string {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  return (r * 299 + g * 587 + b * 114) / 1000 > 155 ? "#000" : "#fff";
+}
+
 function ShopImageUpload({
   label, type, value, onChange,
 }: { label: string; type: "banner" | "logo"; value: string; onChange: (url: string) => void }) {
@@ -2008,7 +2015,7 @@ function ShopsView({ listings, onMessage, onOffer, onAddToCart, onViewCart, cart
                               <button
                                 onClick={() => { if (!user) { onLoginPrompt(); return; } onOffer(l, item); setOpenShop(null); }}
                                 className="flex-1 flex items-center justify-center gap-1 py-1.5 rounded-lg text-[11px] font-bold transition-all hover:opacity-80 active:scale-95"
-                                style={{ background: accent, color: "white", boxShadow: `0 2px 8px ${accent}40` }}
+                                style={{ background: accent, color: contrastText(accent), boxShadow: `0 2px 8px ${accent}40` }}
                               >
                                 <MessageCircle className="w-3 h-3" />
                                 Offer
