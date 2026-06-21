@@ -1393,6 +1393,7 @@ function EditShopModal({ shop, onClose, onSuccess }: { shop: ShopApplication; on
   const [bannerUrl, setBannerUrl] = useState(shop.bannerUrl ?? "");
   const [logoUrl, setLogoUrl] = useState(shop.logoUrl ?? "");
   const [accentColor, setAccentColor] = useState(shop.accentColor ?? "#a855f7");
+  const [activeTab, setActiveTab] = useState<"branding" | "info">("branding");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -1417,114 +1418,140 @@ function EditShopModal({ shop, onClose, onSuccess }: { shop: ShopApplication; on
   }
 
   return (
-    <motion.div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+    <motion.div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md"
       initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-      <motion.div className="w-full max-w-lg glass-panel border border-white/15 rounded-2xl overflow-hidden"
-        initial={{ scale: 0.92, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.92, opacity: 0 }}>
+      <motion.div className="w-full max-w-2xl rounded-2xl overflow-hidden shadow-2xl"
+        style={{ border: `1.5px solid ${accentColor}50`, background: "rgba(10,10,20,0.97)" }}
+        initial={{ scale: 0.93, opacity: 0, y: 16 }} animate={{ scale: 1, opacity: 1, y: 0 }} exit={{ scale: 0.93, opacity: 0, y: 16 }}>
 
-        {/* Header */}
-        <div className="flex items-center justify-between px-6 pt-5 pb-4 border-b border-white/8">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-xl bg-violet-500/20 border border-violet-500/30 flex items-center justify-center">
-              <Pencil className="w-4 h-4 text-violet-400" />
-            </div>
-            <div>
-              <h2 className="font-bold text-white text-base">Edit My Shop</h2>
-              <p className="text-[11px] text-muted-foreground">Changes go live immediately — no re-review needed</p>
-            </div>
-          </div>
-          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-white/10 text-muted-foreground hover:text-white transition-colors">
-            <X className="w-4 h-4" />
-          </button>
-        </div>
+        {/* Banner hero */}
+        <div className="relative h-32 overflow-hidden">
+          {bannerUrl ? (
+            <img src={bannerUrl} alt="banner" className="w-full h-full object-cover" />
+          ) : (
+            <div className="w-full h-full" style={{ background: `linear-gradient(135deg, ${accentColor}60 0%, ${accentColor}20 60%, #0a0a14 100%)` }} />
+          )}
+          <div className="absolute inset-0" style={{ background: "linear-gradient(to bottom, transparent 40%, rgba(10,10,20,0.95) 100%)" }} />
 
-        <div className="p-6 space-y-5">
-          {/* Live preview */}
-          <div className="rounded-xl overflow-hidden border" style={{ borderColor: `${accentColor}40` }}>
-            <div className="h-16 bg-white/5 relative overflow-hidden">
-              {bannerUrl ? (
-                <img src={bannerUrl} alt="banner" className="w-full h-full object-cover" />
+          {/* Shop identity overlay */}
+          <div className="absolute bottom-3 left-4 flex items-end gap-3">
+            <div className="w-12 h-12 rounded-xl border-2 overflow-hidden shrink-0 shadow-lg" style={{ borderColor: accentColor }}>
+              {logoUrl ? (
+                <img src={logoUrl} alt="logo" className="w-full h-full object-cover" />
               ) : (
-                <div className="w-full h-full flex items-center justify-center" style={{ background: `linear-gradient(135deg, ${accentColor}30, ${accentColor}10)` }}>
-                  <p className="text-[10px] text-white/30">Banner preview</p>
+                <div className="w-full h-full flex items-center justify-center text-lg font-black" style={{ background: `${accentColor}40`, color: accentColor }}>
+                  {shopName[0]?.toUpperCase() ?? "?"}
                 </div>
               )}
             </div>
-            <div className="px-3 py-2.5 flex items-center gap-2.5" style={{ background: `${accentColor}08` }}>
-              <div className="w-8 h-8 rounded-full border-2 overflow-hidden shrink-0" style={{ borderColor: accentColor }}>
-                {logoUrl ? (
-                  <img src={logoUrl} alt="logo" className="w-full h-full object-cover" />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center text-[10px] font-bold" style={{ background: `${accentColor}30`, color: accentColor }}>
-                    {shopName[0]?.toUpperCase()}
+            <div>
+              <p className="font-bold text-white text-base leading-tight drop-shadow">{shopName || "Your Shop"}</p>
+              {tagline && <p className="text-[11px] text-white/60">{tagline}</p>}
+            </div>
+          </div>
+
+          {/* Close button */}
+          <button onClick={onClose} className="absolute top-3 right-3 p-1.5 rounded-lg bg-black/50 hover:bg-black/80 text-white/70 hover:text-white transition-colors backdrop-blur-sm">
+            <X className="w-4 h-4" />
+          </button>
+
+          {/* Title chip */}
+          <div className="absolute top-3 left-3 flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold"
+            style={{ background: `${accentColor}30`, color: accentColor, border: `1px solid ${accentColor}50` }}>
+            <Store className="w-3 h-3" />
+            Shop Editor
+          </div>
+        </div>
+
+        {/* Tabs */}
+        <div className="flex border-b" style={{ borderColor: `${accentColor}25` }}>
+          {(["branding", "info"] as const).map((tab) => (
+            <button key={tab} onClick={() => setActiveTab(tab)}
+              className="flex-1 py-2.5 text-xs font-bold uppercase tracking-wider transition-all"
+              style={activeTab === tab
+                ? { color: accentColor, borderBottom: `2px solid ${accentColor}`, background: `${accentColor}10` }
+                : { color: "rgba(255,255,255,0.4)", borderBottom: "2px solid transparent" }}>
+              {tab === "branding" ? "🎨 Branding" : "📝 Info"}
+            </button>
+          ))}
+        </div>
+
+        <div className="p-6 space-y-5 max-h-[60vh] overflow-y-auto">
+          <AnimatePresence mode="wait">
+            {activeTab === "branding" ? (
+              <motion.div key="branding" initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -10 }} className="space-y-5">
+                {/* Images */}
+                <div className="space-y-3">
+                  <p className="text-[11px] text-muted-foreground uppercase tracking-wider font-semibold">Images</p>
+                  <div className="grid grid-cols-[1fr_auto] gap-4 items-start">
+                    <ShopImageUpload label="Banner (image or GIF)" type="banner" value={bannerUrl} onChange={setBannerUrl} />
+                    <ShopImageUpload label="Logo / Avatar" type="logo" value={logoUrl} onChange={setLogoUrl} />
                   </div>
-                )}
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-xs font-bold text-white truncate">{shopName || "Shop Name"}</p>
-                {tagline && <p className="text-[10px] text-muted-foreground truncate">{tagline}</p>}
-              </div>
-              <div className="flex items-center gap-1 text-[9px] font-bold uppercase tracking-wide shrink-0" style={{ color: accentColor }}>
-                <CheckCircle2 className="w-2.5 h-2.5" />
-                Verified
-              </div>
-            </div>
-          </div>
+                </div>
 
-          {/* Name + tagline */}
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <label className="text-[11px] text-muted-foreground uppercase tracking-wider font-semibold">Shop name</label>
-              <input value={shopName} onChange={(e) => setShopName(e.target.value.slice(0, 40))}
-                className="w-full px-3 py-2.5 rounded-xl bg-white/5 border border-white/10 text-sm font-semibold text-white placeholder-muted-foreground focus:outline-none focus:border-violet-500/50 transition" />
-              <p className="text-[10px] text-muted-foreground/50 text-right">{shopName.length}/40</p>
-            </div>
-            <div className="space-y-1.5">
-              <label className="text-[11px] text-muted-foreground uppercase tracking-wider font-semibold">Tagline</label>
-              <input value={tagline} onChange={(e) => setTagline(e.target.value.slice(0, 80))}
-                placeholder="A sentence about what you sell…"
-                className="w-full px-3 py-2.5 rounded-xl bg-white/5 border border-white/10 text-sm text-white placeholder-muted-foreground focus:outline-none focus:border-violet-500/50 transition" />
-            </div>
-          </div>
-
-          {/* Images */}
-          <div className="grid grid-cols-[1fr_auto] gap-4 items-start">
-            <ShopImageUpload label="Banner (image or GIF)" type="banner" value={bannerUrl} onChange={setBannerUrl} />
-            <ShopImageUpload label="Logo" type="logo" value={logoUrl} onChange={setLogoUrl} />
-          </div>
-
-          {/* Color picker */}
-          <div className="space-y-2">
-            <label className="text-[11px] text-muted-foreground uppercase tracking-wider font-semibold">Brand color</label>
-            <div className="flex items-center gap-2 flex-wrap">
-              {SHOP_PALETTE.map((c) => (
-                <button key={c} onClick={() => setAccentColor(c)}
-                  className="w-6 h-6 rounded-full border-2 transition-transform hover:scale-110"
-                  style={{ background: c, borderColor: accentColor === c ? "white" : "transparent" }} />
-              ))}
-              <label className="relative w-6 h-6 rounded-full overflow-hidden cursor-pointer border-2 border-white/20 hover:scale-110 transition-transform" title="Custom color">
-                <input type="color" value={accentColor} onChange={(e) => setAccentColor(e.target.value)}
-                  className="absolute inset-0 opacity-0 w-full h-full cursor-pointer" />
-                <div className="w-full h-full flex items-center justify-center text-[8px] font-bold"
-                  style={{ background: accentColor, color: "white", textShadow: "0 0 4px rgba(0,0,0,0.8)" }}>+</div>
-              </label>
-            </div>
-          </div>
+                {/* Color */}
+                <div className="space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <p className="text-[11px] text-muted-foreground uppercase tracking-wider font-semibold">Brand color</p>
+                    <span className="text-[10px] font-mono px-2 py-0.5 rounded-md" style={{ background: `${accentColor}20`, color: accentColor }}>{accentColor}</span>
+                  </div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {SHOP_PALETTE.map((c) => (
+                      <button key={c} onClick={() => setAccentColor(c)}
+                        className="w-7 h-7 rounded-full border-2 transition-all hover:scale-110"
+                        style={{ background: c, borderColor: accentColor === c ? "white" : "transparent", boxShadow: accentColor === c ? `0 0 8px ${c}` : "none" }} />
+                    ))}
+                    <label className="relative w-7 h-7 rounded-full overflow-hidden cursor-pointer border-2 border-white/20 hover:scale-110 transition-transform" title="Custom color">
+                      <input type="color" value={accentColor} onChange={(e) => setAccentColor(e.target.value)}
+                        className="absolute inset-0 opacity-0 w-full h-full cursor-pointer" />
+                      <div className="w-full h-full flex items-center justify-center text-[9px] font-bold"
+                        style={{ background: accentColor, color: "white", textShadow: "0 0 4px rgba(0,0,0,0.8)" }}>+</div>
+                    </label>
+                  </div>
+                  {/* Color preview strip */}
+                  <div className="h-1.5 rounded-full mt-1" style={{ background: `linear-gradient(90deg, ${accentColor}80, ${accentColor})` }} />
+                </div>
+              </motion.div>
+            ) : (
+              <motion.div key="info" initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -10 }} className="space-y-4">
+                <div className="space-y-1.5">
+                  <label className="text-[11px] text-muted-foreground uppercase tracking-wider font-semibold">Shop name</label>
+                  <input value={shopName} onChange={(e) => setShopName(e.target.value.slice(0, 40))}
+                    className="w-full px-3 py-2.5 rounded-xl bg-white/5 text-sm font-bold text-white placeholder-muted-foreground focus:outline-none transition"
+                    style={{ border: `1.5px solid ${accentColor}30` }}
+                    onFocus={(e) => (e.target.style.borderColor = `${accentColor}80`)}
+                    onBlur={(e) => (e.target.style.borderColor = `${accentColor}30`)} />
+                  <p className="text-[10px] text-muted-foreground/50 text-right">{shopName.length}/40</p>
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-[11px] text-muted-foreground uppercase tracking-wider font-semibold">Tagline</label>
+                  <input value={tagline} onChange={(e) => setTagline(e.target.value.slice(0, 80))}
+                    placeholder="What do you sell? Keep it short and memorable…"
+                    className="w-full px-3 py-2.5 rounded-xl bg-white/5 text-sm text-white placeholder-muted-foreground focus:outline-none transition"
+                    style={{ border: `1.5px solid ${accentColor}30` }}
+                    onFocus={(e) => (e.target.style.borderColor = `${accentColor}80`)}
+                    onBlur={(e) => (e.target.style.borderColor = `${accentColor}30`)} />
+                  <p className="text-[10px] text-muted-foreground/50 text-right">{tagline.length}/80</p>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           {error && <p className="text-xs text-red-400 flex items-center gap-1.5"><AlertTriangle className="w-3 h-3" />{error}</p>}
+        </div>
 
-          <div className="flex gap-2">
-            <button onClick={onClose} className="px-4 py-2.5 rounded-xl border border-white/15 text-sm font-semibold text-muted-foreground hover:text-white hover:border-white/30 transition-colors">
-              Cancel
-            </button>
-            <button onClick={handleSave} disabled={saving || !shopName.trim()}
-              className="flex-1 py-2.5 rounded-xl text-sm font-bold text-white transition-all disabled:opacity-50 flex items-center justify-center gap-2"
-              style={{ background: "linear-gradient(135deg, var(--color-primary), var(--gradient-end, var(--color-secondary)))" }}>
-              {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Pencil className="w-4 h-4" />}
-              {saving ? "Saving…" : "Save changes"}
-            </button>
-          </div>
+        {/* Footer */}
+        <div className="px-6 pb-5 pt-2 flex gap-3 border-t" style={{ borderColor: `${accentColor}20` }}>
+          <button onClick={onClose} className="px-4 py-2.5 rounded-xl border border-white/10 text-sm font-semibold text-muted-foreground hover:text-white hover:border-white/25 transition-colors">
+            Cancel
+          </button>
+          <button onClick={handleSave} disabled={saving || !shopName.trim()}
+            className="flex-1 py-2.5 rounded-xl text-sm font-black text-white transition-all disabled:opacity-40 flex items-center justify-center gap-2 shadow-lg"
+            style={{ background: `linear-gradient(135deg, ${accentColor}, ${accentColor}cc)`, boxShadow: `0 4px 20px ${accentColor}40` }}>
+            {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
+            {saving ? "Saving…" : "Save changes"}
+          </button>
         </div>
       </motion.div>
     </motion.div>
@@ -1793,7 +1820,7 @@ function ShopsView({ listings, onMessage, user, onLoginPrompt, approvedShops, my
               </button>
             </div>
 
-            {/* Expanded item list */}
+            {/* Expanded store — fully branded */}
             <AnimatePresence>
               {isExpanded && (
                 <motion.div
@@ -1801,23 +1828,54 @@ function ShopsView({ listings, onMessage, user, onLoginPrompt, approvedShops, my
                   animate={{ height: "auto", opacity: 1 }}
                   exit={{ height: 0, opacity: 0 }}
                   transition={{ duration: 0.25 }}
-                  className="overflow-hidden"
+                  className="overflow-hidden relative z-10"
                 >
-                  <div className="border-t border-white/10 px-4 py-3 space-y-2 max-h-72 overflow-y-auto">
+                  {/* Branded store header */}
+                  <div className="relative overflow-hidden" style={{ borderTop: `1px solid ${accent}30` }}>
+                    {/* Banner as section background */}
+                    {verifiedShop?.bannerUrl && (
+                      <img src={verifiedShop.bannerUrl} alt="" className="absolute inset-0 w-full h-full object-cover opacity-20" />
+                    )}
+                    <div className="absolute inset-0" style={{ background: `linear-gradient(to right, ${accent}25 0%, transparent 100%)` }} />
+                    <div className="relative flex items-center gap-2.5 px-4 py-3">
+                      <div className="w-7 h-7 rounded-lg border overflow-hidden shrink-0" style={{ borderColor: accent }}>
+                        {(verifiedShop?.logoUrl ?? shop.sellerAvatar) ? (
+                          <img src={verifiedShop?.logoUrl ?? shop.sellerAvatar!} alt={displayName} className="w-full h-full object-cover" />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-[10px] font-black" style={{ background: `${accent}30`, color: accent }}>
+                            {displayName[0]?.toUpperCase()}
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[11px] font-bold truncate" style={{ color: accent }}>{displayName}</p>
+                        {verifiedShop?.tagline && <p className="text-[10px] text-white/50 truncate">{verifiedShop.tagline}</p>}
+                      </div>
+                      <span className="text-[9px] font-bold px-2 py-0.5 rounded-full" style={{ background: `${accent}20`, color: accent, border: `1px solid ${accent}40` }}>
+                        {totalItems} item{totalItems !== 1 ? "s" : ""}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Items list */}
+                  <div className="px-3 py-2 space-y-1 max-h-64 overflow-y-auto" style={{ background: `${accent}08` }}>
                     {shop.listings.flatMap((l) =>
                       l.items.filter((i) => !i.soldOut).map((item) => (
-                        <div key={`${l.id}-${item.name}`} className="flex items-center gap-2.5 py-1.5">
+                        <div key={`${l.id}-${item.name}`}
+                          className="flex items-center gap-2.5 py-2 px-2 rounded-xl transition-colors hover:bg-black/20"
+                          style={{ borderBottom: `1px solid ${accent}12` }}>
                           {item.imageUrl ? (
-                            <img src={item.imageUrl} alt={item.name} className="w-9 h-9 rounded-lg object-contain bg-black/30 p-0.5 shrink-0" />
+                            <img src={item.imageUrl} alt={item.name} className="w-9 h-9 rounded-lg object-contain shrink-0"
+                              style={{ background: "rgba(0,0,0,0.4)", padding: "2px" }} />
                           ) : (
-                            <div className="w-9 h-9 rounded-lg bg-white/5 flex items-center justify-center shrink-0">
-                              <Box className="w-4 h-4 text-muted-foreground/20" />
+                            <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0" style={{ background: `${accent}15` }}>
+                              <Box className="w-4 h-4" style={{ color: `${accent}60` }} />
                             </div>
                           )}
                           <div className="flex-1 min-w-0">
                             <p className="text-xs font-semibold text-white truncate">{item.name}</p>
                             {item.price && (
-                              <p className="text-[11px] text-green-400 font-bold">${item.price}</p>
+                              <p className="text-[11px] font-bold" style={{ color: accent }}>${item.price}</p>
                             )}
                           </div>
                           <button
@@ -1825,8 +1883,8 @@ function ShopsView({ listings, onMessage, user, onLoginPrompt, approvedShops, my
                               if (!user) { onLoginPrompt(); return; }
                               onMessage(l, item);
                             }}
-                            className="shrink-0 flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-semibold border transition-all hover:opacity-90"
-                            style={{ borderColor: `${accent}40`, color: accent, background: `${accent}14` }}
+                            className="shrink-0 flex items-center gap-1 px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all hover:opacity-80 active:scale-95"
+                            style={{ background: accent, color: "white", boxShadow: `0 2px 8px ${accent}50` }}
                           >
                             <MessageCircle className="w-3 h-3" />
                             Buy
