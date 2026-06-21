@@ -268,6 +268,27 @@ router.post("/uploads/shop-image", upload.single("image"), async (req: Request, 
   res.json({ ok: true, url });
 });
 
+// ── Upload listing frame image ────────────────────────────────────────────────
+
+const FRAME_DIR = path.join(UPLOADS_DIR, "frames");
+if (!fs.existsSync(FRAME_DIR)) fs.mkdirSync(FRAME_DIR, { recursive: true });
+
+router.post("/uploads/listing-frame", upload.single("image"), async (req: Request, res: Response) => {
+  const user = req.session?.discordUser;
+  if (!user) { res.status(401).json({ error: "Not authenticated" }); return; }
+  if (!req.file) { res.status(400).json({ error: "No image uploaded or invalid file type (JPEG/PNG/WebP/GIF only)" }); return; }
+
+  const extMap: Record<string, string> = {
+    "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp", "image/gif": "gif",
+  };
+  const ext = extMap[req.file.mimetype] ?? "jpg";
+  const filename = `${user.id}_${Date.now()}.${ext}`;
+  const filePath = path.join(FRAME_DIR, filename);
+  fs.writeFileSync(filePath, req.file.buffer);
+
+  res.json({ ok: true, url: `/api/uploads/frames/${filename}` });
+});
+
 // ── Remove profile image ──────────────────────────────────────────────────────
 
 router.delete("/uploads/profile-image", (req: Request, res: Response) => {

@@ -657,10 +657,11 @@ function AuctionCard({
 
   const urgentTimer = t && !t.ended && t.days === 0 && t.hours < 2;
   const isDefaultStyle = !listing.cardStyle || listing.cardStyle === "default";
+  const auctionAccent = listing.frameColor ?? listing.sellerAccentColor;
   const stProps = (!ended && !isDefaultStyle)
-    ? getCardStyleProps(listing.cardStyle, listing.sellerAccentColor)
+    ? getCardStyleProps(listing.cardStyle, auctionAccent)
     : null;
-  const edgeProps = ended ? { addStyle: {} as React.CSSProperties, pulseAnimate: undefined, overlayKind: "none" as const } : getEdgeEffectProps(listing.sellerEdgeEffect, listing.sellerAccentColor);
+  const edgeProps = ended ? { addStyle: {} as React.CSSProperties, pulseAnimate: undefined, overlayKind: "none" as const } : getEdgeEffectProps(listing.sellerEdgeEffect, auctionAccent);
 
   return (
     <motion.div
@@ -682,9 +683,9 @@ function AuctionCard({
       style={{ ...(stProps?.style ?? {}), ...edgeProps.addStyle }}
     >
       {stProps?.showStripe && !ended && (
-        <div className="absolute top-0 inset-x-0 h-0.5 z-30" style={{ background: listing.sellerAccentColor ?? "#ff0080" }} />
+        <div className="absolute top-0 inset-x-0 h-0.5 z-30" style={{ background: auctionAccent ?? "#ff0080" }} />
       )}
-      <EdgeEffectOverlay effect={edgeProps.overlayKind} accent={listing.sellerAccentColor} />
+      <EdgeEffectOverlay effect={edgeProps.overlayKind} accent={auctionAccent} />
       <div className="absolute inset-0 bg-gradient-to-t from-background via-background/20 to-transparent opacity-80 z-10 pointer-events-none" />
 
       <div className="relative h-32 sm:h-44 w-full p-3 sm:p-5 flex items-center justify-center bg-black/40">
@@ -697,6 +698,9 @@ function AuctionCard({
           />
         ) : (
           <Box className="w-12 h-12 text-muted-foreground/40 relative z-0" />
+        )}
+        {listing.frameImageUrl && (
+          <img src={listing.frameImageUrl} alt="" aria-hidden className="absolute inset-0 w-full h-full object-fill pointer-events-none z-10" />
         )}
 
         {/* Auction badge */}
@@ -797,8 +801,9 @@ function ListingItemCard({
     ? `https://cdn.discordapp.com/avatars/${listing.discordUserId}/${listing.discordAvatar}.png?size=64`
     : null;
 
-  const stProps = getCardStyleProps(listing.cardStyle, listing.sellerAccentColor);
-  const edgeProps = getEdgeEffectProps(listing.sellerEdgeEffect, listing.sellerAccentColor);
+  const effectiveAccent = listing.frameColor ?? listing.sellerAccentColor;
+  const stProps = getCardStyleProps(listing.cardStyle, effectiveAccent);
+  const edgeProps = getEdgeEffectProps(listing.sellerEdgeEffect, effectiveAccent);
 
   return (
     <motion.div
@@ -813,9 +818,9 @@ function ListingItemCard({
       style={{ ...stProps.style, ...edgeProps.addStyle }}
     >
       {stProps.showStripe && (
-        <div className="absolute top-0 inset-x-0 h-0.5 z-30" style={{ background: listing.sellerAccentColor ?? "#ff0080" }} />
+        <div className="absolute top-0 inset-x-0 h-0.5 z-30" style={{ background: effectiveAccent ?? "#ff0080" }} />
       )}
-      <EdgeEffectOverlay effect={edgeProps.overlayKind} accent={listing.sellerAccentColor} />
+      <EdgeEffectOverlay effect={edgeProps.overlayKind} accent={effectiveAccent} />
       <div className="absolute inset-0 bg-gradient-to-t from-background via-background/20 to-transparent opacity-80 z-10 pointer-events-none" />
 
       <div className="relative h-32 sm:h-44 w-full p-3 sm:p-5 flex items-center justify-center bg-black/40">
@@ -828,6 +833,9 @@ function ListingItemCard({
           />
         ) : (
           <Box className="w-12 h-12 text-muted-foreground/40 relative z-0" />
+        )}
+        {listing.frameImageUrl && (
+          <img src={listing.frameImageUrl} alt="" aria-hidden className="absolute inset-0 w-full h-full object-fill pointer-events-none z-10" />
         )}
         <div className="absolute top-2 left-2 z-20">
           <span className="px-1.5 sm:px-2 py-0.5 text-[9px] sm:text-[10px] font-bold rounded-md uppercase tracking-wider backdrop-blur-md bg-white/10 border border-white/20 text-white/80">

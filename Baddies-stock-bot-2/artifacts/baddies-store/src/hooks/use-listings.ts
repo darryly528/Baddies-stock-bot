@@ -38,6 +38,8 @@ export interface Listing {
   cardStyle?: string;
   sellerAccentColor?: string;
   sellerEdgeEffect?: string;
+  frameColor?: string;
+  frameImageUrl?: string | null;
 }
 
 export function useListings(refetchInterval?: number) {
@@ -151,6 +153,23 @@ export function useRetractBid() {
         credentials: "include",
       });
       if (!res.ok) throw new Error("Failed to retract bid");
+      return res.json();
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["listings"] }),
+  });
+}
+
+export function useUpdateListingFrame() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ listingId, frameColor, frameImageUrl }: { listingId: string; frameColor?: string; frameImageUrl?: string | null }) => {
+      const res = await fetch(`${apiBase}/api/listings/${listingId}/frame`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ frameColor, frameImageUrl }),
+      });
+      if (!res.ok) throw new Error("Failed to update frame");
       return res.json();
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["listings"] }),

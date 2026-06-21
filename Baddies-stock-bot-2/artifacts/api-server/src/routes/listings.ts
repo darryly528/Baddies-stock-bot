@@ -42,6 +42,8 @@ export type Listing = {
   auctionEndsAt?: string;
   startingBid?: number;
   bids?: Bid[];
+  frameColor?: string;
+  frameImageUrl?: string | null;
 };
 
 // ── In-memory cache ───────────────────────────────────────────────────────────
@@ -323,6 +325,25 @@ router.delete("/listings/:id", (req, res) => {
   listings.splice(idx, 1);
   saveListings(listings);
   res.json({ ok: true });
+});
+
+router.patch("/listings/:id/frame", (req, res) => {
+  const { id } = req.params as { id: string };
+  const sessionUserId = req.session?.discordUser?.id ?? null;
+  if (!sessionUserId) { res.status(401).json({ error: "Not authenticated" }); return; }
+
+  const { frameColor, frameImageUrl } = req.body as { frameColor?: string; frameImageUrl?: string | null };
+
+  const listings = loadListings();
+  const listing = listings.find((l) => l.id === id);
+  if (!listing) { res.status(404).json({ error: "Listing not found" }); return; }
+  if (listing.discordUserId !== sessionUserId) { res.status(403).json({ error: "You can only edit your own listings" }); return; }
+
+  if (typeof frameColor === "string") listing.frameColor = frameColor || undefined;
+  if (frameImageUrl !== undefined) listing.frameImageUrl = frameImageUrl ?? null;
+
+  saveListings(listings);
+  res.json({ ok: true, frameColor: listing.frameColor, frameImageUrl: listing.frameImageUrl });
 });
 
 router.post("/listings/:id/notify-seller", async (req, res) => {
