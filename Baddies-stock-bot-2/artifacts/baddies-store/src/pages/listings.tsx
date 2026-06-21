@@ -35,6 +35,7 @@ import {
   Store,
   Tag,
   Pencil,
+  Users,
 } from "lucide-react";
 import { Link } from "wouter";
 import { cn, formatNumber } from "@/lib/utils";
@@ -1107,6 +1108,7 @@ interface ShopApplication {
   tagline: string; categories: string; status: ShopStatus;
   bannerUrl?: string; logoUrl?: string; accentColor?: string;
   rejectionReason?: string;
+  members?: string[];
 }
 
 const SHOP_PALETTE = [
@@ -1576,7 +1578,19 @@ function ShopsView({ listings, onMessage, user, onLoginPrompt, approvedShops, my
 }) {
   const [openShop, setOpenShop] = useState<SellerShop | null>(null);
   const [cardSize, setCardSize] = useState<"sm" | "md" | "lg">("md");
+  const [showManageSellers, setShowManageSellers] = useState(false);
+  const [modalMembers, setModalMembers] = useState<string[]>([]);
+  const [memberInput, setMemberInput] = useState("");
+  const [memberSaving, setMemberSaving] = useState(false);
   const approvedIds = new Set(approvedShops.map((s) => s.userId));
+
+  useEffect(() => {
+    if (openShop && user?.id === openShop.sellerId && myShop) {
+      setModalMembers(myShop.members ?? []);
+      setShowManageSellers(false);
+      setMemberInput("");
+    }
+  }, [openShop?.sellerId]);
 
   const shopMap = listings.reduce<Record<string, SellerShop>>((acc, listing) => {
     const key = listing.discordUserId ?? listing.seller;
@@ -1617,6 +1631,30 @@ function ShopsView({ listings, onMessage, user, onLoginPrompt, approvedShops, my
         sampleImages: [],
       };
     }
+  });
+
+  // Merge member sellers' listings into their shop owner's brand
+  approvedShops.forEach((s) => {
+    if (!s.members?.length) return;
+    const ownerShop = shopMap[s.userId];
+    if (!ownerShop) return;
+    s.members.forEach((memberId) => {
+      const memberShop = shopMap[memberId];
+      if (!memberShop) return;
+      memberShop.listings.forEach((listing) => {
+        if (!ownerShop.listings.find((l) => l.id === listing.id)) {
+          ownerShop.listings.push(listing);
+          listing.items.filter((i) => !i.soldOut).forEach((item) => {
+            ownerShop.itemCount++;
+            if (ownerShop.sampleImages.length < 8) ownerShop.sampleImages.push(item.imageUrl ?? null);
+          });
+          listing.paymentMethods.forEach((m) => {
+            if (!ownerShop.paymentMethods.includes(m)) ownerShop.paymentMethods.push(m);
+          });
+        }
+      });
+      delete shopMap[memberId];
+    });
   });
 
   const shops = Object.values(shopMap).sort((a, b) => {
@@ -1797,6 +1835,113 @@ function ShopsView({ listings, onMessage, user, onLoginPrompt, approvedShops, my
                         {m}
                       </div>
                     ))}
+                  </div>
+                )}
+
+                {/* Owner controls */}
+                {user?.id === shop.sellerId && myShop?.status === "approved" && (
+                  <div className="shrink-0 px-4 py-2.5 flex flex-wrap items-center gap-2"
+                    style={{ background: `${accent}08`, borderBottom: `1px solid ${accent}20` }}>
+                    <button
+                      onClick={() => { setOpenShop(null); onEditShop(); }}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all hover:opacity-80"
+                      style={{ background: `${accent}25`, color: accent, border: `1px solid ${accent}40` }}
+                    >
+                      <Pencil className="w-3 h-3" />
+                      Edit my shop
+                    </button>
+                    <button
+                      onClick={() => setShowManageSellers((v) => !v)}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all hover:opacity-80"
+                      style={showManageSellers
+                        ? { background: `${accent}25`, color: accent, border: `1px solid ${accent}40` }
+                        : { background: "rgba(255,255,255,0.07)", color: "rgba(255,255,255,0.55)", border: "1px solid rgba(255,255,255,0.12)" }}
+                    >
+                      <Users className="w-3 h-3" />
+                      Manage Sellers
+                      {modalMembers.length > 0 && (
+                        <span className="ml-0.5 px-1.5 rounded-full text-[9px] font-black leading-4"
+                          style={{ background: accent, color: "#000" }}>
+                          {modalMembers.length}
+                        </span>
+                      )}
+                    </button>
+                  </div>
+                )}
+
+                {/* Manage Sellers panel */}
+                {user?.id === shop.sellerId && myShop?.status === "approved" && showManageSellers && (
+                  <div className="shrink-0 px-4 py-3 space-y-2.5"
+                    style={{ background: "rgba(0,0,0,0.55)", borderBottom: `1px solid ${accent}20` }}>
+                    <p className="text-[11px] text-white/45 font-medium">
+                      Add sellers by their Discord User ID — their listings will appear under your shop brand.
+                    </p>
+                    {modalMembers.length > 0 && (
+                      <div className="flex flex-wrap gap-1.5">
+                        {modalMembers.map((id) => (
+                          <div key={id} className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold"
+                            style={{ background: `${accent}20`, color: accent, border: `1px solid ${accent}35` }}>
+                            <span className="font-mono">{id}</span>
+                            <button
+                              onClick={() => setModalMembers((prev) => prev.filter((m) => m !== id))}
+                              className="hover:opacity-60 transition-opacity ml-0.5">
+                              <X className="w-2.5 h-2.5" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    <div className="flex gap-2">
+                      <input
+                        value={memberInput}
+                        onChange={(e) => setMemberInput(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            const id = memberInput.trim();
+                            if (id && !modalMembers.includes(id)) setModalMembers((prev) => [...prev, id]);
+                            setMemberInput("");
+                          }
+                        }}
+                        placeholder="Discord User ID…"
+                        className="flex-1 px-2.5 py-1.5 rounded-lg text-[11px] bg-white/8 border border-white/15 text-white placeholder:text-white/30 focus:outline-none focus:border-white/30 font-mono"
+                      />
+                      <button
+                        onClick={() => {
+                          const id = memberInput.trim();
+                          if (id && !modalMembers.includes(id)) setModalMembers((prev) => [...prev, id]);
+                          setMemberInput("");
+                        }}
+                        disabled={!memberInput.trim()}
+                        className="px-2.5 py-1.5 rounded-lg text-[11px] font-bold disabled:opacity-40 transition-all shrink-0"
+                        style={{ background: `${accent}30`, color: accent, border: `1px solid ${accent}45` }}
+                      >
+                        Add
+                      </button>
+                      <button
+                        onClick={async () => {
+                          setMemberSaving(true);
+                          try {
+                            const r = await fetch("/api/shops/mine/members", {
+                              method: "PATCH",
+                              headers: { "Content-Type": "application/json" },
+                              credentials: "include",
+                              body: JSON.stringify({ members: modalMembers }),
+                            });
+                            const d = await r.json() as { ok?: boolean; error?: string };
+                            if (!r.ok) throw new Error(d.error ?? "Failed");
+                          } catch (err) {
+                            console.error("[members]", err);
+                          } finally {
+                            setMemberSaving(false);
+                          }
+                        }}
+                        disabled={memberSaving}
+                        className="px-2.5 py-1.5 rounded-lg text-[11px] font-bold disabled:opacity-50 transition-all shrink-0"
+                        style={{ background: accent, color: "#000" }}
+                      >
+                        {memberSaving ? "Saving…" : "Save"}
+                      </button>
+                    </div>
                   </div>
                 )}
 

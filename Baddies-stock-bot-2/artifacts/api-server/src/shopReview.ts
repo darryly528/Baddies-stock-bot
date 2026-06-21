@@ -20,6 +20,7 @@ export interface ShopApplication {
   reviewedBy?: string;
   reviewedByName?: string;
   rejectionReason?: string;
+  members?: string[];
 }
 
 type ShopsStore = Record<string, ShopApplication>;

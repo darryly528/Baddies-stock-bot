@@ -108,6 +108,23 @@ router.put("/shops/mine", (req: Request, res: Response) => {
   res.json({ ok: true, shop: existing });
 });
 
+router.patch("/shops/mine/members", (req: Request, res: Response) => {
+  const user = req.session?.discordUser;
+  if (!user) { res.status(401).json({ error: "Not authenticated" }); return; }
+  const shops = loadShops();
+  const existing = shops[user.id];
+  if (!existing || existing.status !== "approved") {
+    res.status(403).json({ error: "Only approved shops can manage members" }); return;
+  }
+  const { members } = req.body as { members?: string[] };
+  if (!Array.isArray(members)) { res.status(400).json({ error: "members must be an array" }); return; }
+  existing.members = [...new Set(members.map((m) => m.trim()).filter(Boolean))].slice(0, 20);
+  existing.updatedAt = new Date().toISOString();
+  shops[user.id] = existing;
+  saveShops(shops);
+  res.json({ ok: true, shop: existing });
+});
+
 router.get("/shops", (_req: Request, res: Response) => {
   const shops = loadShops();
   const approved = Object.values(shops).filter((s) => s.status === "approved");
