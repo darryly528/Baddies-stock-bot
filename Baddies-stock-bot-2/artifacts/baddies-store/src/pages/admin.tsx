@@ -1152,7 +1152,7 @@ function ThemeTab() {
                 </div>
               </div>
               {bgUploadError && <p className="text-xs text-amber-400">{bgUploadError}</p>}
-              <p className="text-[11px] text-muted-foreground/50">Max 5MB · JPEG, PNG, WebP, GIF · uploaded as-is (no crop)</p>
+              <p className="text-[11px] text-muted-foreground/50">Max 20MB · JPEG, PNG, WebP, GIF · uploaded as-is (no crop)</p>
               <input ref={bgInputRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif" className="hidden"
                 onChange={(e) => { const f = e.target.files?.[0]; if (f) handleProfileImageUpload("profileBg", f); e.target.value = ""; }} />
             </div>

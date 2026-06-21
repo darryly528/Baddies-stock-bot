@@ -650,7 +650,7 @@ function ProfileEditor({
                 </div>
               </div>
               {avatarUploadError && <p className="text-xs text-red-400">{avatarUploadError}</p>}
-              <p className="text-[11px] text-muted-foreground/70">Max 5MB · JPEG, PNG, WebP, GIF · GIFs upload as-is, others can be cropped</p>
+              <p className="text-[11px] text-muted-foreground/70">Max 20MB · JPEG, PNG, WebP, GIF · GIFs upload as-is, others can be cropped</p>
               <input ref={avatarInputRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif" className="hidden"
                 onChange={(e) => { const f = e.target.files?.[0]; if (f) openCropOrUpload("avatar", f); e.target.value = ""; }} />
             </div>
@@ -679,7 +679,7 @@ function ProfileEditor({
                 </div>
               </div>
               {bannerUploadError && <p className="text-xs text-red-400">{bannerUploadError}</p>}
-              <p className="text-[11px] text-muted-foreground/70">Max 5MB · JPEG, PNG, WebP, GIF · GIFs upload as-is, others can be cropped</p>
+              <p className="text-[11px] text-muted-foreground/70">Max 20MB · JPEG, PNG, WebP, GIF · GIFs upload as-is, others can be cropped</p>
               <input ref={bannerInputRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif" className="hidden"
                 onChange={(e) => { const f = e.target.files?.[0]; if (f) openCropOrUpload("banner", f); e.target.value = ""; }} />
             </div>
@@ -711,7 +711,7 @@ function ProfileEditor({
                 </div>
               </div>
               {bgUploadError && <p className="text-xs text-red-400">{bgUploadError}</p>}
-              <p className="text-[11px] text-muted-foreground/70">Max 5MB · JPEG, PNG, WebP, GIF · Uploaded as-is (no crop)</p>
+              <p className="text-[11px] text-muted-foreground/70">Max 20MB · JPEG, PNG, WebP, GIF · Uploaded as-is (no crop)</p>
               <input ref={bgInputRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif" className="hidden"
                 onChange={(e) => { const f = e.target.files?.[0]; if (f) handleImageUpload("profileBg", f); e.target.value = ""; }} />
             </div>

@@ -31,7 +31,7 @@ function saveProfiles(p: Record<string, Record<string, unknown>>): void {
 
 const upload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 5 * 1024 * 1024 },
+  limits: { fileSize: 20 * 1024 * 1024 },
   fileFilter: (_req, file, cb) => {
     const allowed = ["image/jpeg", "image/png", "image/webp", "image/gif"];
     cb(null, allowed.includes(file.mimetype));
