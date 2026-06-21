@@ -1572,6 +1572,7 @@ type ShopVouch = {
   toUserId: string;
   message: string;
   rating: number;
+  imageUrl?: string | null;
   createdAt: string;
   updatedAt?: string;
 };
@@ -1641,6 +1642,7 @@ function ShopsView({ listings, onMessage, onOffer, onAddToCart, onViewCart, cart
   const [shopSortMode, setShopSortMode] = useState<"all" | "top-rated">("all");
   const [vouchMsg, setVouchMsg] = useState("");
   const [vouchRating, setVouchRating] = useState(5);
+  const [vouchImageUrl, setVouchImageUrl] = useState("");
   const [vouchSubmitting, setVouchSubmitting] = useState(false);
   const [vouchSuccess, setVouchSuccess] = useState(false);
   const [vouchError, setVouchError] = useState<string | null>(null);
@@ -1678,6 +1680,7 @@ function ShopsView({ listings, onMessage, onOffer, onAddToCart, onViewCart, cart
     setShopTab("items");
     setVouchMsg("");
     setVouchRating(5);
+    setVouchImageUrl("");
     setVouchSuccess(false);
     setVouchError(null);
   }, [openShop?.sellerId]);
@@ -2186,6 +2189,24 @@ function ShopsView({ listings, onMessage, onOffer, onAddToCart, onViewCart, cart
                             rows={3}
                             className="w-full px-3 py-2 rounded-xl bg-black/40 border border-white/10 text-sm text-white placeholder-white/30 focus:outline-none focus:border-white/30 transition resize-none"
                           />
+                          {/* Optional image URL */}
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="url"
+                              value={vouchImageUrl}
+                              onChange={(e) => setVouchImageUrl(e.target.value)}
+                              placeholder="Paste a screenshot URL (optional)"
+                              className="flex-1 px-3 py-2 rounded-xl bg-black/40 border border-white/10 text-xs text-white placeholder-white/30 focus:outline-none focus:border-white/30 transition"
+                            />
+                            {vouchImageUrl.trim() && (
+                              <img
+                                src={vouchImageUrl.trim()}
+                                alt="preview"
+                                className="w-10 h-10 rounded-lg object-cover border border-white/15 shrink-0"
+                                onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+                              />
+                            )}
+                          </div>
                           <div className="flex items-center gap-2">
                             <span className={cn("text-[11px] ml-auto", vouchMsg.length > 270 ? "text-orange-400" : "text-white/30")}>{vouchMsg.length}/300</span>
                             {vouchError && <span className="text-[11px] text-red-400">{vouchError}</span>}
@@ -2206,12 +2227,14 @@ function ShopsView({ listings, onMessage, onOffer, onAddToCart, onViewCart, cart
                                       toAvatar: verSh?.logoUrl ?? null,
                                       message: vouchMsg.trim(),
                                       rating: vouchRating,
+                                      imageUrl: vouchImageUrl.trim() || null,
                                     }),
                                   });
                                   const d = await r.json() as { ok?: boolean; error?: string };
                                   if (!r.ok) throw new Error(d.error ?? "Failed");
                                   setVouchSuccess(true);
                                   setVouchMsg("");
+                                  setVouchImageUrl("");
                                   // refresh local vouches
                                   fetch("/api/vouches", { credentials: "include" })
                                     .then((res) => res.ok ? res.json() : [])
@@ -2271,6 +2294,16 @@ function ShopsView({ listings, onMessage, onOffer, onAddToCart, onViewCart, cart
                             </div>
                           </div>
                           <p className="text-xs text-white/70 leading-relaxed">&ldquo;{v.message}&rdquo;</p>
+                          {v.imageUrl && (
+                            <a href={v.imageUrl} target="_blank" rel="noopener noreferrer" className="block mt-1">
+                              <img
+                                src={v.imageUrl}
+                                alt="review screenshot"
+                                className="max-h-48 w-auto rounded-xl object-cover border border-white/10 hover:opacity-90 transition-opacity cursor-zoom-in"
+                                onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+                              />
+                            </a>
+                          )}
                         </div>
                       ))}
                     </div>

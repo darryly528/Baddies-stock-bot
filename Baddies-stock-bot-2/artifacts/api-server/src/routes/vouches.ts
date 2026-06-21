@@ -15,6 +15,7 @@ type Vouch = {
   toAvatar: string | null;
   message: string;
   rating: number;
+  imageUrl?: string | null;
   createdAt: string;
   updatedAt?: string;
 };
@@ -72,9 +73,9 @@ router.post("/vouches", (req: Request, res: Response) => {
   const user = req.session?.discordUser;
   if (!user) { res.status(401).json({ error: "Login required to leave a vouch" }); return; }
 
-  const { toUserId, toUsername, toAvatar, message, rating } = req.body as {
+  const { toUserId, toUsername, toAvatar, message, rating, imageUrl } = req.body as {
     toUserId?: string; toUsername?: string; toAvatar?: string | null;
-    message?: string; rating?: number;
+    message?: string; rating?: number; imageUrl?: string | null;
   };
 
   if (!toUserId?.trim() || !toUsername?.trim()) {
@@ -98,6 +99,8 @@ router.post("/vouches", (req: Request, res: Response) => {
   const fromAvatar = avatarHash
     ? `https://cdn.discordapp.com/avatars/${user.id}/${avatarHash}.png?size=64` : null;
 
+  const cleanImageUrl = imageUrl?.trim() || null;
+
   if (existing >= 0) {
     vouches[existing] = {
       ...vouches[existing],
@@ -106,6 +109,7 @@ router.post("/vouches", (req: Request, res: Response) => {
       fromAvatar,
       toAvatar: toAvatar ?? null,
       toUsername,
+      imageUrl: cleanImageUrl,
       updatedAt: new Date().toISOString(),
     };
     saveVouches(vouches);
@@ -123,6 +127,7 @@ router.post("/vouches", (req: Request, res: Response) => {
     toAvatar: toAvatar ?? null,
     message: message.trim().slice(0, 300),
     rating,
+    imageUrl: cleanImageUrl,
     createdAt: new Date().toISOString(),
   };
 
