@@ -38,6 +38,7 @@ import {
   Users,
   Star,
   Heart,
+  Search,
 } from "lucide-react";
 import { Link } from "wouter";
 import { cn, formatNumber } from "@/lib/utils";
@@ -2492,6 +2493,7 @@ export default function ListingsPage() {
   const [cart, setCart] = useState<CartEntry[]>([]);
   const [cartOpen, setCartOpen] = useState(false);
   const [activeFilter, setActiveFilter] = useState<"all" | "auctions" | "fixed" | "shops">("all");
+  const [listingSearch, setListingSearch] = useState("");
   const [chatTarget, setChatTarget] = useState<{
     listingId: string;
     listingTitle: string;
@@ -2563,9 +2565,17 @@ export default function ListingsPage() {
     return true;
   });
 
+  const searchTerm = listingSearch.trim().toLowerCase();
   const flatItems: FlatItem[] = filteredListings.flatMap((listing) =>
     listing.items.filter((i) => !i.soldOut).map((item) => ({ listing, item }))
-  );
+  ).filter(({ listing, item }) => {
+    if (!searchTerm) return true;
+    return (
+      item.name.toLowerCase().includes(searchTerm) ||
+      listing.seller.toLowerCase().includes(searchTerm) ||
+      item.category?.toLowerCase().includes(searchTerm)
+    );
+  });
 
   const auctionCount = activeListings.filter((l) => l.listingType === "auction").length;
 
@@ -2757,6 +2767,28 @@ export default function ListingsPage() {
             </motion.button>
           ))}
         </div>
+
+        {/* Search bar — hidden on the Shops tab */}
+        {activeFilter !== "shops" && (
+          <div className="relative max-w-md mx-auto mb-6">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30 pointer-events-none" />
+            <input
+              type="text"
+              value={listingSearch}
+              onChange={(e) => setListingSearch(e.target.value)}
+              placeholder="Search items, sellers, categories…"
+              className="w-full pl-9 pr-4 py-2.5 rounded-2xl bg-white/5 border border-white/10 text-sm text-white placeholder-white/30 focus:outline-none focus:border-white/25 transition"
+            />
+            {listingSearch && (
+              <button
+                onClick={() => setListingSearch("")}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-white/30 hover:text-white/70 transition-colors"
+              >
+                ×
+              </button>
+            )}
+          </div>
+        )}
 
         {isLoading ? (
           <div className="flex items-center justify-center py-24">
