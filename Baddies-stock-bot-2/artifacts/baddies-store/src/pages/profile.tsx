@@ -1536,6 +1536,8 @@ function ProfileView({ profile, isOwn, onEdit, onVouch, onReport }: { profile: P
   const bannerClass = getBannerClass(profile.bannerStyle);
   const accent = profile.accentColor || "#ff0080";
 
+  const [profileTab, setProfileTab] = useState<"about" | "listings">("about");
+
   const { data: mentionData } = useQuery<{ vouches: MentionVouch[]; count: number }>({
     queryKey: ["vouch-mentions", profile.userId, profile.username],
     queryFn: () =>
@@ -1544,6 +1546,7 @@ function ProfileView({ profile, isOwn, onEdit, onVouch, onReport }: { profile: P
     staleTime: 60_000,
   });
   const mentionVouches = mentionData?.vouches ?? [];
+  const listings = profile.activeListings ?? [];
 
   return (
     <div className="space-y-6">
@@ -1629,143 +1632,177 @@ function ProfileView({ profile, isOwn, onEdit, onVouch, onReport }: { profile: P
         )}
       </div>
 
-      {/* Bio + Trade Prefs */}
-      {(profile.bio || profile.tradePreferences) && (
-        <div className="px-5 sm:px-8 space-y-4">
-          {profile.bio && (
-            <div className="glass-panel border border-white/10 rounded-2xl p-4 space-y-1.5">
-              <p className="text-[11px] text-muted-foreground uppercase tracking-widest font-semibold">About</p>
-              <p className="text-sm text-white/90 leading-relaxed whitespace-pre-wrap">{profile.bio}</p>
-            </div>
-          )}
-          {profile.tradePreferences && (
-            <div className="glass-panel border rounded-2xl p-4 space-y-1.5" style={{ borderColor: `${accent}30` }}>
-              <p className="text-[11px] uppercase tracking-widest font-semibold" style={{ color: accent }}>
-                Trade Preferences
-              </p>
-              <p className="text-sm text-white/90 leading-relaxed">{profile.tradePreferences}</p>
-            </div>
-          )}
+      {/* Tab bar */}
+      <div className="px-5 sm:px-8">
+        <div className="flex gap-1 p-1 rounded-xl bg-white/5 border border-white/10 w-fit">
+          {(["about", "listings"] as const).map((t) => (
+            <button
+              key={t}
+              onClick={() => setProfileTab(t)}
+              className={cn(
+                "flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-sm font-semibold transition-all",
+                profileTab === t
+                  ? "bg-white/10 text-white shadow"
+                  : "text-muted-foreground hover:text-white"
+              )}
+            >
+              {t === "about" ? <>About</> : (
+                <>
+                  <LayoutList className="w-3.5 h-3.5" />
+                  Listings
+                  {listings.length > 0 && (
+                    <span className="ml-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-bold leading-none"
+                      style={{ background: `${accent}30`, color: accent }}>
+                      {listings.length}
+                    </span>
+                  )}
+                </>
+              )}
+            </button>
+          ))}
         </div>
-      )}
+      </div>
 
-      {/* Featured Items */}
-      {profile.featuredItems.length > 0 && (
-        <div className="px-5 sm:px-8 space-y-3">
-          <div className="flex items-center gap-2">
-            <Sparkles className="w-4 h-4" style={{ color: accent }} />
-            <h2 className="font-display font-bold text-base text-white">Featured Items</h2>
-          </div>
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-            {profile.featuredItems.map((item) => (
-              <div key={item.id} className="glass-panel border border-white/10 rounded-xl p-3 flex flex-col items-center gap-2 text-center hover:border-white/20 transition-colors"
-                style={{ borderColor: `${accent}20` }}>
-                {item.imageUrl ? (
-                  <img src={item.imageUrl} alt={item.name} className="w-14 h-14 object-contain rounded-xl bg-black/40 p-1" />
-                ) : (
-                  <div className="w-14 h-14 rounded-xl bg-black/40 flex items-center justify-center">
-                    <Box className="w-6 h-6 text-muted-foreground/20" />
-                  </div>
-                )}
-                <div>
-                  <p className="text-xs font-bold text-white leading-tight line-clamp-2">{item.name}</p>
-                  {item.rarity && <p className="text-[10px] text-muted-foreground mt-0.5">{item.rarity}</p>}
-                  {item.value && <p className="text-[10px] font-bold mt-0.5" style={{ color: accent }}>${item.value.toLocaleString()}</p>}
+      {/* ── ABOUT TAB ── */}
+      {profileTab === "about" && (
+        <>
+          {/* Bio + Trade Prefs */}
+          {(profile.bio || profile.tradePreferences) && (
+            <div className="px-5 sm:px-8 space-y-4">
+              {profile.bio && (
+                <div className="glass-panel border border-white/10 rounded-2xl p-4 space-y-1.5">
+                  <p className="text-[11px] text-muted-foreground uppercase tracking-widest font-semibold">About</p>
+                  <p className="text-sm text-white/90 leading-relaxed whitespace-pre-wrap">{profile.bio}</p>
                 </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Active Listings */}
-      {(profile.activeListings ?? []).length > 0 && (
-        <div className="px-5 sm:px-8 space-y-3">
-          <div className="flex items-center gap-2 justify-between">
-            <div className="flex items-center gap-2">
-              <LayoutList className="w-4 h-4 text-muted-foreground" />
-              <h2 className="font-display font-bold text-base text-white">
-                Active Listings <span className="text-muted-foreground font-normal text-sm">({profile.activeListings?.length})</span>
-              </h2>
+              )}
+              {profile.tradePreferences && (
+                <div className="glass-panel border rounded-2xl p-4 space-y-1.5" style={{ borderColor: `${accent}30` }}>
+                  <p className="text-[11px] uppercase tracking-widest font-semibold" style={{ color: accent }}>
+                    Trade Preferences
+                  </p>
+                  <p className="text-sm text-white/90 leading-relaxed">{profile.tradePreferences}</p>
+                </div>
+              )}
             </div>
-            <Link href="/listings" className="text-xs text-primary hover:underline flex items-center gap-1">
-              View all <ExternalLink className="w-3 h-3" />
-            </Link>
-          </div>
-          <div className="space-y-2">
-            {(profile.activeListings ?? []).slice(0, 5).map((l) => (
-              <MiniListingCard key={l.id as string} listing={l as Listing} />
-            ))}
-          </div>
-        </div>
-      )}
+          )}
 
-      {/* Tagged In (vouches that @mention this user) */}
-      {mentionVouches.length > 0 && (
-        <div className="px-5 sm:px-8 space-y-3">
-          <div className="flex items-center gap-2">
-            <AtSign className="w-4 h-4" style={{ color: accent }} />
-            <h2 className="font-display font-bold text-base text-white">
-              Tagged In <span className="text-muted-foreground font-normal text-sm">({mentionVouches.length})</span>
-            </h2>
-          </div>
-          <div className="space-y-3">
-            {mentionVouches.map((v) => (
-              <div key={v.id} className="glass-panel border border-white/10 rounded-2xl p-4 space-y-2.5" style={{ borderColor: `${accent}18` }}>
-                <div className="flex items-start gap-3">
-                  {/* Voucher avatar */}
-                  <Link href={`/profile/${v.fromUserId}`}>
-                    {v.fromAvatar ? (
-                      <img src={v.fromAvatar} alt={v.fromUsername} className="w-8 h-8 rounded-full ring-1 ring-white/20 shrink-0 hover:ring-white/40 transition-all" />
+          {/* Featured Items */}
+          {profile.featuredItems.length > 0 && (
+            <div className="px-5 sm:px-8 space-y-3">
+              <div className="flex items-center gap-2">
+                <Sparkles className="w-4 h-4" style={{ color: accent }} />
+                <h2 className="font-display font-bold text-base text-white">Featured Items</h2>
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                {profile.featuredItems.map((item) => (
+                  <div key={item.id} className="glass-panel border border-white/10 rounded-xl p-3 flex flex-col items-center gap-2 text-center hover:border-white/20 transition-colors"
+                    style={{ borderColor: `${accent}20` }}>
+                    {item.imageUrl ? (
+                      <img src={item.imageUrl} alt={item.name} className="w-14 h-14 object-contain rounded-xl bg-black/40 p-1" />
                     ) : (
-                      <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-xs font-bold text-white shrink-0">
-                        {v.fromUsername[0]?.toUpperCase()}
+                      <div className="w-14 h-14 rounded-xl bg-black/40 flex items-center justify-center">
+                        <Box className="w-6 h-6 text-muted-foreground/20" />
                       </div>
                     )}
-                  </Link>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <Link href={`/profile/${v.fromUserId}`} className="text-sm font-bold text-white hover:text-primary transition-colors">
-                        {v.fromUsername}
+                    <div>
+                      <p className="text-xs font-bold text-white leading-tight line-clamp-2">{item.name}</p>
+                      {item.rarity && <p className="text-[10px] text-muted-foreground mt-0.5">{item.rarity}</p>}
+                      {item.value && <p className="text-[10px] font-bold mt-0.5" style={{ color: accent }}>${item.value.toLocaleString()}</p>}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Tagged In (vouches) */}
+          {mentionVouches.length > 0 && (
+            <div className="px-5 sm:px-8 space-y-3">
+              <div className="flex items-center gap-2">
+                <AtSign className="w-4 h-4" style={{ color: accent }} />
+                <h2 className="font-display font-bold text-base text-white">
+                  Tagged In <span className="text-muted-foreground font-normal text-sm">({mentionVouches.length})</span>
+                </h2>
+              </div>
+              <div className="space-y-3">
+                {mentionVouches.map((v) => (
+                  <div key={v.id} className="glass-panel border border-white/10 rounded-2xl p-4 space-y-2.5" style={{ borderColor: `${accent}18` }}>
+                    <div className="flex items-start gap-3">
+                      <Link href={`/profile/${v.fromUserId}`}>
+                        {v.fromAvatar ? (
+                          <img src={v.fromAvatar} alt={v.fromUsername} className="w-8 h-8 rounded-full ring-1 ring-white/20 shrink-0 hover:ring-white/40 transition-all" />
+                        ) : (
+                          <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-xs font-bold text-white shrink-0">
+                            {v.fromUsername[0]?.toUpperCase()}
+                          </div>
+                        )}
                       </Link>
-                      <span className="text-[11px] text-muted-foreground">vouched for</span>
-                      <Link href={`/profile/${v.toUserId}`} className="text-[11px] font-semibold text-muted-foreground hover:text-white transition-colors">
-                        {v.toUsername}
-                      </Link>
-                      <div className="flex items-center gap-0.5 ml-auto shrink-0">
-                        {[1,2,3,4,5].map((n) => (
-                          <Star key={n} className={cn("w-3 h-3", n <= v.rating ? "fill-amber-400 text-amber-400" : "text-white/10 fill-white/10")} />
-                        ))}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <Link href={`/profile/${v.fromUserId}`} className="text-sm font-bold text-white hover:text-primary transition-colors">
+                            {v.fromUsername}
+                          </Link>
+                          <span className="text-[11px] text-muted-foreground">vouched for</span>
+                          <Link href={`/profile/${v.toUserId}`} className="text-[11px] font-semibold text-muted-foreground hover:text-white transition-colors">
+                            {v.toUsername}
+                          </Link>
+                          <div className="flex items-center gap-0.5 ml-auto shrink-0">
+                            {[1,2,3,4,5].map((n) => (
+                              <Star key={n} className={cn("w-3 h-3", n <= v.rating ? "fill-amber-400 text-amber-400" : "text-white/10 fill-white/10")} />
+                            ))}
+                          </div>
+                        </div>
+                        <p className="text-[11px] text-muted-foreground/50 mt-0.5">
+                          {new Date(v.createdAt).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}
+                        </p>
                       </div>
                     </div>
-                    <p className="text-[11px] text-muted-foreground/50 mt-0.5">
-                      {new Date(v.createdAt).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}
-                    </p>
+                    <HighlightedMessage text={v.message} username={profile.username} />
                   </div>
-                </div>
-                <HighlightedMessage text={v.message} username={profile.username} />
+                ))}
               </div>
-            ))}
-          </div>
+            </div>
+          )}
+
+          {/* Empty state */}
+          {!profile.bio && !profile.tradePreferences && profile.featuredItems.length === 0 && mentionVouches.length === 0 && (
+            <div className="px-5 sm:px-8">
+              <div className="glass-panel border border-white/10 rounded-2xl p-10 text-center space-y-2">
+                <ShoppingBag className="w-10 h-10 text-muted-foreground/20 mx-auto" />
+                <p className="text-muted-foreground text-sm">
+                  {isOwn ? "Set up your profile to show your bio, trading preferences, and featured items." : "This user hasn't set up their profile yet."}
+                </p>
+              </div>
+            </div>
+          )}
+        </>
+      )}
+
+      {/* ── LISTINGS TAB ── */}
+      {profileTab === "listings" && (
+        <div className="px-5 sm:px-8 space-y-3">
+          {listings.length === 0 ? (
+            <div className="glass-panel border border-white/10 rounded-2xl p-10 text-center space-y-2">
+              <LayoutList className="w-10 h-10 text-muted-foreground/20 mx-auto" />
+              <p className="text-muted-foreground text-sm">
+                {isOwn ? "You don't have any active listings yet." : "This user has no active listings."}
+              </p>
+            </div>
+          ) : (
+            <>
+              <p className="text-[11px] text-muted-foreground uppercase tracking-widest font-semibold">
+                {listings.length} Active {listings.length === 1 ? "Listing" : "Listings"}
+              </p>
+              <div className="space-y-2">
+                {listings.map((l) => (
+                  <MiniListingCard key={l.id as string} listing={l as Listing} />
+                ))}
+              </div>
+            </>
+          )}
         </div>
       )}
 
-      {/* Empty state for no bio/items/listings */}
-      {!profile.bio && !profile.tradePreferences && profile.featuredItems.length === 0 && (profile.activeListings ?? []).length === 0 && (
-        <div className="px-5 sm:px-8">
-          <div className="glass-panel border border-white/10 rounded-2xl p-10 text-center space-y-2">
-            <ShoppingBag className="w-10 h-10 text-muted-foreground/20 mx-auto" />
-            <p className="text-muted-foreground text-sm">
-              {isOwn ? "Set up your profile to show your bio, trading preferences, and featured items." : "This user hasn't set up their profile yet."}
-            </p>
-            {isOwn && (
-              <button onClick={onEdit} className="text-sm font-semibold text-primary hover:underline">
-                Edit profile →
-              </button>
-            )}
-          </div>
-        </div>
-      )}
 
       <div className="h-6" />
     </div>
