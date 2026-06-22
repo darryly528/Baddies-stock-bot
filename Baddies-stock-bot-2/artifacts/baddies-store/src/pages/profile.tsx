@@ -19,7 +19,7 @@ import {
 
 import { ROLE_LABEL, ROLE_COLOR, type AnyRole } from "@/hooks/use-staff";
 import { cn } from "@/lib/utils";
-import { applyThemeColors, hexToHsl, hslToHex } from "@/lib/theme-colors";
+import { applyThemeColors, applyGuiColors, resetGuiColors, hexToHsl, hslToHex } from "@/lib/theme-colors";
 
 const PAYMENT_LABELS = ["PayPal", "Apple Pay", "Cash App", "Venmo", "Robux"] as const;
 const PAYMENT_EMOJI: Record<string, string> = {
@@ -382,6 +382,48 @@ function MockCard({ cardStyle, accentColor, edgeEffect, username, previewImage }
   );
 }
 
+// ── Shared color picker used in the Site tab ────────────────────────────────
+function SiteColorPicker({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
+  const [h, s, l] = hexToHsl(value);
+  return (
+    <div className="space-y-1.5">
+      <div className="flex items-center gap-2">
+        <label className="relative w-8 h-8 rounded-lg overflow-hidden shrink-0 cursor-pointer border border-white/20 hover:border-white/40 transition-colors" title="Open color picker">
+          <input type="color" value={value} onChange={(e) => onChange(e.target.value)} className="absolute inset-0 opacity-0 w-full h-full cursor-pointer" />
+          <div className="w-full h-full" style={{ background: value }} />
+        </label>
+        <span className="text-[10px] text-white/70 font-medium flex-1">{label}</span>
+        <input type="text" value={value}
+          onChange={(e) => { if (/^#[0-9a-fA-F]{6}$/.test(e.target.value)) onChange(e.target.value); }}
+          className="w-20 bg-white/5 border border-white/10 rounded px-2 py-1 text-[11px] text-white font-mono focus:outline-none focus:border-white/30" />
+      </div>
+      <div className="space-y-1.5 pl-10">
+        <div className="flex items-center gap-2">
+          <span className="text-[9px] text-muted-foreground uppercase tracking-wide w-4 shrink-0">H</span>
+          <div className="relative flex-1 h-2.5 rounded-full" style={{ background: "linear-gradient(to right,#f00,#ff0,#0f0,#0ff,#00f,#f0f,#f00)" }}>
+            <input type="range" min={0} max={360} value={h} onChange={(e) => onChange(hslToHex(Number(e.target.value), s, l))} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer m-0" />
+            <div className="absolute top-1/2 -translate-y-1/2 w-3.5 h-3.5 rounded-full border-2 border-white shadow pointer-events-none" style={{ left: `calc(${(h/360)*100}% - 7px)`, background: `hsl(${h},100%,50%)` }} />
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-[9px] text-muted-foreground uppercase tracking-wide w-4 shrink-0">S</span>
+          <div className="relative flex-1 h-2.5 rounded-full" style={{ background: `linear-gradient(to right,hsl(${h},0%,${l}%),hsl(${h},100%,${l}%))` }}>
+            <input type="range" min={0} max={100} value={s} onChange={(e) => onChange(hslToHex(h, Number(e.target.value), l))} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer m-0" />
+            <div className="absolute top-1/2 -translate-y-1/2 w-3.5 h-3.5 rounded-full border-2 border-white shadow pointer-events-none" style={{ left: `calc(${s}% - 7px)`, background: value }} />
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-[9px] text-muted-foreground uppercase tracking-wide w-4 shrink-0">L</span>
+          <div className="relative flex-1 h-2.5 rounded-full" style={{ background: `linear-gradient(to right,#000,hsl(${h},${s}%,50%),#fff)` }}>
+            <input type="range" min={0} max={100} value={l} onChange={(e) => onChange(hslToHex(h, s, Number(e.target.value)))} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer m-0" />
+            <div className="absolute top-1/2 -translate-y-1/2 w-3.5 h-3.5 rounded-full border-2 border-white shadow pointer-events-none" style={{ left: `calc(${l}% - 7px)`, background: value }} />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Profile editor panel ──────────────────────────────────────────────────────
 
 function ProfileEditor({
@@ -513,7 +555,8 @@ function ProfileEditor({
 
   // ── Site theme (client-side only, localStorage) ──
   const SITE_THEME_KEY = `user-theme-${profile.userId}`;
-  type UserSiteTheme = { primary: string; secondary: string; bgUrl: string | null; bgOverlay: number; bgBlur: boolean };
+  type UserSiteTheme = { primary: string; secondary: string; bgUrl: string | null; bgOverlay: number; bgBlur: boolean; uiBg?: string; uiCard?: string; uiBorder?: string };
+  const DEFAULT_GUI = { uiBg: "#090612", uiCard: "#130b21", uiBorder: "#2d1f42" };
   const DEFAULT_SITE_THEME: UserSiteTheme = { primary: "#ff0080", secondary: "#7c3aed", bgUrl: null, bgOverlay: 0.6, bgBlur: false };
   const [siteTheme, setSiteTheme] = useState<UserSiteTheme>(DEFAULT_SITE_THEME);
   const [siteUploading, setSiteUploading] = useState(false);
@@ -533,7 +576,8 @@ function ProfileEditor({
     if (!/^#[0-9a-fA-F]{6}$/.test(siteTheme.primary)) return;
     if (!/^#[0-9a-fA-F]{6}$/.test(siteTheme.secondary)) return;
     applyThemeColors(siteTheme.primary, siteTheme.secondary);
-  }, [siteTheme.primary, siteTheme.secondary, tab]);
+    applyGuiColors(siteTheme.uiBg, siteTheme.uiCard, siteTheme.uiBorder);
+  }, [siteTheme.primary, siteTheme.secondary, siteTheme.uiBg, siteTheme.uiCard, siteTheme.uiBorder, tab]);
 
   async function handleSiteBgUpload(file: File) {
     setSiteUploading(true); setSiteUploadError(null);
@@ -553,6 +597,7 @@ function ProfileEditor({
     localStorage.setItem(SITE_THEME_KEY, serialized);
     localStorage.setItem("baddies-user-site-theme", serialized);
     applyThemeColors(siteTheme.primary, siteTheme.secondary);
+    applyGuiColors(siteTheme.uiBg, siteTheme.uiCard, siteTheme.uiBorder);
     window.dispatchEvent(new Event("user-theme-changed"));
     setSiteSaved(true);
     setTimeout(() => setSiteSaved(false), 2500);
@@ -563,6 +608,7 @@ function ProfileEditor({
     localStorage.removeItem("baddies-user-site-theme");
     setSiteTheme(DEFAULT_SITE_THEME);
     applyThemeColors(DEFAULT_SITE_THEME.primary, DEFAULT_SITE_THEME.secondary);
+    resetGuiColors();
     window.dispatchEvent(new Event("user-theme-changed"));
   }
 
@@ -1227,6 +1273,26 @@ function ProfileEditor({
 
             {/* Gradient preview */}
             <div className="h-5 rounded-lg" style={{ background: `linear-gradient(to right, ${siteTheme.primary}, ${siteTheme.secondary})` }} />
+
+            {/* GUI Colors */}
+            <div className="space-y-3 pt-2 border-t border-white/10">
+              <label className="text-[11px] text-muted-foreground uppercase tracking-wider font-semibold">GUI Colors</label>
+              <SiteColorPicker
+                label="Background"
+                value={siteTheme.uiBg ?? DEFAULT_GUI.uiBg}
+                onChange={(hex) => { setSiteTheme((p) => ({ ...p, uiBg: hex })); applyGuiColors(hex, siteTheme.uiCard, siteTheme.uiBorder); }}
+              />
+              <SiteColorPicker
+                label="Panels / Cards"
+                value={siteTheme.uiCard ?? DEFAULT_GUI.uiCard}
+                onChange={(hex) => { setSiteTheme((p) => ({ ...p, uiCard: hex })); applyGuiColors(siteTheme.uiBg, hex, siteTheme.uiBorder); }}
+              />
+              <SiteColorPicker
+                label="Borders"
+                value={siteTheme.uiBorder ?? DEFAULT_GUI.uiBorder}
+                onChange={(hex) => { setSiteTheme((p) => ({ ...p, uiBorder: hex })); applyGuiColors(siteTheme.uiBg, siteTheme.uiCard, hex); }}
+              />
+            </div>
 
             {/* Site background */}
             <div className="space-y-2 pt-2 border-t border-white/10">

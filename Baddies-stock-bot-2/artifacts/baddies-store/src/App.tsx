@@ -2,7 +2,7 @@ import { Switch, Route, Router as WouterRouter, Link, useLocation } from "wouter
 import { QueryClient, QueryClientProvider, useQuery } from "@tanstack/react-query";
 import { motion, AnimatePresence, LayoutGroup } from "framer-motion";
 import { useEffect, useState } from "react";
-import { applyThemeColors } from "./lib/theme-colors";
+import { applyThemeColors, applyGuiColors } from "./lib/theme-colors";
 import Home from "./pages/home";
 import ListPage from "./pages/list";
 import ListingsPage from "./pages/listings";
@@ -24,7 +24,7 @@ type SiteTheme = {
   bgBlur: boolean;
 };
 
-type UserTheme = { primary: string; secondary: string; bgUrl: string | null; bgOverlay: number; bgBlur: boolean };
+type UserTheme = { primary: string; secondary: string; bgUrl: string | null; bgOverlay: number; bgBlur: boolean; uiBg?: string; uiCard?: string; uiBorder?: string };
 
 const UNIVERSAL_THEME_KEY = "baddies-user-site-theme";
 
@@ -64,6 +64,7 @@ function SiteTheme() {
       userTheme ? userTheme.primary : serverTheme!.primaryColor,
       userTheme ? userTheme.secondary : serverTheme!.secondaryColor,
     );
+    if (userTheme) applyGuiColors(userTheme.uiBg, userTheme.uiCard, userTheme.uiBorder);
   }, [userTheme, serverTheme?.primaryColor, serverTheme?.secondaryColor]);
 
   const bg = userTheme ?? serverTheme;

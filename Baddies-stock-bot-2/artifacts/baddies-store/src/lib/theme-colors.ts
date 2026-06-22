@@ -70,3 +70,32 @@ export function applyThemeColors(primaryHex: string, secondaryHex: string) {
 
   root.style.setProperty("--gradient-end", secondaryHex);
 }
+
+export function applyGuiColors(uiBg?: string, uiCard?: string, uiBorder?: string) {
+  const root = document.documentElement;
+  if (uiBg && /^#[0-9a-fA-F]{6}$/.test(uiBg)) {
+    root.style.setProperty("--color-background", uiBg);
+  }
+  if (uiCard && /^#[0-9a-fA-F]{6}$/.test(uiCard)) {
+    const r = parseInt(uiCard.slice(1, 3), 16);
+    const g = parseInt(uiCard.slice(3, 5), 16);
+    const b = parseInt(uiCard.slice(5, 7), 16);
+    root.style.setProperty("--color-card", `rgba(${r},${g},${b},0.6)`);
+    root.style.setProperty("--color-popover", uiCard);
+    root.style.setProperty("--color-muted", uiCard);
+    root.style.setProperty("--color-input", uiCard);
+  }
+  if (uiBorder && /^#[0-9a-fA-F]{6}$/.test(uiBorder)) {
+    root.style.setProperty("--color-border", uiBorder);
+  }
+}
+
+export function resetGuiColors() {
+  const root = document.documentElement;
+  root.style.removeProperty("--color-background");
+  root.style.removeProperty("--color-card");
+  root.style.removeProperty("--color-popover");
+  root.style.removeProperty("--color-muted");
+  root.style.removeProperty("--color-input");
+  root.style.removeProperty("--color-border");
+}
