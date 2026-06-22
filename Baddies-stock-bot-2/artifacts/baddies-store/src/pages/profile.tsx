@@ -19,7 +19,7 @@ import {
 
 import { ROLE_LABEL, ROLE_COLOR, type AnyRole } from "@/hooks/use-staff";
 import { cn } from "@/lib/utils";
-import { applyThemeColors } from "@/lib/theme-colors";
+import { applyThemeColors, hexToHsl, hslToHex } from "@/lib/theme-colors";
 
 const PAYMENT_LABELS = ["PayPal", "Apple Pay", "Cash App", "Venmo", "Robux"] as const;
 const PAYMENT_EMOJI: Record<string, string> = {
@@ -1134,35 +1134,96 @@ function ProfileEditor({
               🎨 <strong className="text-white/80">Your personal view only</strong> — colors and background you set here are saved in your browser and only visible to you.
             </p>
 
-            {/* Primary color */}
-            <div className="space-y-2">
-              <label className="text-[11px] text-muted-foreground uppercase tracking-wider font-semibold">Accent Color</label>
-              <div className="flex items-center gap-2">
-                <div className="w-9 h-9 rounded-xl border border-white/20 overflow-hidden shrink-0 cursor-pointer"
-                  onClick={() => { const i = document.createElement("input"); i.type = "color"; i.value = siteTheme.primary; i.oninput = () => { setSiteTheme((p) => ({ ...p, primary: i.value })); applyThemeColors(i.value, siteTheme.secondary); }; i.click(); }}>
-                  <div className="w-full h-full" style={{ background: siteTheme.primary }} />
+            {/* Accent Color */}
+            {(() => {
+              const [h, s, l] = hexToHsl(siteTheme.primary);
+              const setPrimary = (hex: string) => { setSiteTheme((p) => ({ ...p, primary: hex })); applyThemeColors(hex, siteTheme.secondary); };
+              return (
+                <div className="space-y-2">
+                  <label className="text-[11px] text-muted-foreground uppercase tracking-wider font-semibold">Accent Color</label>
+                  <div className="flex items-center gap-2">
+                    <label className="relative w-10 h-10 rounded-xl overflow-hidden shrink-0 cursor-pointer border-2 border-white/20 hover:border-white/40 transition-colors" title="Open color picker">
+                      <input type="color" value={siteTheme.primary} onChange={(e) => setPrimary(e.target.value)} className="absolute inset-0 opacity-0 w-full h-full cursor-pointer" />
+                      <div className="w-full h-full" style={{ background: siteTheme.primary }} />
+                    </label>
+                    <input type="text" value={siteTheme.primary}
+                      onChange={(e) => { if (/^#[0-9a-fA-F]{6}$/.test(e.target.value)) setPrimary(e.target.value); else setSiteTheme((p) => ({ ...p, primary: e.target.value })); }}
+                      className="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white font-mono focus:outline-none focus:border-white/30"
+                      placeholder="#ff0080" />
+                  </div>
+                  <div className="space-y-2 px-1">
+                    {/* Hue */}
+                    <div className="flex items-center gap-2">
+                      <span className="text-[9px] text-muted-foreground uppercase tracking-wide w-5 shrink-0">H</span>
+                      <div className="relative flex-1 h-3 rounded-full" style={{ background: "linear-gradient(to right,#f00,#ff0,#0f0,#0ff,#00f,#f0f,#f00)" }}>
+                        <input type="range" min={0} max={360} value={h} onChange={(e) => setPrimary(hslToHex(Number(e.target.value), s, l))} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer m-0" />
+                        <div className="absolute top-1/2 -translate-y-1/2 w-4 h-4 rounded-full border-2 border-white shadow pointer-events-none" style={{ left: `calc(${(h/360)*100}% - 8px)`, background: `hsl(${h},100%,50%)` }} />
+                      </div>
+                    </div>
+                    {/* Saturation */}
+                    <div className="flex items-center gap-2">
+                      <span className="text-[9px] text-muted-foreground uppercase tracking-wide w-5 shrink-0">S</span>
+                      <div className="relative flex-1 h-3 rounded-full" style={{ background: `linear-gradient(to right,hsl(${h},0%,${l}%),hsl(${h},100%,${l}%))` }}>
+                        <input type="range" min={0} max={100} value={s} onChange={(e) => setPrimary(hslToHex(h, Number(e.target.value), l))} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer m-0" />
+                        <div className="absolute top-1/2 -translate-y-1/2 w-4 h-4 rounded-full border-2 border-white shadow pointer-events-none" style={{ left: `calc(${s}% - 8px)`, background: siteTheme.primary }} />
+                      </div>
+                    </div>
+                    {/* Lightness */}
+                    <div className="flex items-center gap-2">
+                      <span className="text-[9px] text-muted-foreground uppercase tracking-wide w-5 shrink-0">L</span>
+                      <div className="relative flex-1 h-3 rounded-full" style={{ background: `linear-gradient(to right,#000,hsl(${h},${s}%,50%),#fff)` }}>
+                        <input type="range" min={0} max={100} value={l} onChange={(e) => setPrimary(hslToHex(h, s, Number(e.target.value)))} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer m-0" />
+                        <div className="absolute top-1/2 -translate-y-1/2 w-4 h-4 rounded-full border-2 border-white shadow pointer-events-none" style={{ left: `calc(${l}% - 8px)`, background: siteTheme.primary }} />
+                      </div>
+                    </div>
+                  </div>
                 </div>
-                <input type="text" value={siteTheme.primary}
-                  onChange={(e) => { setSiteTheme((p) => ({ ...p, primary: e.target.value })); if (/^#[0-9a-fA-F]{6}$/.test(e.target.value)) applyThemeColors(e.target.value, siteTheme.secondary); }}
-                  className="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white font-mono focus:outline-none focus:border-primary/50"
-                  placeholder="#ff0080" />
-              </div>
-            </div>
+              );
+            })()}
 
-            {/* Secondary color */}
-            <div className="space-y-2">
-              <label className="text-[11px] text-muted-foreground uppercase tracking-wider font-semibold">Secondary Color</label>
-              <div className="flex items-center gap-2">
-                <div className="w-9 h-9 rounded-xl border border-white/20 overflow-hidden shrink-0 cursor-pointer"
-                  onClick={() => { const i = document.createElement("input"); i.type = "color"; i.value = siteTheme.secondary; i.oninput = () => { setSiteTheme((p) => ({ ...p, secondary: i.value })); applyThemeColors(siteTheme.primary, i.value); }; i.click(); }}>
-                  <div className="w-full h-full" style={{ background: siteTheme.secondary }} />
+            {/* Secondary Color */}
+            {(() => {
+              const [h, s, l] = hexToHsl(siteTheme.secondary);
+              const setSecondary = (hex: string) => { setSiteTheme((p) => ({ ...p, secondary: hex })); applyThemeColors(siteTheme.primary, hex); };
+              return (
+                <div className="space-y-2">
+                  <label className="text-[11px] text-muted-foreground uppercase tracking-wider font-semibold">Secondary Color</label>
+                  <div className="flex items-center gap-2">
+                    <label className="relative w-10 h-10 rounded-xl overflow-hidden shrink-0 cursor-pointer border-2 border-white/20 hover:border-white/40 transition-colors" title="Open color picker">
+                      <input type="color" value={siteTheme.secondary} onChange={(e) => setSecondary(e.target.value)} className="absolute inset-0 opacity-0 w-full h-full cursor-pointer" />
+                      <div className="w-full h-full" style={{ background: siteTheme.secondary }} />
+                    </label>
+                    <input type="text" value={siteTheme.secondary}
+                      onChange={(e) => { if (/^#[0-9a-fA-F]{6}$/.test(e.target.value)) setSecondary(e.target.value); else setSiteTheme((p) => ({ ...p, secondary: e.target.value })); }}
+                      className="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white font-mono focus:outline-none focus:border-white/30"
+                      placeholder="#7c3aed" />
+                  </div>
+                  <div className="space-y-2 px-1">
+                    <div className="flex items-center gap-2">
+                      <span className="text-[9px] text-muted-foreground uppercase tracking-wide w-5 shrink-0">H</span>
+                      <div className="relative flex-1 h-3 rounded-full" style={{ background: "linear-gradient(to right,#f00,#ff0,#0f0,#0ff,#00f,#f0f,#f00)" }}>
+                        <input type="range" min={0} max={360} value={h} onChange={(e) => setSecondary(hslToHex(Number(e.target.value), s, l))} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer m-0" />
+                        <div className="absolute top-1/2 -translate-y-1/2 w-4 h-4 rounded-full border-2 border-white shadow pointer-events-none" style={{ left: `calc(${(h/360)*100}% - 8px)`, background: `hsl(${h},100%,50%)` }} />
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[9px] text-muted-foreground uppercase tracking-wide w-5 shrink-0">S</span>
+                      <div className="relative flex-1 h-3 rounded-full" style={{ background: `linear-gradient(to right,hsl(${h},0%,${l}%),hsl(${h},100%,${l}%))` }}>
+                        <input type="range" min={0} max={100} value={s} onChange={(e) => setSecondary(hslToHex(h, Number(e.target.value), l))} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer m-0" />
+                        <div className="absolute top-1/2 -translate-y-1/2 w-4 h-4 rounded-full border-2 border-white shadow pointer-events-none" style={{ left: `calc(${s}% - 8px)`, background: siteTheme.secondary }} />
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[9px] text-muted-foreground uppercase tracking-wide w-5 shrink-0">L</span>
+                      <div className="relative flex-1 h-3 rounded-full" style={{ background: `linear-gradient(to right,#000,hsl(${h},${s}%,50%),#fff)` }}>
+                        <input type="range" min={0} max={100} value={l} onChange={(e) => setSecondary(hslToHex(h, s, Number(e.target.value)))} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer m-0" />
+                        <div className="absolute top-1/2 -translate-y-1/2 w-4 h-4 rounded-full border-2 border-white shadow pointer-events-none" style={{ left: `calc(${l}% - 8px)`, background: siteTheme.secondary }} />
+                      </div>
+                    </div>
+                  </div>
                 </div>
-                <input type="text" value={siteTheme.secondary}
-                  onChange={(e) => { setSiteTheme((p) => ({ ...p, secondary: e.target.value })); if (/^#[0-9a-fA-F]{6}$/.test(e.target.value)) applyThemeColors(siteTheme.primary, e.target.value); }}
-                  className="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white font-mono focus:outline-none focus:border-primary/50"
-                  placeholder="#7c3aed" />
-              </div>
-            </div>
+              );
+            })()}
 
             {/* Gradient preview */}
             <div className="h-5 rounded-lg" style={{ background: `linear-gradient(to right, ${siteTheme.primary}, ${siteTheme.secondary})` }} />
