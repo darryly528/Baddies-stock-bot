@@ -528,6 +528,13 @@ function ProfileEditor({
     } catch { /* ignore */ }
   }, [SITE_THEME_KEY]);
 
+  useEffect(() => {
+    if (tab !== "site") return;
+    if (!/^#[0-9a-fA-F]{6}$/.test(siteTheme.primary)) return;
+    if (!/^#[0-9a-fA-F]{6}$/.test(siteTheme.secondary)) return;
+    applyThemeColors(siteTheme.primary, siteTheme.secondary);
+  }, [siteTheme.primary, siteTheme.secondary, tab]);
+
   async function handleSiteBgUpload(file: File) {
     setSiteUploading(true); setSiteUploadError(null);
     try {
