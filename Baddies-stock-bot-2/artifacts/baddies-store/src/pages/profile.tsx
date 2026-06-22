@@ -383,40 +383,98 @@ function MockCard({ cardStyle, accentColor, edgeEffect, username, previewImage }
 }
 
 // ── Shared color picker used in the Site tab ────────────────────────────────
-function SiteColorPicker({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
-  const [h, s, l] = hexToHsl(value);
+// onPreview: called on every drag (CSS vars only, no parent re-render)
+// onChange:  called on drag-end / text commit (updates parent React state)
+function SiteColorPicker({
+  label, value, prominent = false, onChange, onPreview,
+}: {
+  label: string; value: string; prominent?: boolean;
+  onChange: (v: string) => void; onPreview?: (v: string) => void;
+}) {
+  const [local, setLocal] = useState(value);
+  useEffect(() => { setLocal(value); }, [value]);
+
+  const [h, s, l] = hexToHsl(local);
+
+  const preview = (hex: string) => { setLocal(hex); onPreview?.(hex); };
+  const commit  = (hex: string) => { setLocal(hex); onChange(hex); };
+
+  const sliderClass = "absolute inset-0 w-full h-full opacity-0 cursor-pointer m-0";
+  const thumbStyle  = (pos: number, bg: string) => ({
+    left: `calc(${pos}% - 8px)`, background: bg,
+  } as React.CSSProperties);
+
   return (
-    <div className="space-y-1.5">
+    <div className="space-y-2">
+      {prominent && (
+        <span className="text-[11px] text-muted-foreground uppercase tracking-wider font-semibold">{label}</span>
+      )}
       <div className="flex items-center gap-2">
-        <label className="relative w-8 h-8 rounded-lg overflow-hidden shrink-0 cursor-pointer border border-white/20 hover:border-white/40 transition-colors" title="Open color picker">
-          <input type="color" value={value} onChange={(e) => onChange(e.target.value)} className="absolute inset-0 opacity-0 w-full h-full cursor-pointer" />
-          <div className="w-full h-full" style={{ background: value }} />
+        <label
+          className={cn(
+            "relative overflow-hidden shrink-0 cursor-pointer border-2 border-white/20 hover:border-white/40 transition-colors",
+            prominent ? "w-10 h-10 rounded-xl" : "w-8 h-8 rounded-lg border"
+          )}
+          title="Open color picker"
+        >
+          <input type="color" value={local}
+            onChange={(e) => preview(e.target.value)}
+            onBlur={(e) => commit(e.target.value)}
+            className="absolute inset-0 opacity-0 w-full h-full cursor-pointer" />
+          <div className="w-full h-full" style={{ background: local }} />
         </label>
-        <span className="text-[10px] text-white/70 font-medium flex-1">{label}</span>
-        <input type="text" value={value}
-          onChange={(e) => { if (/^#[0-9a-fA-F]{6}$/.test(e.target.value)) onChange(e.target.value); }}
-          className="w-20 bg-white/5 border border-white/10 rounded px-2 py-1 text-[11px] text-white font-mono focus:outline-none focus:border-white/30" />
+        {!prominent && <span className="text-[10px] text-white/70 font-medium flex-1">{label}</span>}
+        <input type="text" value={local}
+          onChange={(e) => {
+            setLocal(e.target.value);
+            if (/^#[0-9a-fA-F]{6}$/.test(e.target.value)) { onPreview?.(e.target.value); onChange(e.target.value); }
+          }}
+          className={cn(
+            "bg-white/5 border border-white/10 text-white font-mono focus:outline-none focus:border-white/30",
+            prominent ? "flex-1 rounded-lg px-3 py-2 text-sm" : "w-20 rounded px-2 py-1 text-[11px]"
+          )}
+          placeholder={prominent ? "#ff0080" : "#000000"} />
       </div>
-      <div className="space-y-1.5 pl-10">
+      <div className={cn("space-y-2", prominent ? "px-1" : "pl-10 space-y-1.5")}>
+        {/* Hue */}
         <div className="flex items-center gap-2">
-          <span className="text-[9px] text-muted-foreground uppercase tracking-wide w-4 shrink-0">H</span>
-          <div className="relative flex-1 h-2.5 rounded-full" style={{ background: "linear-gradient(to right,#f00,#ff0,#0f0,#0ff,#00f,#f0f,#f00)" }}>
-            <input type="range" min={0} max={360} value={h} onChange={(e) => onChange(hslToHex(Number(e.target.value), s, l))} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer m-0" />
-            <div className="absolute top-1/2 -translate-y-1/2 w-3.5 h-3.5 rounded-full border-2 border-white shadow pointer-events-none" style={{ left: `calc(${(h/360)*100}% - 7px)`, background: `hsl(${h},100%,50%)` }} />
+          <span className="text-[9px] text-muted-foreground uppercase tracking-wide w-5 shrink-0">H</span>
+          <div className="relative flex-1 h-3 rounded-full" style={{ background: "linear-gradient(to right,#f00,#ff0,#0f0,#0ff,#00f,#f0f,#f00)" }}>
+            <input type="range" min={0} max={360} value={h}
+              onChange={(e) => preview(hslToHex(Number(e.target.value), s, l))}
+              onMouseUp={(e) => commit(hslToHex(Number((e.target as HTMLInputElement).value), s, l))}
+              onTouchEnd={(e) => commit(hslToHex(Number((e.target as HTMLInputElement).value), s, l))}
+              className={sliderClass} />
+            <div className="absolute top-1/2 -translate-y-1/2 w-4 h-4 rounded-full border-2 border-white shadow pointer-events-none"
+              style={thumbStyle((h / 360) * 100, `hsl(${h},100%,50%)`)} />
           </div>
         </div>
+        {/* Saturation */}
         <div className="flex items-center gap-2">
-          <span className="text-[9px] text-muted-foreground uppercase tracking-wide w-4 shrink-0">S</span>
-          <div className="relative flex-1 h-2.5 rounded-full" style={{ background: `linear-gradient(to right,hsl(${h},0%,${l}%),hsl(${h},100%,${l}%))` }}>
-            <input type="range" min={0} max={100} value={s} onChange={(e) => onChange(hslToHex(h, Number(e.target.value), l))} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer m-0" />
-            <div className="absolute top-1/2 -translate-y-1/2 w-3.5 h-3.5 rounded-full border-2 border-white shadow pointer-events-none" style={{ left: `calc(${s}% - 7px)`, background: value }} />
+          <span className="text-[9px] text-muted-foreground uppercase tracking-wide w-5 shrink-0">S</span>
+          <div className="relative flex-1 h-3 rounded-full"
+            style={{ background: `linear-gradient(to right,hsl(${h},0%,${l}%),hsl(${h},100%,${l}%))` }}>
+            <input type="range" min={0} max={100} value={s}
+              onChange={(e) => preview(hslToHex(h, Number(e.target.value), l))}
+              onMouseUp={(e) => commit(hslToHex(h, Number((e.target as HTMLInputElement).value), l))}
+              onTouchEnd={(e) => commit(hslToHex(h, Number((e.target as HTMLInputElement).value), l))}
+              className={sliderClass} />
+            <div className="absolute top-1/2 -translate-y-1/2 w-4 h-4 rounded-full border-2 border-white shadow pointer-events-none"
+              style={thumbStyle(s, local)} />
           </div>
         </div>
+        {/* Lightness */}
         <div className="flex items-center gap-2">
-          <span className="text-[9px] text-muted-foreground uppercase tracking-wide w-4 shrink-0">L</span>
-          <div className="relative flex-1 h-2.5 rounded-full" style={{ background: `linear-gradient(to right,#000,hsl(${h},${s}%,50%),#fff)` }}>
-            <input type="range" min={0} max={100} value={l} onChange={(e) => onChange(hslToHex(h, s, Number(e.target.value)))} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer m-0" />
-            <div className="absolute top-1/2 -translate-y-1/2 w-3.5 h-3.5 rounded-full border-2 border-white shadow pointer-events-none" style={{ left: `calc(${l}% - 7px)`, background: value }} />
+          <span className="text-[9px] text-muted-foreground uppercase tracking-wide w-5 shrink-0">L</span>
+          <div className="relative flex-1 h-3 rounded-full"
+            style={{ background: `linear-gradient(to right,#000,hsl(${h},${s}%,50%),#fff)` }}>
+            <input type="range" min={0} max={100} value={l}
+              onChange={(e) => preview(hslToHex(h, s, Number(e.target.value)))}
+              onMouseUp={(e) => commit(hslToHex(h, s, Number((e.target as HTMLInputElement).value)))}
+              onTouchEnd={(e) => commit(hslToHex(h, s, Number((e.target as HTMLInputElement).value)))}
+              className={sliderClass} />
+            <div className="absolute top-1/2 -translate-y-1/2 w-4 h-4 rounded-full border-2 border-white shadow pointer-events-none"
+              style={thumbStyle(l, local)} />
           </div>
         </div>
       </div>
@@ -1181,95 +1239,22 @@ function ProfileEditor({
             </p>
 
             {/* Accent Color */}
-            {(() => {
-              const [h, s, l] = hexToHsl(siteTheme.primary);
-              const setPrimary = (hex: string) => { setSiteTheme((p) => ({ ...p, primary: hex })); applyThemeColors(hex, siteTheme.secondary); };
-              return (
-                <div className="space-y-2">
-                  <label className="text-[11px] text-muted-foreground uppercase tracking-wider font-semibold">Accent Color</label>
-                  <div className="flex items-center gap-2">
-                    <label className="relative w-10 h-10 rounded-xl overflow-hidden shrink-0 cursor-pointer border-2 border-white/20 hover:border-white/40 transition-colors" title="Open color picker">
-                      <input type="color" value={siteTheme.primary} onChange={(e) => setPrimary(e.target.value)} className="absolute inset-0 opacity-0 w-full h-full cursor-pointer" />
-                      <div className="w-full h-full" style={{ background: siteTheme.primary }} />
-                    </label>
-                    <input type="text" value={siteTheme.primary}
-                      onChange={(e) => { if (/^#[0-9a-fA-F]{6}$/.test(e.target.value)) setPrimary(e.target.value); else setSiteTheme((p) => ({ ...p, primary: e.target.value })); }}
-                      className="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white font-mono focus:outline-none focus:border-white/30"
-                      placeholder="#ff0080" />
-                  </div>
-                  <div className="space-y-2 px-1">
-                    {/* Hue */}
-                    <div className="flex items-center gap-2">
-                      <span className="text-[9px] text-muted-foreground uppercase tracking-wide w-5 shrink-0">H</span>
-                      <div className="relative flex-1 h-3 rounded-full" style={{ background: "linear-gradient(to right,#f00,#ff0,#0f0,#0ff,#00f,#f0f,#f00)" }}>
-                        <input type="range" min={0} max={360} value={h} onChange={(e) => setPrimary(hslToHex(Number(e.target.value), s, l))} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer m-0" />
-                        <div className="absolute top-1/2 -translate-y-1/2 w-4 h-4 rounded-full border-2 border-white shadow pointer-events-none" style={{ left: `calc(${(h/360)*100}% - 8px)`, background: `hsl(${h},100%,50%)` }} />
-                      </div>
-                    </div>
-                    {/* Saturation */}
-                    <div className="flex items-center gap-2">
-                      <span className="text-[9px] text-muted-foreground uppercase tracking-wide w-5 shrink-0">S</span>
-                      <div className="relative flex-1 h-3 rounded-full" style={{ background: `linear-gradient(to right,hsl(${h},0%,${l}%),hsl(${h},100%,${l}%))` }}>
-                        <input type="range" min={0} max={100} value={s} onChange={(e) => setPrimary(hslToHex(h, Number(e.target.value), l))} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer m-0" />
-                        <div className="absolute top-1/2 -translate-y-1/2 w-4 h-4 rounded-full border-2 border-white shadow pointer-events-none" style={{ left: `calc(${s}% - 8px)`, background: siteTheme.primary }} />
-                      </div>
-                    </div>
-                    {/* Lightness */}
-                    <div className="flex items-center gap-2">
-                      <span className="text-[9px] text-muted-foreground uppercase tracking-wide w-5 shrink-0">L</span>
-                      <div className="relative flex-1 h-3 rounded-full" style={{ background: `linear-gradient(to right,#000,hsl(${h},${s}%,50%),#fff)` }}>
-                        <input type="range" min={0} max={100} value={l} onChange={(e) => setPrimary(hslToHex(h, s, Number(e.target.value)))} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer m-0" />
-                        <div className="absolute top-1/2 -translate-y-1/2 w-4 h-4 rounded-full border-2 border-white shadow pointer-events-none" style={{ left: `calc(${l}% - 8px)`, background: siteTheme.primary }} />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              );
-            })()}
+            <SiteColorPicker
+              label="Accent Color"
+              value={siteTheme.primary}
+              prominent
+              onPreview={(hex) => applyThemeColors(hex, siteTheme.secondary)}
+              onChange={(hex) => setSiteTheme((p) => ({ ...p, primary: hex }))}
+            />
 
             {/* Secondary Color */}
-            {(() => {
-              const [h, s, l] = hexToHsl(siteTheme.secondary);
-              const setSecondary = (hex: string) => { setSiteTheme((p) => ({ ...p, secondary: hex })); applyThemeColors(siteTheme.primary, hex); };
-              return (
-                <div className="space-y-2">
-                  <label className="text-[11px] text-muted-foreground uppercase tracking-wider font-semibold">Secondary Color</label>
-                  <div className="flex items-center gap-2">
-                    <label className="relative w-10 h-10 rounded-xl overflow-hidden shrink-0 cursor-pointer border-2 border-white/20 hover:border-white/40 transition-colors" title="Open color picker">
-                      <input type="color" value={siteTheme.secondary} onChange={(e) => setSecondary(e.target.value)} className="absolute inset-0 opacity-0 w-full h-full cursor-pointer" />
-                      <div className="w-full h-full" style={{ background: siteTheme.secondary }} />
-                    </label>
-                    <input type="text" value={siteTheme.secondary}
-                      onChange={(e) => { if (/^#[0-9a-fA-F]{6}$/.test(e.target.value)) setSecondary(e.target.value); else setSiteTheme((p) => ({ ...p, secondary: e.target.value })); }}
-                      className="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white font-mono focus:outline-none focus:border-white/30"
-                      placeholder="#7c3aed" />
-                  </div>
-                  <div className="space-y-2 px-1">
-                    <div className="flex items-center gap-2">
-                      <span className="text-[9px] text-muted-foreground uppercase tracking-wide w-5 shrink-0">H</span>
-                      <div className="relative flex-1 h-3 rounded-full" style={{ background: "linear-gradient(to right,#f00,#ff0,#0f0,#0ff,#00f,#f0f,#f00)" }}>
-                        <input type="range" min={0} max={360} value={h} onChange={(e) => setSecondary(hslToHex(Number(e.target.value), s, l))} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer m-0" />
-                        <div className="absolute top-1/2 -translate-y-1/2 w-4 h-4 rounded-full border-2 border-white shadow pointer-events-none" style={{ left: `calc(${(h/360)*100}% - 8px)`, background: `hsl(${h},100%,50%)` }} />
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-[9px] text-muted-foreground uppercase tracking-wide w-5 shrink-0">S</span>
-                      <div className="relative flex-1 h-3 rounded-full" style={{ background: `linear-gradient(to right,hsl(${h},0%,${l}%),hsl(${h},100%,${l}%))` }}>
-                        <input type="range" min={0} max={100} value={s} onChange={(e) => setSecondary(hslToHex(h, Number(e.target.value), l))} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer m-0" />
-                        <div className="absolute top-1/2 -translate-y-1/2 w-4 h-4 rounded-full border-2 border-white shadow pointer-events-none" style={{ left: `calc(${s}% - 8px)`, background: siteTheme.secondary }} />
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-[9px] text-muted-foreground uppercase tracking-wide w-5 shrink-0">L</span>
-                      <div className="relative flex-1 h-3 rounded-full" style={{ background: `linear-gradient(to right,#000,hsl(${h},${s}%,50%),#fff)` }}>
-                        <input type="range" min={0} max={100} value={l} onChange={(e) => setSecondary(hslToHex(h, s, Number(e.target.value)))} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer m-0" />
-                        <div className="absolute top-1/2 -translate-y-1/2 w-4 h-4 rounded-full border-2 border-white shadow pointer-events-none" style={{ left: `calc(${l}% - 8px)`, background: siteTheme.secondary }} />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              );
-            })()}
+            <SiteColorPicker
+              label="Secondary Color"
+              value={siteTheme.secondary}
+              prominent
+              onPreview={(hex) => applyThemeColors(siteTheme.primary, hex)}
+              onChange={(hex) => setSiteTheme((p) => ({ ...p, secondary: hex }))}
+            />
 
             {/* Gradient preview */}
             <div className="h-5 rounded-lg" style={{ background: `linear-gradient(to right, ${siteTheme.primary}, ${siteTheme.secondary})` }} />
@@ -1280,17 +1265,20 @@ function ProfileEditor({
               <SiteColorPicker
                 label="Background"
                 value={siteTheme.uiBg ?? DEFAULT_GUI.uiBg}
-                onChange={(hex) => { setSiteTheme((p) => ({ ...p, uiBg: hex })); applyGuiColors(hex, siteTheme.uiCard, siteTheme.uiBorder); }}
+                onPreview={(hex) => applyGuiColors(hex, siteTheme.uiCard, siteTheme.uiBorder)}
+                onChange={(hex) => setSiteTheme((p) => ({ ...p, uiBg: hex }))}
               />
               <SiteColorPicker
                 label="Panels / Cards"
                 value={siteTheme.uiCard ?? DEFAULT_GUI.uiCard}
-                onChange={(hex) => { setSiteTheme((p) => ({ ...p, uiCard: hex })); applyGuiColors(siteTheme.uiBg, hex, siteTheme.uiBorder); }}
+                onPreview={(hex) => applyGuiColors(siteTheme.uiBg, hex, siteTheme.uiBorder)}
+                onChange={(hex) => setSiteTheme((p) => ({ ...p, uiCard: hex }))}
               />
               <SiteColorPicker
                 label="Borders"
                 value={siteTheme.uiBorder ?? DEFAULT_GUI.uiBorder}
-                onChange={(hex) => { setSiteTheme((p) => ({ ...p, uiBorder: hex })); applyGuiColors(siteTheme.uiBg, siteTheme.uiCard, hex); }}
+                onPreview={(hex) => applyGuiColors(siteTheme.uiBg, siteTheme.uiCard, hex)}
+                onChange={(hex) => setSiteTheme((p) => ({ ...p, uiBorder: hex }))}
               />
             </div>
 
