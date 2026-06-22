@@ -591,7 +591,7 @@ function getCardStyleProps(cardStyle: string | undefined, accent: string | undef
       };
     default:
       return {
-        baseClass: "border border-white/10 hover:border-primary/40 hover:shadow-[0_0_20px_rgba(255,0,128,0.15)] transition-all duration-200",
+        baseClass: "border border-white/10 hover:border-primary/40 accent-glow-hover transition-all duration-200",
         style: {} as React.CSSProperties,
         whileHover: {},
         showStripe: false,
@@ -1052,7 +1052,7 @@ function CartDrawer({
                             if (!user) { onLoginPrompt(); return; }
                             onBuyItem(e);
                           }}
-                          className="flex items-center gap-1 text-[11px] font-bold px-2.5 py-1.5 rounded-lg bg-gradient-to-r from-primary to-secondary text-white hover:opacity-90 transition-opacity whitespace-nowrap shadow-[0_0_10px_rgba(255,0,128,0.3)]"
+                          className="flex items-center gap-1 text-[11px] font-bold px-2.5 py-1.5 rounded-lg bg-gradient-to-r from-primary to-secondary text-white hover:opacity-90 transition-opacity whitespace-nowrap accent-glow-sm"
                         >
                           <CreditCard className="w-3 h-3" />
                           Buy
@@ -1091,7 +1091,7 @@ function CartDrawer({
                 if (!user) { onLoginPrompt(); return; }
                 onCheckout();
               }}
-              className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-gradient-to-r from-primary to-secondary text-white font-bold text-sm shadow-[0_0_20px_rgba(255,0,128,0.35)] hover:opacity-90 active:scale-[0.98] transition-all"
+              className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-gradient-to-r from-primary to-secondary text-white font-bold text-sm accent-glow-strong hover:opacity-90 active:scale-[0.98] transition-all"
             >
               <BadgeDollarSign className="w-4 h-4" />
               Buy All ({cart.length} item{cart.length !== 1 ? "s" : ""})
@@ -2896,7 +2896,7 @@ export default function ListingsPage() {
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0, opacity: 0 }}
             onClick={() => setCartOpen(true)}
-            className="fixed bottom-24 sm:bottom-8 right-4 sm:right-6 z-40 w-14 h-14 rounded-full bg-gradient-to-br from-primary to-secondary text-white shadow-[0_0_24px_rgba(255,0,128,0.4)] flex items-center justify-center"
+            className="fixed bottom-24 sm:bottom-8 right-4 sm:right-6 z-40 w-14 h-14 rounded-full bg-gradient-to-br from-primary to-secondary text-white accent-glow-lg flex items-center justify-center"
             whileHover={{ scale: 1.1 }}
             whileTap={{ scale: 0.95 }}
           >
@@ -3118,7 +3118,7 @@ export default function ListingsPage() {
                     setOnboardingModal(null);
                     createTicket(pendingEntries);
                   }}
-                  className="flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-primary hover:bg-primary/80 text-white font-bold text-sm transition-colors shadow-[0_0_20px_rgba(255,0,128,0.3)]"
+                  className="flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-primary hover:bg-primary/80 text-white font-bold text-sm transition-colors accent-glow-md"
                 >
                   <Check className="w-4 h-4" />
                   I Understand — Create My Ticket

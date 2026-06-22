@@ -123,7 +123,7 @@ export default function Home() {
           transition={{ duration: 0.8, ease: "easeOut" }}
           className="flex flex-col items-center"
         >
-          <div className="inline-flex items-center gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full glass-panel border-primary/30 text-primary mb-5 sm:mb-8 shadow-[0_0_30px_rgba(255,0,128,0.2)]">
+          <div className="inline-flex items-center gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full glass-panel border-primary/30 text-primary mb-5 sm:mb-8 accent-glow-xl">
             <Sparkles className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
             <span className="text-[10px] sm:text-sm font-semibold tracking-wide uppercase">Official Stock Explorer</span>
           </div>
@@ -131,11 +131,13 @@ export default function Home() {
           <img
             src="/logo.png"
             alt="Baddies Store"
-            className="w-24 h-24 sm:w-32 sm:h-32 object-contain mb-4 sm:mb-6 drop-shadow-[0_0_32px_rgba(255,0,128,0.7)]"
+            className="w-24 h-24 sm:w-32 sm:h-32 object-contain mb-4 sm:mb-6"
+            style={{ filter: "drop-shadow(0 0 32px rgba(var(--accent-r, 255), var(--accent-g, 0), var(--accent-b, 128), 0.7))" }}
           />
           
-          <h1 className="text-4xl sm:text-5xl md:text-7xl font-display font-extrabold text-transparent bg-clip-text bg-gradient-to-br from-white via-white to-white/40 mb-4 sm:mb-6 drop-shadow-sm">
-            Baddies <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-secondary text-glow">Store</span>
+          <h1 className="text-4xl sm:text-5xl md:text-7xl font-display font-extrabold mb-4 sm:mb-6 drop-shadow-sm">
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-white to-primary">Baddies</span>{" "}
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-secondary text-glow">Store</span>
           </h1>
           
           <p className="text-base sm:text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto mb-6 sm:mb-10 leading-relaxed px-2">

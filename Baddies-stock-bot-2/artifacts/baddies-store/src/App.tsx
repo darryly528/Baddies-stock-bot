@@ -127,7 +127,8 @@ function NavBar() {
         <motion.img
           src="/logo.png"
           alt="Baddies Store"
-          className="h-9 w-9 object-contain drop-shadow-[0_0_8px_rgba(255,0,128,0.6)]"
+          className="h-9 w-9 object-contain"
+          style={{ filter: "drop-shadow(0 0 8px rgba(var(--accent-r, 255), var(--accent-g, 0), var(--accent-b, 128), 0.6))" }}
           whileHover={{ scale: 1.08, rotate: -4 }}
           transition={{ type: "spring", stiffness: 400, damping: 20 }}
         />
