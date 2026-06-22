@@ -42,7 +42,7 @@ export function ItemCard({ item, onClick }: ItemCardProps) {
       tabIndex={onClick ? 0 : undefined}
       onKeyDown={onClick ? (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onClick(); } } : undefined}
       className={cn(
-        "group relative flex flex-col overflow-hidden rounded-2xl glass-panel hover:shadow-2xl",
+        "group relative flex flex-col overflow-hidden rounded-2xl glass-panel accent-glow-hover",
         onClick && "cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/50",
         rarityStyle.border,
         rarityStyle.glow
@@ -93,14 +93,14 @@ export function ItemCard({ item, onClick }: ItemCardProps) {
 
         <div className="mt-auto space-y-2 sm:space-y-3">
           <div className="grid grid-cols-2 gap-1.5 sm:gap-2">
-            <div className="bg-black/30 rounded-lg p-1.5 sm:p-2 border border-white/5">
+            <div className="bg-black/30 rounded-lg p-1.5 sm:p-2 border border-primary/15">
               <p className="text-[9px] sm:text-[10px] text-muted-foreground uppercase tracking-wider mb-0.5 sm:mb-1">Value</p>
               <p className="font-mono font-semibold text-white flex items-center gap-1 sm:gap-1.5 text-xs sm:text-sm">
                 <Coins className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-yellow-500 shrink-0" />
                 <span className="truncate">{formatNumber(item.value)}</span>
               </p>
             </div>
-            <div className="bg-black/30 rounded-lg p-1.5 sm:p-2 border border-white/5">
+            <div className="bg-black/30 rounded-lg p-1.5 sm:p-2 border border-primary/15">
               <p className="text-[9px] sm:text-[10px] text-muted-foreground uppercase tracking-wider mb-0.5 sm:mb-1">RAP</p>
               <p className="font-mono font-semibold text-white flex items-center gap-1 sm:gap-1.5 text-xs sm:text-sm">
                 <TrendingUp className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-blue-400 shrink-0" />
@@ -109,7 +109,7 @@ export function ItemCard({ item, onClick }: ItemCardProps) {
             </div>
           </div>
 
-          <div className="hidden sm:flex items-center justify-between text-xs pt-2 border-t border-white/10 text-muted-foreground">
+          <div className="hidden sm:flex items-center justify-between text-xs pt-2 border-t border-primary/15 text-muted-foreground">
             <div className="flex items-center gap-1.5">
               <span>Demand:</span>
               <span className={cn("font-medium", 
@@ -126,7 +126,7 @@ export function ItemCard({ item, onClick }: ItemCardProps) {
           </div>
 
           {/* Mobile-only compact trend badge */}
-          <div className="sm:hidden flex items-center justify-end text-[10px] text-muted-foreground pt-1.5 border-t border-white/10">
+          <div className="sm:hidden flex items-center justify-end text-[10px] text-muted-foreground pt-1.5 border-t border-primary/15">
             <div className="flex items-center gap-1">
               {getTrendIcon(item.trend)}
               <span className="capitalize">{item.trend || "Stable"}</span>
