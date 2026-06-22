@@ -1,7 +1,7 @@
 import fs from "fs";
 import path from "path";
 
-const CATALOG_PATH = path.resolve(process.cwd(), "../../catalog.json");
+const CATALOG_PATH = process.env["CATALOG_PATH"] ?? path.resolve(process.cwd(), "../../catalog.json");
 const UPDATE_INTERVAL_MS = 15 * 60 * 1000; // 15 minutes
 const BLOXTSAR_BASE = "https://bloxtsar.com/api/baddies/catalog";
 const TOTAL_PAGES = 55;
