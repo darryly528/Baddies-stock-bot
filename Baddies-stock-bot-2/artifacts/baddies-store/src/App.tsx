@@ -26,11 +26,16 @@ type SiteTheme = {
 
 type UserTheme = { primary: string; secondary: string; bgUrl: string | null; bgOverlay: number; bgBlur: boolean };
 
+const UNIVERSAL_THEME_KEY = "baddies-user-site-theme";
+
 function readUserTheme(userId: string | undefined): UserTheme | null {
-  if (!userId) return null;
   try {
-    const s = localStorage.getItem(`user-theme-${userId}`);
-    return s ? (JSON.parse(s) as UserTheme) : null;
+    if (userId) {
+      const s = localStorage.getItem(`user-theme-${userId}`);
+      if (s) return JSON.parse(s) as UserTheme;
+    }
+    const fallback = localStorage.getItem(UNIVERSAL_THEME_KEY);
+    return fallback ? (JSON.parse(fallback) as UserTheme) : null;
   } catch { return null; }
 }
 

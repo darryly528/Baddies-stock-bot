@@ -549,7 +549,9 @@ function ProfileEditor({
   }
 
   function handleSiteSave() {
-    localStorage.setItem(SITE_THEME_KEY, JSON.stringify(siteTheme));
+    const serialized = JSON.stringify(siteTheme);
+    localStorage.setItem(SITE_THEME_KEY, serialized);
+    localStorage.setItem("baddies-user-site-theme", serialized);
     applyThemeColors(siteTheme.primary, siteTheme.secondary);
     window.dispatchEvent(new Event("user-theme-changed"));
     setSiteSaved(true);
@@ -558,7 +560,9 @@ function ProfileEditor({
 
   function handleSiteReset() {
     localStorage.removeItem(SITE_THEME_KEY);
+    localStorage.removeItem("baddies-user-site-theme");
     setSiteTheme(DEFAULT_SITE_THEME);
+    applyThemeColors(DEFAULT_SITE_THEME.primary, DEFAULT_SITE_THEME.secondary);
     window.dispatchEvent(new Event("user-theme-changed"));
   }
 
@@ -1135,11 +1139,11 @@ function ProfileEditor({
               <label className="text-[11px] text-muted-foreground uppercase tracking-wider font-semibold">Accent Color</label>
               <div className="flex items-center gap-2">
                 <div className="w-9 h-9 rounded-xl border border-white/20 overflow-hidden shrink-0 cursor-pointer"
-                  onClick={() => { const i = document.createElement("input"); i.type = "color"; i.value = siteTheme.primary; i.oninput = () => setSiteTheme((p) => ({ ...p, primary: i.value })); i.click(); }}>
+                  onClick={() => { const i = document.createElement("input"); i.type = "color"; i.value = siteTheme.primary; i.oninput = () => { setSiteTheme((p) => ({ ...p, primary: i.value })); applyThemeColors(i.value, siteTheme.secondary); }; i.click(); }}>
                   <div className="w-full h-full" style={{ background: siteTheme.primary }} />
                 </div>
                 <input type="text" value={siteTheme.primary}
-                  onChange={(e) => setSiteTheme((p) => ({ ...p, primary: e.target.value }))}
+                  onChange={(e) => { setSiteTheme((p) => ({ ...p, primary: e.target.value })); if (/^#[0-9a-fA-F]{6}$/.test(e.target.value)) applyThemeColors(e.target.value, siteTheme.secondary); }}
                   className="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white font-mono focus:outline-none focus:border-primary/50"
                   placeholder="#ff0080" />
               </div>
@@ -1150,11 +1154,11 @@ function ProfileEditor({
               <label className="text-[11px] text-muted-foreground uppercase tracking-wider font-semibold">Secondary Color</label>
               <div className="flex items-center gap-2">
                 <div className="w-9 h-9 rounded-xl border border-white/20 overflow-hidden shrink-0 cursor-pointer"
-                  onClick={() => { const i = document.createElement("input"); i.type = "color"; i.value = siteTheme.secondary; i.oninput = () => setSiteTheme((p) => ({ ...p, secondary: i.value })); i.click(); }}>
+                  onClick={() => { const i = document.createElement("input"); i.type = "color"; i.value = siteTheme.secondary; i.oninput = () => { setSiteTheme((p) => ({ ...p, secondary: i.value })); applyThemeColors(siteTheme.primary, i.value); }; i.click(); }}>
                   <div className="w-full h-full" style={{ background: siteTheme.secondary }} />
                 </div>
                 <input type="text" value={siteTheme.secondary}
-                  onChange={(e) => setSiteTheme((p) => ({ ...p, secondary: e.target.value }))}
+                  onChange={(e) => { setSiteTheme((p) => ({ ...p, secondary: e.target.value })); if (/^#[0-9a-fA-F]{6}$/.test(e.target.value)) applyThemeColors(siteTheme.primary, e.target.value); }}
                   className="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white font-mono focus:outline-none focus:border-primary/50"
                   placeholder="#7c3aed" />
               </div>
