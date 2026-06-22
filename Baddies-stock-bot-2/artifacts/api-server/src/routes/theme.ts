@@ -4,8 +4,8 @@ import fs from "fs";
 import multer from "multer";
 import { getRole, hasMinRole } from "../permissions";
 
-const THEME_PATH = process.env["THEME_PATH"] ?? path.resolve(process.cwd(), "../../theme.json");
-const UPLOADS_DIR = process.env["UPLOADS_DIR"] ?? path.resolve(process.cwd(), "../../uploads");
+const THEME_PATH = path.resolve(process.env["THEME_PATH"] ?? path.resolve(process.cwd(), "../../theme.json"));
+const UPLOADS_DIR = path.resolve(process.env["UPLOADS_DIR"] ?? path.resolve(process.cwd(), "../../uploads"));
 const THEME_DIR = path.join(UPLOADS_DIR, "theme");
 
 if (!fs.existsSync(THEME_DIR)) fs.mkdirSync(THEME_DIR, { recursive: true });

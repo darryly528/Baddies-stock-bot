@@ -13,7 +13,7 @@ import {
 import { getBotClient } from "../bot";
 import { createPendingImage, type PendingImage } from "../imageReview";
 
-const UPLOADS_DIR = process.env["UPLOADS_DIR"] ?? path.resolve(process.cwd(), "../../uploads");
+const UPLOADS_DIR = path.resolve(process.env["UPLOADS_DIR"] ?? path.resolve(process.cwd(), "../../uploads"));
 const AVATAR_DIR = path.join(UPLOADS_DIR, "avatars");
 const BANNER_DIR = path.join(UPLOADS_DIR, "banners");
 const BG_DIR = path.join(UPLOADS_DIR, "backgrounds");
