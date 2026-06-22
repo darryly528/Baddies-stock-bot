@@ -15,6 +15,7 @@ import { PackagePlus, ShoppingBag, LogOut, LayoutList, Inbox, Shield, UserCircle
 import { cn } from "./lib/utils";
 import { AuthProvider, useAuth } from "./contexts/auth-context";
 import { useConversations } from "./hooks/use-messages";
+import { useOwnProfile } from "./hooks/use-profile";
 
 type SiteTheme = {
   primaryColor: string;
@@ -123,9 +124,11 @@ function NavBar() {
   });
   const isStaff = !!adminMe && adminMe.role !== "none";
 
-  const avatarUrl = user?.avatar
+  const { data: ownProfile } = useOwnProfile();
+  const discordAvatarUrl = user?.avatar
     ? `https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png?size=64`
     : null;
+  const avatarUrl = ownProfile?.customAvatarUrl ?? discordAvatarUrl;
 
   return (
     <header className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between gap-2 px-3 sm:px-6 py-3 border-b border-white/10 bg-background/80 backdrop-blur-md">
@@ -279,9 +282,11 @@ function MobileBottomNav() {
   });
   const isStaff = !!adminMe && adminMe.role !== "none";
 
-  const avatarUrl = user?.avatar
+  const { data: ownProfile } = useOwnProfile();
+  const discordAvatarUrl = user?.avatar
     ? `https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png?size=64`
     : null;
+  const avatarUrl = ownProfile?.customAvatarUrl ?? discordAvatarUrl;
 
   const items = [
     { href: "/", label: "Catalog", icon: ShoppingBag },
