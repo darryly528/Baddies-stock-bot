@@ -188,7 +188,7 @@ export default function Home() {
               <select
                 value={category}
                 onChange={(e) => setCategory(e.target.value)}
-                className="h-12 px-4 rounded-xl border border-white/10 bg-black/40 text-sm text-white focus:outline-none focus:ring-2 focus:ring-primary appearance-none cursor-pointer hidden md:block w-48"
+                className="h-12 px-4 rounded-xl border border-primary/20 bg-black/40 text-sm text-white focus:outline-none focus:ring-2 focus:ring-primary appearance-none cursor-pointer hidden md:block w-48"
               >
                 {availableCategories.map(cat => (
                   <option key={cat} value={cat} className="bg-background text-white">
@@ -205,7 +205,7 @@ export default function Home() {
                 value={searchInput}
                 onChange={(e) => setSearchInput(e.target.value)}
                 placeholder="Search items..."
-                className="pl-10 pr-20 bg-black/40 border-white/10"
+                className="pl-10 pr-20 bg-black/40 border-primary/20"
               />
               <Button 
                 type="submit" 
