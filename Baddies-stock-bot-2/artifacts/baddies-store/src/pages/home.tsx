@@ -155,7 +155,7 @@ export default function Home() {
 
       {/* Interactive Filters Section */}
       <div className="relative z-20 max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 mb-8 sm:mb-12">
-        <div className="glass-panel rounded-2xl p-2 md:p-4 shadow-2xl flex flex-col lg:flex-row gap-3 lg:gap-4 items-stretch lg:items-center justify-between sticky top-16 md:top-4">
+        <div className="glass-panel rounded-2xl p-2 md:p-4 accent-glow-md border-primary/20 flex flex-col lg:flex-row gap-3 lg:gap-4 items-stretch lg:items-center justify-between sticky top-16 md:top-4">
           
           {/* Main Type Toggles */}
           <div className="flex w-full lg:w-auto p-1 bg-black/40 rounded-xl overflow-x-auto hide-scrollbar">
