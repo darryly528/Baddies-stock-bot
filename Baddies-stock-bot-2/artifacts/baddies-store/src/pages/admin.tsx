@@ -315,6 +315,117 @@ function DMViewerModal({ member, onClose }: { member: GuildMember; onClose: () =
   );
 }
 
+// ── Reports Tab ───────────────────────────────────────────────────────────────
+
+type Report = {
+  id: string;
+  reporterId: string;
+  reporterName: string;
+  targetType: string;
+  targetId: string;
+  targetName: string;
+  reason: string;
+  context: string | null;
+  createdAt: string;
+};
+
+const REPORT_TYPE_LABEL: Record<string, string> = {
+  user: "User",
+  listing: "Listing",
+  vouch: "Vouch",
+  message: "Message",
+};
+const REPORT_TYPE_COLOR: Record<string, string> = {
+  user: "bg-purple-500/15 text-purple-400 border-purple-500/20",
+  listing: "bg-blue-500/15 text-blue-400 border-blue-500/20",
+  vouch: "bg-amber-500/15 text-amber-400 border-amber-500/20",
+  message: "bg-red-500/15 text-red-400 border-red-500/20",
+};
+
+function ReportsTab() {
+  const qc = useQueryClient();
+  const [dismissing, setDismissing] = useState<Set<string>>(new Set());
+
+  const { data: reports = [], isLoading, refetch } = useQuery<Report[]>({
+    queryKey: ["admin-reports"],
+    queryFn: () => fetch("/api/admin/reports", { credentials: "include" }).then((r) => r.json()),
+    staleTime: 15_000,
+  });
+
+  async function dismiss(id: string) {
+    setDismissing((prev) => new Set(prev).add(id));
+    try {
+      await fetch(`/api/admin/reports/${id}`, { method: "DELETE", credentials: "include" });
+      qc.setQueryData<Report[]>(["admin-reports"], (old) => (old ?? []).filter((r) => r.id !== id));
+    } finally {
+      setDismissing((prev) => { const n = new Set(prev); n.delete(id); return n; });
+    }
+  }
+
+  return (
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
+      <div className="flex items-center gap-3">
+        <button onClick={() => refetch()}
+          className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-sm font-semibold text-white hover:bg-white/10 transition-colors">
+          <RefreshCw className="w-4 h-4" />Refresh
+        </button>
+        <span className="text-sm text-muted-foreground">{reports.length} open report{reports.length !== 1 ? "s" : ""}</span>
+      </div>
+
+      {isLoading ? (
+        <div className="space-y-2">{Array.from({ length: 4 }).map((_, i) => <div key={i} className="glass-panel border border-white/10 rounded-xl h-20 animate-pulse bg-white/5" />)}</div>
+      ) : reports.length === 0 ? (
+        <div className="glass-panel border border-white/10 rounded-2xl p-12 text-center space-y-2">
+          <FileWarning className="w-10 h-10 text-muted-foreground/20 mx-auto" />
+          <p className="text-muted-foreground text-sm">No open reports.</p>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {reports.map((r) => (
+            <div key={r.id} className="glass-panel border border-white/10 rounded-xl p-4 space-y-3">
+              <div className="flex items-start gap-3">
+                <div className="flex-1 min-w-0 space-y-1">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className={cn("text-[11px] px-2 py-0.5 rounded-full border font-bold", REPORT_TYPE_COLOR[r.targetType] ?? "bg-white/10 text-white border-white/10")}>
+                      {REPORT_TYPE_LABEL[r.targetType] ?? r.targetType}
+                    </span>
+                    <span className="text-sm font-bold text-white truncate">{r.targetName}</span>
+                  </div>
+                  <p className="text-[11px] text-muted-foreground">
+                    Reported by <span className="text-white font-semibold">{r.reporterName}</span>
+                    {" · "}{new Date(r.createdAt).toLocaleString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
+                  </p>
+                </div>
+                <button
+                  onClick={() => dismiss(r.id)}
+                  disabled={dismissing.has(r.id)}
+                  className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-green-500/10 border border-green-500/20 text-xs font-semibold text-green-400 hover:bg-green-500/20 transition-colors disabled:opacity-50"
+                >
+                  {dismissing.has(r.id) ? <Loader2 className="w-3 h-3 animate-spin" /> : <CheckCircle2 className="w-3 h-3" />}
+                  Dismiss
+                </button>
+              </div>
+              <div className="space-y-1.5">
+                <div className="px-3 py-2 rounded-xl bg-red-500/8 border border-red-500/15 text-sm text-white">
+                  <span className="text-[11px] text-red-400 font-semibold uppercase tracking-wider block mb-0.5">Reason</span>
+                  {r.reason}
+                </div>
+                {r.context && (
+                  <div className="px-3 py-2 rounded-xl bg-white/5 border border-white/8 text-xs text-muted-foreground italic">
+                    <span className="not-italic text-[11px] text-muted-foreground/60 font-semibold uppercase tracking-wider block mb-0.5">Context</span>
+                    "{r.context}"
+                  </div>
+                )}
+              </div>
+              <p className="text-[10px] text-muted-foreground/40 font-mono">ID: {r.targetId.slice(0, 20)}{r.targetId.length > 20 ? "…" : ""}</p>
+            </div>
+          ))}
+        </div>
+      )}
+    </motion.div>
+  );
+}
+
 // ── Staff Tab ─────────────────────────────────────────────────────────────────
 
 const ASSIGNABLE_ROLES: { value: StaffRole; label: string }[] = [
@@ -1406,7 +1517,7 @@ export default function AdminPage() {
   const { user } = useAuth();
   const qc = useQueryClient();
 
-  type TabKey = "listings" | "members" | "staff" | "requests";
+  type TabKey = "listings" | "members" | "staff" | "requests" | "reports";
   const [tab, setTab] = useState<TabKey>("members");
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [confirm, setConfirm] = useState<{ message: string; action: () => void } | null>(null);
@@ -1438,10 +1549,10 @@ export default function AdminPage() {
   useEffect(() => {
     if (!callerRole) return;
     const ROLE_RANK: Record<string, number> = { owner: 4, "co-owner": 3, admin: 2, mod: 1, verified_reseller: 0 };
-    const minRoles: Record<TabKey, string> = { members: "mod", requests: "mod", listings: "admin", staff: "mod" };
+    const minRoles: Record<TabKey, string> = { members: "mod", requests: "mod", listings: "admin", staff: "mod", reports: "mod" };
     const rank = ROLE_RANK[callerRole] ?? 0;
     if ((ROLE_RANK[minRoles[tab]] ?? 99) > rank) {
-      const first = (["members", "requests", "listings", "staff"] as TabKey[]).find(
+      const first = (["members", "requests", "listings", "staff", "reports"] as TabKey[]).find(
         (k) => (ROLE_RANK[minRoles[k]] ?? 99) <= rank
       );
       if (first) setTab(first);
@@ -1559,6 +1670,7 @@ export default function AdminPage() {
   const tabs: { key: TabKey; label: string; icon: any; minRole: AnyRole }[] = [
     { key: "members", label: "Members", icon: Users, minRole: "mod" },
     { key: "requests", label: `Requests${banRequests.length > 0 ? ` (${banRequests.length})` : ""}`, icon: Ban, minRole: "mod" },
+    { key: "reports", label: "Reports", icon: FileWarning, minRole: "mod" },
     { key: "listings", label: "Listings", icon: ShoppingBag, minRole: "admin" },
     { key: "staff", label: "Staff", icon: UserCog, minRole: "mod" },
   ];
@@ -1789,6 +1901,9 @@ export default function AdminPage() {
 
         {/* ── BAN REQUESTS TAB ── */}
         {tab === "requests" && <BanRequestsTab />}
+
+        {/* ── REPORTS TAB ── */}
+        {tab === "reports" && <ReportsTab />}
 
 
       </div>

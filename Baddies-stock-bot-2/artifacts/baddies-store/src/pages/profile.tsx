@@ -1526,7 +1526,7 @@ function HighlightedMessage({ text, username }: { text: string; username: string
   );
 }
 
-function ProfileView({ profile, isOwn, onEdit, onVouch, onReport }: { profile: Profile; isOwn: boolean; onEdit: () => void; onVouch?: () => void; onReport?: () => void }) {
+function ProfileView({ profile, isOwn, onEdit, onVouch, onReport }: { profile: Profile; isOwn: boolean; onEdit: () => void; onVouch?: () => void; onReport?: (target: ReportTarget) => void }) {
   const discordAvatarUrl = profile.avatarHash
     ? `https://cdn.discordapp.com/avatars/${profile.userId}/${profile.avatarHash}.png?size=128`
     : null;
@@ -1589,7 +1589,7 @@ function ProfileView({ profile, isOwn, onEdit, onVouch, onReport }: { profile: P
             </button>
           )}
           {!isOwn && onReport && (
-            <button onClick={onReport}
+            <button onClick={() => onReport({ type: "user", id: profile.userId, name: profile.username })}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-black/50 border border-red-500/30 backdrop-blur-sm text-xs font-semibold text-red-400 hover:bg-red-500/20 transition-colors">
               <Flag className="w-3 h-3" />
               Report
@@ -1748,6 +1748,15 @@ function ProfileView({ profile, isOwn, onEdit, onVouch, onReport }: { profile: P
                             {[1,2,3,4,5].map((n) => (
                               <Star key={n} className={cn("w-3 h-3", n <= v.rating ? "fill-amber-400 text-amber-400" : "text-white/10 fill-white/10")} />
                             ))}
+                            {!isOwn && onReport && (
+                              <button
+                                onClick={() => onReport({ type: "vouch", id: v.id, name: `Vouch by ${v.fromUsername}`, context: v.message })}
+                                className="ml-1 p-1 rounded-lg text-muted-foreground/40 hover:text-red-400 hover:bg-red-500/10 transition-colors"
+                                title="Report this vouch"
+                              >
+                                <Flag className="w-3 h-3" />
+                              </button>
+                            )}
                           </div>
                         </div>
                         <p className="text-[11px] text-muted-foreground/50 mt-0.5">
@@ -1901,7 +1910,7 @@ export default function ProfilePage() {
             isOwn={isOwn}
             onEdit={() => setEditing(true)}
             onVouch={!isOwn && !!user ? () => setVouchOpen(true) : undefined}
-            onReport={!isOwn && !!user ? () => setReportTarget({ type: "user", id: profile.userId, name: profile.username }) : undefined}
+            onReport={!isOwn && !!user ? (target) => setReportTarget(target) : undefined}
           />
         </div>
 

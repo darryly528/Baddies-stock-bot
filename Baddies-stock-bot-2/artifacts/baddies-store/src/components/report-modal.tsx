@@ -3,10 +3,18 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Flag, X, Check, Loader2 } from "lucide-react";
 
 export interface ReportTarget {
-  type: "listing" | "user";
+  type: "listing" | "user" | "vouch" | "message";
   id: string;
   name: string;
+  context?: string;
 }
+
+const TYPE_LABEL: Record<ReportTarget["type"], string> = {
+  listing: "Listing",
+  user: "User",
+  vouch: "Vouch",
+  message: "Message",
+};
 
 export function ReportModal({
   target,
@@ -34,6 +42,7 @@ export function ReportModal({
           targetId: target.id,
           targetName: target.name,
           reason: reason.trim(),
+          context: target.context,
         }),
       });
       if (!res.ok) {
@@ -63,7 +72,7 @@ export function ReportModal({
         <div className="flex items-center gap-3 px-5 py-4 border-b border-white/10 bg-white/5">
           <Flag className="w-4 h-4 text-red-400" />
           <span className="font-bold text-white text-sm flex-1">
-            Report {target.type === "user" ? "User" : "Listing"}
+            Report {TYPE_LABEL[target.type]}
           </span>
           <button onClick={onClose} className="p-1.5 rounded-lg text-muted-foreground hover:text-white hover:bg-white/5 transition-colors">
             <X className="w-4 h-4" />
@@ -81,6 +90,11 @@ export function ReportModal({
               <div className="px-3 py-2 rounded-xl bg-red-500/10 border border-red-500/20 text-xs text-red-300">
                 Reporting: <strong className="text-red-200">{target.name}</strong>
               </div>
+              {target.context && (
+                <div className="px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-xs text-muted-foreground italic line-clamp-3">
+                  "{target.context}"
+                </div>
+              )}
               <div className="space-y-1.5">
                 <label className="text-[11px] text-muted-foreground uppercase tracking-wider font-semibold">Reason</label>
                 <textarea
@@ -116,7 +130,3 @@ export function ReportModal({
   );
 }
 
-export function useReportModal() {
-  const [reportTarget, setReportTarget] = useState<ReportTarget | null>(null);
-  return { reportTarget, setReportTarget, clearReport: () => setReportTarget(null) };
-}

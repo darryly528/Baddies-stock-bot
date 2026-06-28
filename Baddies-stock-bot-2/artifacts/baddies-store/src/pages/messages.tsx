@@ -243,7 +243,7 @@ export default function MessagesPage() {
                     ? `https://cdn.discordapp.com/avatars/${msg.senderId}/${msg.senderAvatar}.png?size=64`
                     : null;
                   return (
-                    <div key={msg.id} className={cn("flex gap-2 items-end", isMe ? "flex-row-reverse" : "flex-row")}>
+                    <div key={msg.id} className={cn("group flex gap-2 items-end", isMe ? "flex-row-reverse" : "flex-row")}>
                       {!isMe && (
                         msg.isAdmin ? (
                           <img src="/admin-avatar.jpg" alt="Admin" className="w-6 h-6 rounded-full flex-shrink-0 object-cover" />
@@ -287,9 +287,20 @@ export default function MessagesPage() {
                             {msg.content}
                           </div>
                         )}
-                        <p className={cn("text-[10px] text-muted-foreground px-1 mt-0.5", isMe ? "text-right" : "text-left")}>
-                          {new Date(msg.timestamp).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })}
-                        </p>
+                        <div className={cn("flex items-center gap-1 mt-0.5", isMe ? "flex-row-reverse" : "flex-row")}>
+                          <p className={cn("text-[10px] text-muted-foreground px-1", isMe ? "text-right" : "text-left")}>
+                            {new Date(msg.timestamp).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })}
+                          </p>
+                          {!isMe && !msg.filtered && (
+                            <button
+                              onClick={() => setReportTarget({ type: "message", id: msg.id, name: msg.senderName, context: msg.content?.slice(0, 200) })}
+                              className="opacity-0 group-hover:opacity-100 p-0.5 rounded text-muted-foreground/40 hover:text-red-400 transition-all"
+                              title="Report message"
+                            >
+                              <Flag className="w-2.5 h-2.5" />
+                            </button>
+                          )}
+                        </div>
                       </div>
                     </div>
                   );

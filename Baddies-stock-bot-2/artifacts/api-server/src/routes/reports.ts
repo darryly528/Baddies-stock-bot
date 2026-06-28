@@ -3,6 +3,7 @@ import fs from "fs";
 import path from "path";
 import { randomUUID } from "crypto";
 import { getBotClient } from "../bot";
+import { getRole, hasMinRole } from "../permissions";
 
 const router = Router();
 
@@ -15,15 +16,26 @@ function saveReports(r: object[]) {
   fs.writeFileSync(REPORTS_PATH, JSON.stringify(r, null, 2), "utf8");
 }
 
+function requireMinRole(minRole: string) {
+  return (req: any, res: any, next: any) => {
+    const u = req.session?.discordUser;
+    if (!u) { res.status(401).json({ error: "Not authenticated" }); return; }
+    const role = getRole(u.id, u.username) ?? "none";
+    if (!hasMinRole(role as any, minRole as any)) { res.status(403).json({ error: "Forbidden" }); return; }
+    next();
+  };
+}
+
 router.post("/report", (req: any, res: any) => {
   const user = req.session?.discordUser;
   if (!user) { res.status(401).json({ error: "Not authenticated" }); return; }
 
-  const { targetType, targetId, targetName, reason } = req.body as {
+  const { targetType, targetId, targetName, reason, context } = req.body as {
     targetType: string;
     targetId: string;
     targetName: string;
     reason: string;
+    context?: string;
   };
 
   if (!reason?.trim()) { res.status(400).json({ error: "Reason required" }); return; }
@@ -36,6 +48,8 @@ router.post("/report", (req: any, res: any) => {
     targetId,
     targetName,
     reason: reason.trim(),
+    context: context ?? null,
+    status: "open",
     createdAt: new Date().toISOString(),
   };
 
@@ -54,13 +68,29 @@ router.post("/report", (req: any, res: any) => {
             `🚩 **New Report**\n` +
             `**Reporter:** ${user.username} (${user.id})\n` +
             `**Target:** ${targetName} (${targetType} · ${targetId})\n` +
-            `**Reason:** ${reason.trim()}`
+            `**Reason:** ${reason.trim()}` +
+            (context ? `\n**Context:** ${context.slice(0, 200)}` : "")
           ).catch(() => {});
         }
       }
     }
   } catch {}
 
+  res.json({ ok: true });
+});
+
+router.get("/admin/reports", requireMinRole("mod"), (_req: any, res: any) => {
+  const reports = loadReports() as any[];
+  res.json(reports.slice().reverse());
+});
+
+router.delete("/admin/reports/:id", requireMinRole("mod"), (req: any, res: any) => {
+  const { id } = req.params;
+  const reports = loadReports() as any[];
+  const idx = reports.findIndex((r: any) => r.id === id);
+  if (idx === -1) { res.status(404).json({ error: "Not found" }); return; }
+  reports.splice(idx, 1);
+  saveReports(reports);
   res.json({ ok: true });
 });
 
