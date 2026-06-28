@@ -653,7 +653,6 @@ function ProfileEditor({
   function handleSiteSave() {
     const serialized = JSON.stringify(siteTheme);
     localStorage.setItem(SITE_THEME_KEY, serialized);
-    localStorage.setItem("baddies-user-site-theme", serialized);
     applyThemeColors(siteTheme.primary, siteTheme.secondary);
     applyGuiColors(siteTheme.uiBg, siteTheme.uiCard, siteTheme.uiBorder);
     window.dispatchEvent(new Event("user-theme-changed"));
@@ -663,7 +662,6 @@ function ProfileEditor({
 
   function handleSiteReset() {
     localStorage.removeItem(SITE_THEME_KEY);
-    localStorage.removeItem("baddies-user-site-theme");
     setSiteTheme(DEFAULT_SITE_THEME);
     applyThemeColors(DEFAULT_SITE_THEME.primary, DEFAULT_SITE_THEME.secondary);
     resetGuiColors();

@@ -30,13 +30,10 @@ type UserTheme = { primary: string; secondary: string; bgUrl: string | null; bgO
 const UNIVERSAL_THEME_KEY = "baddies-user-site-theme";
 
 function readUserTheme(userId: string | undefined): UserTheme | null {
+  if (!userId) return null;
   try {
-    if (userId) {
-      const s = localStorage.getItem(`user-theme-${userId}`);
-      if (s) return JSON.parse(s) as UserTheme;
-    }
-    const fallback = localStorage.getItem(UNIVERSAL_THEME_KEY);
-    return fallback ? (JSON.parse(fallback) as UserTheme) : null;
+    const s = localStorage.getItem(`user-theme-${userId}`);
+    return s ? (JSON.parse(s) as UserTheme) : null;
   } catch { return null; }
 }
 
