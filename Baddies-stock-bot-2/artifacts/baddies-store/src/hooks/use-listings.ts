@@ -50,8 +50,8 @@ export function useListings(refetchInterval?: number) {
       if (!res.ok) throw new Error("Failed to fetch listings");
       return res.json() as Promise<Listing[]>;
     },
-    refetchInterval: refetchInterval ?? 60_000,
-    staleTime: 30_000,
+    refetchInterval: refetchInterval ?? 15_000,
+    staleTime: 10_000,
     refetchOnWindowFocus: false,
     refetchOnMount: false,
   });

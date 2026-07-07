@@ -2483,10 +2483,9 @@ function usePresencePing() {
 }
 
 export default function ListingsPage() {
-  const activeUsers = usePresencePing();
-  const refetchInterval = Math.max(5_000, Math.round(60_000 / Math.sqrt(activeUsers)));
+  usePresencePing();
 
-  const { data: listings = [], isLoading } = useListings(refetchInterval);
+  const { data: listings = [], isLoading } = useListings(15_000);
   const { data: config } = useConfig();
   const { user } = useAuth();
 
